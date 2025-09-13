@@ -1,0 +1,33 @@
+{
+  "name": "blog",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon --inspect index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kteenguyen/nodejs_myproject0.git"
+  },
+  "keywords": [
+    "project",
+    "my_website_project"
+  ],
+  "author": "ktee",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kteenguyen/nodejs_myproject0/issues"
+  },
+  "homepage": "https://github.com/Kteenguyen/nodejs_myproject0#readme",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "ejs": "^3.1.9",
+    "express": "^4.18.2",
+    "mongoose": "^8.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
