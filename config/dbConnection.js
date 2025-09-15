@@ -2,13 +2,15 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
     try {
-        await mongoose.connect('mongodb://localhost:27017/shop'); // Loại bỏ các tùy chọn không cần thiết
-        console.log('Đã kết nối thành công với MongoDB!');
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        console.log('MongoDB connected successfully');
     } catch (error) {
-        console.error('Lỗi kết nối MongoDB:', error);
+        console.error('MongoDB connection error:', error.message);
+        process.exit(1); // Thoát ứng dụng nếu không kết nối được
     }
 };
 
-const db = mongoose.connection;
-
-module.exports = { connectDB, db };
+module.exports = { connectDB };
