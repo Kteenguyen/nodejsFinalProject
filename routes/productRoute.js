@@ -77,6 +77,8 @@ productRoute.post(
       };
 
       phẩm
+
+// Tạo sản phẩm
 productRoute.post(
   "/",
   protect,
