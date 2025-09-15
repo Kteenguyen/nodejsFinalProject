@@ -1,0 +1,11 @@
+- Script cấu trúc thư mục: MVC_MC (Theo thứ tự xử lý code) 
+    + Middleware: gác cổng ở giữ, xét điều kiên dử liệu vào ra 
+    + Model: Schema cơ sở dử liệu
+    + controllers: Xử lý logic các hàm, các chức năng
+    + Views: giao diện
+    + routes: Định tuyến, flow của web
+- Public: Chứa các file tĩnh (css, js, images)
+- Config: Chứa các file cấu hình (database, app, ...)
+- data: Chưaa các file dữ liệu tĩnh (nếu có)
+- Node_modules: Chứa các thư viện được cài đặt từ npm
+- .env: Chứa các biến môi trường (environment variables)
