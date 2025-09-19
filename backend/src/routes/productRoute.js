@@ -20,4 +20,16 @@ router.get('/:productId', productController.getProductDetails);
 // POST /api/products/:productId/reviews - Thêm đánh giá sản phẩm
 router.post('/:productId/reviews', productController.addReviewAndRating);
 
+// GET /api/products/home/new
+router.get('/home/new', productController.getNewProductsForHome);
+
+// GET /api/products/home/bestsellers
+router.get('/home/bestsellers', productController.getBestSellersForHome);
+
+// GET /api/products/home/category/:categoryId
+router.get('/home/category/:categoryId', productController.getProductsByCategoryForHome);
+
+// GET /api/products/home
+router.get('/home', productController.getHomeProducts);
+
 module.exports = router;
