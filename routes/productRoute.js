@@ -1,20 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const productController = require('../controllers/product.controller');
+const productController = require('../controllers/productController');
 
-// Lấy danh sách sản phẩm với phân trang, tìm kiếm, lọc và sắp xếp
-router.get('/products', productController.getProducts);
+// GET /api/products - Lấy tất cả sản phẩm với phân trang, lọc, sắp xếp
+router.get('/', productController.getProducts);
 
-// Lấy chi tiết sản phẩm
-router.get('/products/:productId', productController.getProductDetails);
+// GET /api/products/bestsellers - Lấy sản phẩm bán chạy
+router.get('/bestsellers', productController.getBestSellers);
 
-// Thêm đánh giá và xếp hạng cho sản phẩm (sử dụng middleware để kiểm tra đăng nhập)
-router.post('/products/:productId/reviews', (req, res, next) => {
-    // Middleware kiểm tra đăng nhập ở đây
-    if (!req.user) {
-        return res.status(401).json({ message: 'Bạn phải đăng nhập để đánh giá' });
-    }
-    next();
-}, productController.addReviewAndRating);
+// GET /api/products/new - Lấy sản phẩm mới
+router.get('/new', productController.getNewProducts);
+
+// GET /api/products/category/:categoryId - Lấy sản phẩm theo danh mục
+router.get('/category/:categoryId', productController.getProductsByCategory);
+
+// GET /api/products/:productId - Lấy chi tiết sản phẩm
+router.get('/:productId', productController.getProductDetails);
+
+// POST /api/products/:productId/reviews - Thêm đánh giá sản phẩm
+router.post('/:productId/reviews', productController.addReviewAndRating);
 
 module.exports = router;
