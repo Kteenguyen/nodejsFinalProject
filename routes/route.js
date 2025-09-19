@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/userControllers');
 const User = require('../models/userModel');
+const userRoutes = require('./userRoute');
+const productRoutes = require('./productRoute');
 
 // Define routes
 router.get('/', (req, res) => {
@@ -13,25 +14,12 @@ router.get('/home', (req, res) => {
     res.render('home');
 });
 
-//route đăng ký
-router.post('/register', register);
-
-//route đăng nhập
+// render trang login
 router.get('/login', (req, res) => {
     res.render('login');
 });
-router.post('/login', login);
 
-//route quản lý người dùng
-router.get('/users', async (req, res) => {
-    try {
-        const users = await User.find();
-        res.render('users', { users });
-    } catch (error) {
-        console.error('Error fetching users:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
+
 
 
 module.exports = router;
