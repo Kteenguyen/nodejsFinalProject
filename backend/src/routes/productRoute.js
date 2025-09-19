@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const productController = require('../controllers/productController');
+const productController = require('../controllers/productControllers');
 
 // GET /api/products - Lấy tất cả sản phẩm với phân trang, lọc, sắp xếp
 router.get('/', productController.getProducts);

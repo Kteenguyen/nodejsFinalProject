@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { register, login, googleLogin, updateProfile, changePassword, addShippingAddress } = require('../controllers/userControllers');
+const { register, login, googleLogin, updateProfile, changePassword, addShippingAddress } = require('../controllers/userControllersss
 const auth = require('../middleware/auth');
 
 // Auth
