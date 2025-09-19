@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ProductCard from './ProductCard';
-import styles from './ProductList.module.css';
+import styles from './ProductList.css';
 
 const ProductList = () => {
     const [products, setProducts] = useState([]);
