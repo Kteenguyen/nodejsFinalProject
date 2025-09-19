@@ -1,15 +1,46 @@
-- Script cấu trúc thư mục: MVC_MC (Theo thứ tự xử lý code) 
-    + Middleware: gác cổng ở giữ, xét điều kiên dử liệu vào ra 
-    + Model: Schema cơ sở dử liệu
-    + controllers: Xử lý logic các hàm, các chức năng
-    + Views: giao diện
-    + routes: Định tuyến, flow của web
-- Public: Chứa các file tĩnh (css, js, images)
-- Config: Chứa các file cấu hình (database, app, ...)
-- data: Chưaa các file dữ liệu tĩnh (nếu có)
-- Node_modules: Chứa các thư viện được cài đặt từ npm
-- .env: Chứa các biến môi trường (environment variables)
-
+project/
+├─ backend/                 # Express + MVC (API server)
+│  ├─ src/
+│  │  ├─ controllers/
+│  │  ├─ models/
+│  │  ├─ routes/
+│  │  ├─ middleware/
+│  │  ├─ services/         # business logic (nếu có)
+│  │  ├─ utils/            # helper, validator, logger…
+│  │  ├─ config/           # db, env, constants
+│  │  └─ app.js            # khởi tạo Express app
+│  ├─ tests/               # test cho backend
+│  ├─ .env                 # biến môi trường server (JWT_SECRET, DB_URI,…)
+│  ├─ package.json
+│  └─ Dockerfile           # (tuỳ chọn)
+│
+├─ frontend/               # React app (Vite/CRA/Next)
+│  ├─ src/
+│  │  ├─ assets/
+│  │  ├─ components/
+│  │  ├─ pages/            # hoặc routes/ nếu dùng React Router v6
+│  │  ├─ features/         # các slice (Redux/Zustand) hoặc module UI
+│  │  ├─ hooks/
+│  │  ├─ services/         # gọi API (axios/fetch), query clients
+│  │  ├─ utils/
+│  │  ├─ App.jsx
+│  │  └─ main.jsx
+│  ├─ public/
+│  ├─ .env                 # biến môi trường client (VITE_*)
+│  ├─ index.html
+│  ├─ package.json
+│  └─ vite.config.js       # thiết lập proxy về backend khi dev
+│
+├─ shared/                 # (tuỳ chọn) kiểu dữ liệu dùng chung FE/BE
+│  ├─ types/               # TS types hoặc JSON Schemas
+│  └─ constants/
+│
+├─ scripts/                # CI/CD, migration, seed…
+├─ .editorconfig
+├─ .gitignore
+├─ README.md
+└─ package.json 
+           # (tuỳ chọn) workspace root nếu dùng npm/yarn/pnpm workspaces
 - đăng nhập
  + npm install jsonwebtoken
  + npm install bcryptjs
