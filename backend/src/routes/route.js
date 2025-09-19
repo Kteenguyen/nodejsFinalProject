@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/userModel');
 const userRoutes = require('./userRoute');
-const productRoutes = require('./productRoute');
 
 // Define routes
 router.get('/', (req, res) => {
@@ -19,7 +18,7 @@ router.get('/login', (req, res) => {
     res.render('login');
 });
 
-
-
+// Mount routes
+router.use('/', userRoutes);
 
 module.exports = router;
