@@ -16,4 +16,6 @@
  + npm install dotenv
  + npm install uuid
 
+- đăng nhập bằng Google, cấu hình google cloud
+"C:\Users\ADMIN\OneDrive\Documents\Study\Tự học\NodeJS"; npm i google-auth-library --save --no-fund --no-audit --loglevel=error | cat
  
