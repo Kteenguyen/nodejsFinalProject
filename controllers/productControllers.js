@@ -1,4 +1,5 @@
 const Product = require('../models/productModel');
+const Comment = require('../models/commentModel');
 
 // Hiển thị danh sách sản phẩm với phân trang, lọc và sắp xếp
 exports.getProducts = async (req, res) => {
@@ -85,11 +86,37 @@ exports.getProductDetails = async (req, res) => {
 
 // Thêm đánh giá và xếp hạng sản phẩm
 exports.addReviewAndRating = async (req, res) => {
-    // LƯU Ý: Chức năng này không thể hoạt động với productModel hiện tại
-    // vì trong model không có trường `reviews`.
-    // Bạn cần thêm trường `reviews: [reviewSchema]` vào productModel để sử dụng.
-    
-    return res.status(400).json({ 
-        message: 'Chức năng này chưa được hỗ trợ. Vui lòng cập nhật productModel để có trường "reviews".' 
-    });
+    try {
+        const { productId } = req.params; // Đây là productId tùy chỉnh của bạn
+        const { accountId, content, rating } = req.body; // Lấy thông tin từ request body
+
+        // 1. Kiểm tra xem sản phẩm có tồn tại không
+        const product = await Product.findOne({ productId: productId });
+        if (!product) {
+            return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+        }
+
+        // (Tùy chọn) Kiểm tra xem tài khoản có tồn tại không
+        // const user = await User.findById(accountId);
+        // if (!user) {
+        //     return res.status(404).json({ message: 'Không tìm thấy tài khoản người dùng' });
+        // }
+
+        // 2. Tạo một bình luận/đánh giá mới
+        const newComment = new Comment({
+            commentId: new mongoose.Types.ObjectId().toHexString(), // Tạo một ID ngẫu nhiên cho comment
+            accountId: accountId, 
+            productId: product._id, // Quan trọng: Lưu _id của MongoDB, không phải productId tùy chỉnh
+            content: content,
+            rating: rating
+        });
+
+        // 3. Lưu bình luận vào database
+        await newComment.save();
+
+        res.status(201).json({ message: 'Đánh giá đã được thêm thành công', comment: newComment });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
+    }
+};
 };
