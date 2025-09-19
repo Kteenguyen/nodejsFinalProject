@@ -20,6 +20,9 @@ const { getUsers } = require('./controllers/userControllers')
 // Import routes        
 const routes = require('./routes/route');
 
+// Serve static files
+app.use(express.static('public'));
+
 // Middleware để parse JSON và dữ liệu từ form
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

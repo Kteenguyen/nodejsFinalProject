@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {register, login} = require('../controllers/userControllers');
+const { register, login } = require('../controllers/userControllers');
 const User = require('../models/userModel');
 
 // Define routes
@@ -17,6 +17,9 @@ router.get('/home', (req, res) => {
 router.post('/register', register);
 
 //route đăng nhập
+router.get('/login', (req, res) => {
+    res.render('login');
+});
 router.post('/login', login);
 
 //route quản lý người dùng

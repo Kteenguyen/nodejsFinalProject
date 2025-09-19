@@ -1,4 +1,5 @@
-const Product = require('../models/product.model');
+const Product = require('../models/productModel');
+const Comment = require('../models/commentModel');
 
 // Hiển thị danh sách sản phẩm với phân trang, lọc và sắp xếp
 exports.getProducts = async (req, res) => {
@@ -8,26 +9,27 @@ exports.getProducts = async (req, res) => {
 
         // Thêm các điều kiện lọc
         if (category) {
-            query.category = category;
+            // Lọc theo categoryId bên trong object category
+            query['category.categoryId'] = category;
         }
         if (brand) {
             query.brand = brand;
         }
         if (minPrice || maxPrice) {
-            query['variants.price'] = {};
+            query.price = {};
             if (minPrice) {
-                query['variants.price'].$gte = parseFloat(minPrice);
+                query.price.$gte = parseFloat(minPrice);
             }
             if (maxPrice) {
-                query['variants.price'].$lte = parseFloat(maxPrice);
+                query.price.$lte = parseFloat(maxPrice);
             }
         }
         
         // Thêm điều kiện tìm kiếm theo từ khóa
         if (keyword) {
             query.$or = [
-                { name: { $regex: keyword, $options: 'i' } },
-                { description: { $regex: keyword, $options: 'i' } }
+                { productName: { $regex: keyword, $options: 'i' } },
+                { productDescription: { $regex: keyword, $options: 'i' } }
             ];
         }
 
@@ -36,12 +38,15 @@ exports.getProducts = async (req, res) => {
         if (sortBy && sortOrder) {
             // Sắp xếp theo tên (A-Z, Z-A)
             if (sortBy === 'name') {
-                sort.name = sortOrder === 'asc' ? 1 : -1;
+                sort.productName = sortOrder === 'asc' ? 1 : -1;
             }
             // Sắp xếp theo giá (tăng/giảm dần)
             if (sortBy === 'price') {
-                sort['variants.price'] = sortOrder === 'asc' ? 1 : -1;
+                sort.price = sortOrder === 'asc' ? 1 : -1;
             }
+        } else {
+            // Mặc định sắp xếp theo ngày tạo mới nhất nếu không có tùy chọn
+            sort.createdAt = -1;
         }
 
         // Lấy tổng số sản phẩm để tính số trang
@@ -54,10 +59,11 @@ exports.getProducts = async (req, res) => {
         res.status(200).json({
             products,
             currentPage: parseInt(page),
-            totalPages: Math.ceil(totalProducts / limit)
+            totalPages: Math.ceil(totalProducts / limit),
+            totalProducts: totalProducts
         });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
 
@@ -65,7 +71,8 @@ exports.getProducts = async (req, res) => {
 exports.getProductDetails = async (req, res) => {
     try {
         const { productId } = req.params;
-        const product = await Product.findById(productId);
+        // Dùng findOne với trường `productId` thay vì findById (dùng cho _id)
+        const product = await Product.findOne({ productId: productId });
 
         if (!product) {
             return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
@@ -73,35 +80,43 @@ exports.getProductDetails = async (req, res) => {
 
         res.status(200).json(product);
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
 
 // Thêm đánh giá và xếp hạng sản phẩm
 exports.addReviewAndRating = async (req, res) => {
     try {
-        const { productId } = req.params;
-        const { comment, rating } = req.body;
+        const { productId } = req.params; // Đây là productId tùy chỉnh của bạn
+        const { accountId, content, rating } = req.body; // Lấy thông tin từ request body
 
-        const product = await Product.findById(productId);
+        // 1. Kiểm tra xem sản phẩm có tồn tại không
+        const product = await Product.findOne({ productId: productId });
         if (!product) {
             return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
         }
 
-        const newReview = {
-            user: req.user._id, // Giả sử người dùng đã đăng nhập
-            comment,
-            rating
-        };
+        // (Tùy chọn) Kiểm tra xem tài khoản có tồn tại không
+        // const user = await User.findById(accountId);
+        // if (!user) {
+        //     return res.status(404).json({ message: 'Không tìm thấy tài khoản người dùng' });
+        // }
 
-        product.reviews.push(newReview);
-        await product.save();
-        
-        // Bạn có thể sử dụng WebSockets ở đây để cập nhật realtime
-        // io.emit('new_review', { productId, newReview });
-        
-        res.status(201).json({ message: 'Đánh giá đã được thêm thành công', newReview });
+        // 2. Tạo một bình luận/đánh giá mới
+        const newComment = new Comment({
+            commentId: new mongoose.Types.ObjectId().toHexString(), // Tạo một ID ngẫu nhiên cho comment
+            accountId: accountId, 
+            productId: product._id, // Quan trọng: Lưu _id của MongoDB, không phải productId tùy chỉnh
+            content: content,
+            rating: rating
+        });
+
+        // 3. Lưu bình luận vào database
+        await newComment.save();
+
+        res.status(201).json({ message: 'Đánh giá đã được thêm thành công', comment: newComment });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
+};
 };
