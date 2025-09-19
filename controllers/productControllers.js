@@ -8,26 +8,29 @@ exports.getProducts = async (req, res) => {
 
         // Thêm các điều kiện lọc
         if (category) {
-            query.category = category;
+            // Lọc theo categoryId bên trong object category
+            query['category.categoryId'] = category;
         }
         if (brand) {
             query.brand = brand;
         }
         if (minPrice || maxPrice) {
-            query['variants.price'] = {};
+            // Sửa 'variants.price' thành 'price' cho đúng với model
+            query.price = {};
             if (minPrice) {
-                query['variants.price'].$gte = parseFloat(minPrice);
+                query.price.$gte = parseFloat(minPrice);
             }
             if (maxPrice) {
-                query['variants.price'].$lte = parseFloat(maxPrice);
+                query.price.$lte = parseFloat(maxPrice);
             }
         }
         
         // Thêm điều kiện tìm kiếm theo từ khóa
         if (keyword) {
             query.$or = [
-                { name: { $regex: keyword, $options: 'i' } },
-                { description: { $regex: keyword, $options: 'i' } }
+                // Sửa 'name' thành 'productName' và 'description' thành 'productDescription'
+                { productName: { $regex: keyword, $options: 'i' } },
+                { productDescription: { $regex: keyword, $options: 'i' } }
             ];
         }
 
@@ -36,12 +39,17 @@ exports.getProducts = async (req, res) => {
         if (sortBy && sortOrder) {
             // Sắp xếp theo tên (A-Z, Z-A)
             if (sortBy === 'name') {
-                sort.name = sortOrder === 'asc' ? 1 : -1;
+                // Sửa 'name' thành 'productName'
+                sort.productName = sortOrder === 'asc' ? 1 : -1;
             }
             // Sắp xếp theo giá (tăng/giảm dần)
             if (sortBy === 'price') {
-                sort['variants.price'] = sortOrder === 'asc' ? 1 : -1;
+                // Sửa 'variants.price' thành 'price'
+                sort.price = sortOrder === 'asc' ? 1 : -1;
             }
+        } else {
+            // Mặc định sắp xếp theo ngày tạo mới nhất nếu không có tùy chọn
+            sort.createdAt = -1;
         }
 
         // Lấy tổng số sản phẩm để tính số trang
@@ -54,10 +62,11 @@ exports.getProducts = async (req, res) => {
         res.status(200).json({
             products,
             currentPage: parseInt(page),
-            totalPages: Math.ceil(totalProducts / limit)
+            totalPages: Math.ceil(totalProducts / limit),
+            totalProducts: totalProducts
         });
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
 
@@ -65,7 +74,8 @@ exports.getProducts = async (req, res) => {
 exports.getProductDetails = async (req, res) => {
     try {
         const { productId } = req.params;
-        const product = await Product.findById(productId);
+        // Dùng findOne với trường `productId` thay vì findById (dùng cho _id)
+        const product = await Product.findOne({ productId: productId });
 
         if (!product) {
             return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
@@ -73,35 +83,17 @@ exports.getProductDetails = async (req, res) => {
 
         res.status(200).json(product);
     } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error });
+        res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
 
 // Thêm đánh giá và xếp hạng sản phẩm
 exports.addReviewAndRating = async (req, res) => {
-    try {
-        const { productId } = req.params;
-        const { comment, rating } = req.body;
-
-        const product = await Product.findById(productId);
-        if (!product) {
-            return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
-        }
-
-        const newReview = {
-            user: req.user._id, // Giả sử người dùng đã đăng nhập
-            comment,
-            rating
-        };
-
-        product.reviews.push(newReview);
-        await product.save();
-        
-        // Bạn có thể sử dụng WebSockets ở đây để cập nhật realtime
-        // io.emit('new_review', { productId, newReview });
-        
-        res.status(201).json({ message: 'Đánh giá đã được thêm thành công', newReview });
-    } catch (error) {
-        res.status(500).json({ message: 'Lỗi server', error });
-    }
+    // LƯU Ý: Chức năng này không thể hoạt động với productModel hiện tại
+    // vì trong model không có trường `reviews`.
+    // Bạn cần thêm trường `reviews: [reviewSchema]` vào productModel để sử dụng.
+    
+    return res.status(400).json({ 
+        message: 'Chức năng này chưa được hỗ trợ. Vui lòng cập nhật productModel để có trường "reviews".' 
+    });
 };
