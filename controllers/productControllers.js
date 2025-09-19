@@ -15,7 +15,6 @@ exports.getProducts = async (req, res) => {
             query.brand = brand;
         }
         if (minPrice || maxPrice) {
-            // Sửa 'variants.price' thành 'price' cho đúng với model
             query.price = {};
             if (minPrice) {
                 query.price.$gte = parseFloat(minPrice);
@@ -28,7 +27,6 @@ exports.getProducts = async (req, res) => {
         // Thêm điều kiện tìm kiếm theo từ khóa
         if (keyword) {
             query.$or = [
-                // Sửa 'name' thành 'productName' và 'description' thành 'productDescription'
                 { productName: { $regex: keyword, $options: 'i' } },
                 { productDescription: { $regex: keyword, $options: 'i' } }
             ];
@@ -39,12 +37,10 @@ exports.getProducts = async (req, res) => {
         if (sortBy && sortOrder) {
             // Sắp xếp theo tên (A-Z, Z-A)
             if (sortBy === 'name') {
-                // Sửa 'name' thành 'productName'
                 sort.productName = sortOrder === 'asc' ? 1 : -1;
             }
             // Sắp xếp theo giá (tăng/giảm dần)
             if (sortBy === 'price') {
-                // Sửa 'variants.price' thành 'price'
                 sort.price = sortOrder === 'asc' ? 1 : -1;
             }
         } else {
