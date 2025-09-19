@@ -1,9 +1,10 @@
 const path = require('path');
 const express = require('express');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
-const port = Number(process.env.PORT);
+const port = Number(process.env.PORT) || 5000;
+
 
 // Views and static
 app.set('view engine', 'ejs');
@@ -18,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 const { connectDB } = require('./config/dbConnection');
 connectDB();
 
-// Routes (reuse existing route definitions)
+// Routes
 const siteRoutes = require('./routes/route');
 app.use('/', siteRoutes);
 
@@ -27,5 +28,3 @@ app.listen(port, () => {
 });
 
 module.exports = app;
-
-

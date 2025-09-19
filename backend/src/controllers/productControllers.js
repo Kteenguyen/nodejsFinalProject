@@ -290,4 +290,88 @@ exports.addReviewAndRating = async (req, res) => {
             error: error.message 
         });
     }
+    // Lấy sản phẩm mới (new products)
+    exports.getNewProductsForHome = async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit) || 5; // số sản phẩm muốn hiển thị
+            const products = await Product.find({ status: 'available' })
+                .sort({ createdAt: -1 })
+                .limit(limit);
+            res.status(200).json({ success: true, products });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    };
+
+// Lấy sản phẩm bán chạy (best sellers)
+    exports.getBestSellersForHome = async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit) || 5;
+            const products = await Product.find({ status: 'available' })
+                .sort({ soldCount: -1, createdAt: -1 })
+                .limit(limit);
+            res.status(200).json({ success: true, products });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    };
+
+// Lấy sản phẩm theo danh mục cụ thể
+    exports.getProductsByCategoryForHome = async (req, res) => {
+        try {
+            const { categoryId } = req.params;
+            const limit = parseInt(req.query.limit) || 5;
+            const products = await Product.find({
+                'category.categoryId': categoryId,
+                status: 'available'
+            })
+                .sort({ createdAt: -1 })
+                .limit(limit);
+            res.status(200).json({ success: true, products });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    };
+    // Lấy tất cả sản phẩm cho trang chủ
+    exports.getHomeProducts = async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit) || 5; // số sản phẩm mỗi danh mục
+
+            // 1. Sản phẩm mới
+            const newProducts = await Product.find({ status: 'available' })
+                .sort({ createdAt: -1 })
+                .limit(limit);
+
+            // 2. Bán chạy nhất
+            const bestSellers = await Product.find({ status: 'available' })
+                .sort({ soldCount: -1, createdAt: -1 })
+                .limit(limit);
+
+            // 3. Các danh mục khác
+            const categories = ['laptop', 'monitor', 'ssd']; // categoryId ví dụ
+            const categoryProducts = {};
+
+            for (const cat of categories) {
+                const products = await Product.find({
+                    'category.categoryId': cat,
+                    status: 'available'
+                })
+                    .sort({ createdAt: -1 })
+                    .limit(limit);
+
+                categoryProducts[cat] = products;
+            }
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    newProducts,
+                    bestSellers,
+                    categories: categoryProducts
+                }
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    };
 };
