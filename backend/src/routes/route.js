@@ -3,6 +3,10 @@ const router = express.Router();
 const User = require('../models/userModel');
 const userRoutes = require('./userRoute');
 
+
+const productRoutes = require('./productRoute');
+router.use('/api/products', productRoutes);
+
 // Define routes
 router.get('/', (req, res) => {
     res.redirect('/home');

@@ -225,153 +225,67 @@ exports.getBestSellers = async (req, res) => {
 // Thêm đánh giá và xếp hạng sản phẩm (Yêu cầu đăng nhập)
 exports.addReviewAndRating = async (req, res) => {
     try {
-        const { productId } = req.params;
-        const { accountId, content, rating } = req.body;
+        // code thêm review
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    }
+};
 
-        // Kiểm tra rating hợp lệ
-        if (rating < 1 || rating > 5) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'Rating phải từ 1 đến 5 sao' 
-            });
-        }
+exports.getNewProductsForHome = async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        const products = await Product.find({ status: 'available' })
+            .sort({ createdAt: -1 })
+            .limit(limit);
+        res.status(200).json({ success: true, products });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 
-        // 1. Kiểm tra xem sản phẩm có tồn tại không
-        const product = await Product.findOne({ 
-            $or: [
-                { productId: productId },
-                { _id: new mongoose.Types.ObjectId(productId) }
-            ],
+exports.getBestSellersForHome = async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        const products = await Product.find({ status: 'available' })
+            .sort({ soldCount: -1, createdAt: -1 })
+            .limit(limit);
+        res.status(200).json({ success: true, products });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.getProductsByCategoryForHome = async (req, res) => {
+    try {
+        const { categoryId } = req.params;
+        const limit = parseInt(req.query.limit) || 5;
+        const products = await Product.find({
+            'category.categoryId': categoryId,
             status: 'available'
-        });
+        }).sort({ createdAt: -1 }).limit(limit);
+        res.status(200).json({ success: true, products });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 
-        if (!product) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Không tìm thấy sản phẩm' 
-            });
+exports.getHomeProducts = async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        const newProducts = await Product.find({ status: 'available' }).sort({ createdAt: -1 }).limit(limit);
+        const bestSellers = await Product.find({ status: 'available' }).sort({ soldCount: -1, createdAt: -1 }).limit(limit);
+        const categories = ['laptop', 'monitor', 'ssd'];
+        const categoryProducts = {};
+        for (const cat of categories) {
+            categoryProducts[cat] = await Product.find({ 'category.categoryId': cat, status: 'available' })
+                .sort({ createdAt: -1 })
+                .limit(limit);
         }
-
-        // 2. Kiểm tra xem user đã đánh giá sản phẩm này chưa
-        const existingComment = await Comment.findOne({
-            productId: product._id,
-            accountId: accountId
-        });
-
-        if (existingComment) {
-            return res.status(400).json({ 
-                success: false,
-                message: 'Bạn đã đánh giá sản phẩm này rồi' 
-            });
-        }
-
-        // 3. Tạo một bình luận/đánh giá mới
-        const newComment = new Comment({
-            commentId: new mongoose.Types.ObjectId().toString(),
-            accountId: accountId, 
-            productId: product._id,
-            content: content,
-            rating: rating,
-            createdAt: new Date()
-        });
-
-        // 4. Lưu bình luận vào database
-        await newComment.save();
-
-        res.status(201).json({ 
+        res.status(200).json({
             success: true,
-            message: 'Đánh giá đã được thêm thành công', 
-            comment: newComment 
+            data: { newProducts, bestSellers, categories: categoryProducts }
         });
     } catch (error) {
-        res.status(500).json({ 
-            success: false,
-            message: 'Lỗi server', 
-            error: error.message 
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
-    // Lấy sản phẩm mới (new products)
-    exports.getNewProductsForHome = async (req, res) => {
-        try {
-            const limit = parseInt(req.query.limit) || 5; // số sản phẩm muốn hiển thị
-            const products = await Product.find({ status: 'available' })
-                .sort({ createdAt: -1 })
-                .limit(limit);
-            res.status(200).json({ success: true, products });
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    };
-
-// Lấy sản phẩm bán chạy (best sellers)
-    exports.getBestSellersForHome = async (req, res) => {
-        try {
-            const limit = parseInt(req.query.limit) || 5;
-            const products = await Product.find({ status: 'available' })
-                .sort({ soldCount: -1, createdAt: -1 })
-                .limit(limit);
-            res.status(200).json({ success: true, products });
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    };
-
-// Lấy sản phẩm theo danh mục cụ thể
-    exports.getProductsByCategoryForHome = async (req, res) => {
-        try {
-            const { categoryId } = req.params;
-            const limit = parseInt(req.query.limit) || 5;
-            const products = await Product.find({
-                'category.categoryId': categoryId,
-                status: 'available'
-            })
-                .sort({ createdAt: -1 })
-                .limit(limit);
-            res.status(200).json({ success: true, products });
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    };
-    // Lấy tất cả sản phẩm cho trang chủ
-    exports.getHomeProducts = async (req, res) => {
-        try {
-            const limit = parseInt(req.query.limit) || 5; // số sản phẩm mỗi danh mục
-
-            // 1. Sản phẩm mới
-            const newProducts = await Product.find({ status: 'available' })
-                .sort({ createdAt: -1 })
-                .limit(limit);
-
-            // 2. Bán chạy nhất
-            const bestSellers = await Product.find({ status: 'available' })
-                .sort({ soldCount: -1, createdAt: -1 })
-                .limit(limit);
-
-            // 3. Các danh mục khác
-            const categories = ['laptop', 'monitor', 'ssd']; // categoryId ví dụ
-            const categoryProducts = {};
-
-            for (const cat of categories) {
-                const products = await Product.find({
-                    'category.categoryId': cat,
-                    status: 'available'
-                })
-                    .sort({ createdAt: -1 })
-                    .limit(limit);
-
-                categoryProducts[cat] = products;
-            }
-
-            res.status(200).json({
-                success: true,
-                data: {
-                    newProducts,
-                    bestSellers,
-                    categories: categoryProducts
-                }
-            });
-        } catch (error) {
-            res.status(500).json({ success: false, message: error.message });
-        }
-    };
 };
