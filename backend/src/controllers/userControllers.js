@@ -1,7 +1,11 @@
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid'); // Thêm uuid để tạo userId
+// uuid v8+ is ESM-only; use dynamic import helper to avoid ERR_REQUIRE_ESM in CommonJS
+async function generateUuid() {
+    const { v4: uuidv4 } = await import('uuid');
+    return uuidv4();
+}
 const { OAuth2Client } = require('google-auth-library');
 
 const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
@@ -21,8 +25,8 @@ exports.register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Tạo người dùng mới
-        const newUser = new User({
-            userId: uuidv4(),
+            const newUser = new User({
+                userId: await generateUuid(),
             userName,
             password: hashedPassword,
             mail,
@@ -89,9 +93,9 @@ exports.googleLogin = async (req, res) => {
         let user = await User.findOne({ mail: email });
         if (!user) {
             user = new User({
-                userId: uuidv4(),
-                userName: email,
-                password: await bcrypt.hash(uuidv4(), 10), // placeholder để thỏa required
+                    userId: await generateUuid(),
+                    userName: email,
+                    password: await bcrypt.hash(await generateUuid(), 10), // placeholder để thỏa required
                 mail: email,
                 name,
                 provider: 'google',
@@ -247,7 +251,7 @@ exports.addShippingAddress = async (req, res) => {
             return res.status(409).json({ message: 'Địa chỉ đã tồn tại trong danh sách.' });
         }
 
-        const addressId = uuidv4();
+            const addressId = await generateUuid();
         const newAddress = {
             addressId,
             label,
