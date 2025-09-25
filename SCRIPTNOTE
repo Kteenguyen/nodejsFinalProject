@@ -1,52 +1,31 @@
-project/
-├─ backend/                 # Express + MVC (API server)
-│  ├─ src/
-│  │  ├─ controllers/
-│  │  ├─ models/
-│  │  ├─ routes/
-│  │  ├─ middleware/
-│  │  ├─ services/         # business logic (nếu có)
-│  │  ├─ utils/            # helper, validator, logger…
-│  │  ├─ config/           # db, env, constants
-│  │  └─ app.js            # khởi tạo Express app
-│  ├─ tests/               # test cho backend
-│  ├─ .env                 # biến môi trường server (JWT_SECRET, DB_URI,…)
-│  ├─ package.json
-│  └─ Dockerfile           # (tuỳ chọn)
+/my-app
 │
-├─ frontend/               # React app (Vite/CRA/Next)
-│  ├─ src/
-│  │  ├─ assets/
-│  │  ├─ components/
-│  │  ├─ pages/            # hoặc routes/ nếu dùng React Router v6
-│  │  ├─ features/         # các slice (Redux/Zustand) hoặc module UI
-│  │  ├─ hooks/
-│  │  ├─ services/         # gọi API (axios/fetch), query clients
-│  │  ├─ utils/
-│  │  ├─ App.jsx
-│  │  └─ main.jsx
-│  ├─ public/
-│  ├─ .env                 # biến môi trường client (VITE_*)
-│  ├─ index.html
-│  ├─ package.json
-│  └─ vite.config.js       # thiết lập proxy về backend khi dev
+├── /frontend          # Thư mục cho ứng dụng React
+│   ├── /public        # Thư mục công khai (index.html, favicon, ...)
+│   ├── /src           # Thư mục nguồn cho ứng dụng
+│   │   ├── /components # Các component React
+│   │   ├── /pages      # Các trang của ứng dụng
+│   │   ├── /hooks      # Các custom hooks
+│   │   ├── /context    # Context API
+│   │   ├── /styles     # CSS hoặc Styled Components
+│   │   ├── /utils      # Các hàm tiện ích
+│   │   ├── App.js      # Component chính
+│   │   └── index.js    # Entry point của ứng dụng
+│   │
+│   └── package.json    # Thông tin dự án frontend
 │
-├─ shared/                 # (tuỳ chọn) kiểu dữ liệu dùng chung FE/BE
-│  ├─ types/               # TS types hoặc JSON Schemas
-│  └─ constants/
+├── /backend           # Thư mục cho backend (Node.js/Express)
+│   ├── /services       # Các microservice
+│   │   ├── /user       # Microservice quản lý người dùng
+│   │   ├── /product    # Microservice quản lý sản phẩm
+│   │   └── /order      # Microservice quản lý đơn hàng
+│   │
+│   ├── /controllers    # Các controller cho các route
+│   ├── /models         # Các mô hình dữ liệu (MongoDB, Sequelize, ...)
+│   ├── /routes         # Các file định nghĩa route
+│   ├── /middlewares     # Các middleware
+│   ├── /config         # Cấu hình (database, environment variables)
+│   ├── /utils          # Các hàm tiện ích cho backend
+│   └── server.js       # Entry point cho ứng dụng backend
 │
-├─ scripts/                # CI/CD, migration, seed…
-├─ .editorconfig
-├─ .gitignore
-├─ README.md
-└─ package.json 
-           # (tuỳ chọn) workspace root nếu dùng npm/yarn/pnpm workspaces
-- đăng nhập
- + npm install jsonwebtoken
- + npm install bcryptjs
- + npm install dotenv
- + npm install uuid
-
-- đăng nhập bằng Google, cấu hình google cloud
-"C:\Users\ADMIN\OneDrive\Documents\Study\Tự học\NodeJS"; npm i google-auth-library --save --no-fund --no-audit --loglevel=error | cat
- 
+└── docker-compose.yml   # Docker Compose file (nếu sử dụng Docker)
