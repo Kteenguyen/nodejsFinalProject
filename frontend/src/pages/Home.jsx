@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import ProductCard from '../components/ProductCard';
-
+ư
 const Home = () => {
     const [homeData, setHomeData] = useState({
         newProducts: [],

@@ -1,7 +1,8 @@
 const path = require('path');
 const express = require('express');
+const cors = require('cors');
 
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -11,11 +12,11 @@ const port = Number(process.env.PORT) || 5000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));
 app.use(express.static(path.join(__dirname, '../../public')));
+app.use(cors()) // Enable CORS;
 
 // Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // DB
 const { connectDB } = require('./config/dbConnection');
 connectDB();
