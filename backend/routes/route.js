@@ -5,7 +5,6 @@ const userRoutes = require('./userRoute');
 
 
 const productRoutes = require('./productRoute');
-router.use('/api/products', productRoutes);
 const cartRoutes = require('./cartRoute');
 const orderRoutes = require('./orderRoute');
 router.use('/api/cart', cartRoutes);
