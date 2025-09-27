@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-ư
+
 const Home = () => {
     const [homeData, setHomeData] = useState({
         newProducts: [],
