@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-
+import '../styles/index.css'; // Đảm bảo Tailwind CSS được import
+import ProductCard from '../components/ProductCard';
 const Home = () => {
     const [homeData, setHomeData] = useState({
         newProducts: [],
@@ -34,6 +35,7 @@ const Home = () => {
                     {homeData.newProducts.map((product) => (
                         <ProductCard key={product._id} product={product} />
                     ))}
+
                 </div>
             </section>
 
@@ -56,6 +58,7 @@ const Home = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         {products.map((product) => (
                             <ProductCard key={product._id} product={product} />
+
                         ))}
                     </div>
                 </section>
