@@ -1,11 +1,18 @@
 //src/components/ProductCard.jsx
-import React from 'react';
-const ProductCard = ({product}) => {
+import React from "react";
+
+const ProductCard = ({ product }) => {
     return (
-        <div className="border rounded p-2 shadow hover:shadow-lg transition">
-            <img src={productModel} alt={product.productName} className="w-full h-40 object-cover mb-2" />
-            <h3 className="font-semibold">{product.productName}</h3>
-            <p className="text-red-500 font-bold">${product.price}</p>
+        <div className="border rounded-lg p-4 shadow hover:shadow-lg">
+            <img
+                src={product.image ? product.image : `https://via.placeholder.com/150?text=${encodeURIComponent(product.name)}`}
+                alt={product.name}
+                className="w-full h-40 object-cover rounded"
+            />
+
+            <h3 className="text-lg font-semibold mt-2">{product.name}</h3>
+            <p className="text-gray-600">{product.description}</p>
+            <p className="text-red-500 font-bold">{product.price} ₫</p>
         </div>
     );
 };
