@@ -1,18 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const cartCtrl = require('../controllers/cartControllers');
+const cartController = require('../controllers/cartControllers');
+const resolveId = require('../middleware/resolveProductId');
 const auth = require('../middleware/auth');
+const Product = require('../models/productModel');
 
-// POST /api/cart/add - thêm vào giỏ hàng (khách hoặc người dùng xác thực). trả về cartId cho khách
-router.post('/add', cartCtrl.addToCart);
+// Middleware để resolve productId
+const resolveProduct = resolveId({
+    param: 'productId',
+    model: Product,
+    customField: 'productId',
+    reqKey: 'product'
+});
 
-// POST /api/cart/update - cập nhật số lượng hoặc xóa
-router.post('/update', cartCtrl.updateCartItem);
+// POST /api/cart/add - Thêm sản phẩm vào giỏ hàng (yêu cầu đăng nhập)
+router.post('/add', auth, resolveProduct, cartController.addToCart);
 
-// GET /api/cart - lấy các mặt hàng trong giỏ hàng (truyền cartId cho tiêu đề khách hoặc xác thực)
-router.get('/', cartCtrl.getCart);
+// POST /api/cart/update - Cập nhật số lượng hoặc xóa sản phẩm (yêu cầu đăng nhập)
+router.post('/update', auth, resolveProduct, cartController.updateCartItem);
 
-// POST /api/cart/clear - xóa giỏ hàng
-router.post('/clear', cartCtrl.clearCart);
+// GET /api/cart - Lấy giỏ hàng (yêu cầu đăng nhập)
+router.get('/', auth, cartController.getCart);
+
+// POST /api/cart/clear - Xóa toàn bộ giỏ hàng (yêu cầu đăng nhập)
+router.post('/clear', auth, cartController.clearCart);
 
 module.exports = router;
