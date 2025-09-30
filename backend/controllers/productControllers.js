@@ -91,27 +91,39 @@ exports.getProducts = async (req, res) => {
 
 // Hiển thị chi tiết một sản phẩm
 exports.getProductDetails = async (req, res) => {
-    try {
-        const { productId } = req.params;
-        
-        // Tìm sản phẩm theo productId hoặc _id
-        const product = await Product.findOne({
-            $or: [
-                { productId: productId },
-                { _id: new mongoose.Types.ObjectId(productId) }
-            ],
-            status: 'available'
-        });
+  try {
+    const { productId } = req.params;
 
-        if (!product) {
-            return res.status(404).json({ 
-                success: false,
-                message: 'Không tìm thấy sản phẩm' 
-            });
-        }
+    let product;
 
-        // Lấy các comment cho sản phẩm này
-        const comments = await Comment.find({ 
+    if (mongoose.Types.ObjectId.isValid(productId)) {
+      // Nếu là ObjectId
+      product = await Product.findById(productId);
+    } else {
+      // Nếu là custom productId (SP001, SP002,...)
+      product = await Product.findOne({ productId });
+    }
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy sản phẩm"
+      });
+    }
+
+    res.json({
+      success: true,
+      data: product
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi server",
+      error: err.message
+    });
+  }
+  const comments = await Comment.find({ 
             productId: product._id 
         }).populate('accountId', 'name email');
 
@@ -125,14 +137,7 @@ exports.getProductDetails = async (req, res) => {
                     : 0
             }
         });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false,
-            message: 'Lỗi server', 
-            error: error.message 
-        });
-    }
-};
+}
 
 // Lấy sản phẩm mới (New Products)
 exports.getNewProducts = async (req, res) => {

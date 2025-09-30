@@ -1,35 +1,40 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productControllers');
+const resolveProduct = require('../middleware/resolveProductId');
+const auth = require('../middleware/auth');
+const Product = require('../models/productModel');
 
+// Middleware để resolve product
+const resolveProductMiddleware = resolveProduct(Product);
+
+// === Danh sách sản phẩm ===
 // GET /api/products - Lấy tất cả sản phẩm với phân trang, lọc, sắp xếp
-router.get('/products', productController.getProducts);
+router.get('/', productController.getProducts);
 
-// GET /api/products/bestsellers - Lấy sản phẩm bán chạy
-router.get('/bestsellers', productController.getBestSellers);
+// === Featured Collections ===
+// GET /api/products/collections/bestsellers - Lấy sản phẩm bán chạy
+router.get('/collections/bestsellers', productController.getBestSellers);
 
-// GET /api/products/new - Lấy sản phẩm mới
-router.get('/new', productController.getNewProducts);
+// GET /api/products/collections/new - Lấy sản phẩm mới
+router.get('/collections/new', productController.getNewProducts);
 
+// === Category ===
 // GET /api/products/category/:categoryId - Lấy sản phẩm theo danh mục
 router.get('/category/:categoryId', productController.getProductsByCategory);
 
+// === Product Detail ===
 // GET /api/products/:productId - Lấy chi tiết sản phẩm
-router.get('/:productId', productController.getProductDetails);
+router.get('/:productId', resolveProduct, productController.getProductDetails);
 
-// POST /api/products/:productId/reviews - Thêm đánh giá sản phẩm
-router.post('/:productId/reviews', productController.addReviewAndRating);
+// === Reviews ===
+// POST /api/products/:productId/reviews - Thêm đánh giá sản phẩm (yêu cầu đăng nhập)
+router.post('/:productId/reviews', auth, resolveProduct, productController.addReviewAndRating);
 
-// GET /api/products/home/new
-router.get('/home/new', productController.getNewProductsForHome);
-
-// GET /api/products/home/bestsellers
-router.get('/home/bestsellers', productController.getBestSellersForHome);
-
-// GET /api/products/home/category/:categoryId
-router.get('/home/category/:categoryId', productController.getProductsByCategoryForHome);
-
-// GET /api/products/home
+// === Homepage Sections ===
 router.get('/home', productController.getHomeProducts);
+router.get('/home/new', productController.getNewProductsForHome);
+router.get('/home/bestsellers', productController.getBestSellersForHome);
+router.get('/home/category/:categoryId', productController.getProductsByCategoryForHome);
 
 module.exports = router;
