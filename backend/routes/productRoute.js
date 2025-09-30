@@ -10,7 +10,7 @@ const resolveProductMiddleware = resolveProduct(Product);
 
 // === Danh sách sản phẩm ===
 // GET /api/products - Lấy tất cả sản phẩm với phân trang, lọc, sắp xếp
-router.get('/', productController.getProducts);
+//router.get('/', productController.getProducts);
 
 // === Featured Collections ===
 // GET /api/products/collections/bestsellers - Lấy sản phẩm bán chạy
@@ -29,12 +29,8 @@ router.get('/:productId', resolveProduct, productController.getProductDetails);
 
 // === Reviews ===
 // POST /api/products/:productId/reviews - Thêm đánh giá sản phẩm (yêu cầu đăng nhập)
-router.post('/:productId/reviews', auth, resolveProduct, productController.addReviewAndRating);
+//router.post('/:productId/reviews', auth, resolveProduct, productController.addReviewAndRating);
 
 // === Homepage Sections ===
-router.get('/home', productController.getHomeProducts);
-router.get('/home/new', productController.getNewProductsForHome);
-router.get('/home/bestsellers', productController.getBestSellersForHome);
-router.get('/home/category/:categoryId', productController.getProductsByCategoryForHome);
 
 module.exports = router;
