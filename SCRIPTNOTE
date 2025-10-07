@@ -29,3 +29,11 @@
 │   └── server.js       # Entry point cho ứng dụng backend
 │
 └── docker-compose.yml   # Docker Compose file (nếu sử dụng Docker)
+
+Họ tên: Nguyễn Khoa Tee
+User: ktee2003
+Email: keytynguyen2004@gmail.com
+Password: 123456
+
+lỗi form đăng ký chưa đưa lên được (database đã kết nối,
+ 2 bên đã kết nối được với nhau)
