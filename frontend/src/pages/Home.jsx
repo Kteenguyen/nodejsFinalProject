@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import '../styles/index.css';
-import NewProducts from '../components/NewProducts';
-import BestSellers from '../components/BestSellers';
-import CategoryProducts from '../components/CategoryProducts';
+import NewProducts from '../components/Home/NewProducts';
+import BestSellers from '../components/Home/BestSellers';
+import CategoryProducts from '../components/Home/CategoryProducts';
 
 
 

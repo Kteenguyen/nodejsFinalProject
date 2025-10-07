@@ -19,7 +19,7 @@ connectDB();
 
 // Routes
 const siteRoutes = require('./routes/route');
-app.use('/', siteRoutes);
+app.use('/api', siteRoutes);
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
