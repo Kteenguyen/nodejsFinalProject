@@ -12,16 +12,18 @@ async function generateUuid() {
 // Đăng ký
 exports.register = async (req, res) => {
     try {
+        console.log("📥 Body nhận từ frontend:", req.body);  // 👈 thêm dòng này
         // Chuẩn hóa dữ liệu đầu vào
         const name = req.body.name;
         const userName = req.body.userName?.trim();
         const email = req.body.email?.trim().toLowerCase();
         const password = req.body.password;
 
-        // Kiểm tra dữ liệu đầu vào
-        if (!name) {
-            return res.status(400).json({ message: "Thiếu thông tin đăng ký!" });
+
+        if (!name || !userName || !password || !email) {
+            return res.status(400).json({ message: "Thiếu thông tin cần thiết" });
         }
+
 
         // Kiểm tra xem email đã tồn tại chưa
         const existingUser = await User.findOne({ email });
