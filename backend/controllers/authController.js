@@ -50,14 +50,18 @@ exports.register = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
-// Đăng nhập
 exports.login = async (req, res) => {
     try {
-        const { mail, password } = req.body;
+        const { identifier, password } = req.body;
 
-        // Tìm người dùng theo email
-        const user = await User.findOne({ mail });
+        // Tìm user theo email hoặc username
+        const user = await User.findOne({
+            $or: [
+                { email: identifier.trim().toLowerCase() },
+                { userName: identifier.trim() }
+            ]
+        });
+
         if (!user) {
             return res.status(404).json({ message: 'Người dùng không tồn tại!' });
         }
@@ -69,9 +73,37 @@ exports.login = async (req, res) => {
         }
 
         // Tạo token
-        const token = jwt.sign({ id: user.userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign(
+            { id: user.userId, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
 
-        res.status(200).json({ message: 'Đăng nhập thành công!', token });
+        return res.status(200).json({
+            message: 'Đăng nhập thành công!',
+            token,
+            user: {
+                id: user.userId,
+                name: user.name,
+                userName: user.userName,
+                email: user.email
+            }
+        });
+
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+};
+//Chưa ứng dụng cookie vì frontend dùng localStorage
+
+// Đăng xuất
+exports.logout = async (req, res) => {
+    try {
+        // Nếu bạn dùng cookie httpOnly:
+        res.clearCookie("token"); 
+
+        return res.status(200).json({ message: "Đăng xuất thành công" });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
