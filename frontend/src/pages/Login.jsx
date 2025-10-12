@@ -7,6 +7,8 @@ const Login = () => {
     //khai báo các state để lưu trữ thông tin đăng nhập
     const [identifier, setIdentifier] = useState(""); //có thể là username hoặc email
     const [password, setPassword] = useState("");
+    //khai báo hàm navigate để chuyển hướng trang
+    const navigate = useNavigate();
 
     //ham xử lý khi người dùng submit form đăng nhập
     const handleLogin = async (e) => {
@@ -14,12 +16,11 @@ const Login = () => {
         try {
             const data = await AuthController.login(identifier, password);
             alert("Đăng nhập thành công!");
+            navigate("/");
         } catch (error) {
             alert(error.message || "Đăng nhập thất bại!");
         }
     };
-    //khai báo hàm navigate để chuyển hướng trang
-    const navigate = useNavigate();
 
     return (
         <div className="flex flex-col md:flex-row min-h-screen">
