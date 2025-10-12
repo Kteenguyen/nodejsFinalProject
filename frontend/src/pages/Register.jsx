@@ -1,8 +1,10 @@
 import { AuthController } from "../controllers/AuthController";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 const Register = () => {
+    const navigate = useNavigate();
     // Khai báo state để quản lý form data
     const [formData, setFormData] = useState({
         name: "",
@@ -30,6 +32,7 @@ const Register = () => {
         try {
             const data = await AuthController.register(formData);
             alert("Đăng ký thành công! Vui lòng đăng nhập.");
+            navigate("/login");
         } catch (error) {
             alert(error.message || "Đăng ký thất bại. Vui lòng thử lại.");
         }
