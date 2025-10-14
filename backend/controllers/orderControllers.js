@@ -79,12 +79,12 @@ exports.createOrder = async (req, res) => {
             totalPrice,
             isPaid: false
         });
-
+        //... sau khi lưu đơn hàng
         await order.save();
 
         // Nếu sử dụng giảm giá, hãy tăng mức sử dụng
         if (discount) {
-            await discountCtrl.incrementUsage(discount.code);
+            await discountCtrl.incrementUsage(discount.code, order._id); // Truyền thêm order._id
         }
 
         // Tùy chọn xóa giỏ hàng

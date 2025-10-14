@@ -1,3 +1,5 @@
+// FileName: discountControllers.js
+
 const Discount = require('../models/discountModel');
 // uuid is ESM-only; use dynamic import helper to generate UUIDs in CommonJS
 async function generateUuid() {
@@ -5,7 +7,7 @@ async function generateUuid() {
     return uuidv4();
 }
 
-// Xác thực mã giảm giá - trả về phần trăm và số lần sử dụng khả dụng
+// KHÁCH HÀNG: Xác thực mã giảm giá
 exports.validateCode = async (req, res) => {
     try {
         const { code } = req.query;
@@ -24,7 +26,11 @@ exports.validateCode = async (req, res) => {
     }
 };
 
-// Quản trị viên: tạo mã giảm giá (chữ số và chữ cái 5 ký tự)
+// =================================================================
+// CHỨC NĂNG DÀNH CHO ADMIN
+// =================================================================
+
+// Quản trị viên: tạo mã giảm giá
 exports.createCode = async (req, res) => {
     try {
         const { discountName, percent, maxUses = 1, discountCode } = req.body;
@@ -58,14 +64,49 @@ exports.createCode = async (req, res) => {
 };
 
 // Quản trị viên: tăng mức sử dụng (gọi khi đơn hàng được xác nhận)
-exports.incrementUsage = async (code) => {
+// Cần truyền thêm orderId để lưu lại lịch sử áp dụng
+exports.incrementUsage = async (code, orderId) => {
     try {
         const discount = await Discount.findOne({ discountCode: code });
         if (!discount) return null;
+        
         discount.uses = (discount.uses || 0) + 1;
+        
+        // Thêm ID của đơn hàng vào danh sách đã áp dụng
+        if(orderId) {
+            discount.appliedOrders.push(orderId);
+        }
+
         await discount.save();
         return discount;
     } catch (error) {
+        console.error("Error incrementing discount usage:", error);
         return null;
+    }
+};
+
+// (CHỨC NĂNG MỚI) Quản trị viên: Xem danh sách tất cả mã giảm giá
+exports.getAllCodes = async (req, res) => {
+    try {
+        const discounts = await Discount.find().sort({ createdAt: -1 }); // Sắp xếp theo ngày tạo mới nhất
+        return res.status(200).json({ success: true, discounts });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// (CHỨC NĂNG MỚI) Quản trị viên: Xem chi tiết một mã và danh sách đơn hàng đã áp dụng
+exports.getCodeDetails = async (req, res) => {
+    try {
+        const { code } = req.params;
+        const discount = await Discount.findOne({ discountCode: code.toUpperCase() }).populate('appliedOrders');
+        
+        if (!discount) {
+            return res.status(404).json({ message: 'Mã giảm giá không tồn tại' });
+        }
+        
+        return res.status(200).json({ success: true, discount });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
