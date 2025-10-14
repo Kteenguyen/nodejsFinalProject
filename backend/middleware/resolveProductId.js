@@ -1,61 +1,59 @@
 const mongoose = require("mongoose");
 
 /**
- * Middleware tự động resolve product.
- * Tìm kiếm theo productId hoặc _id, chỉ trả về sản phẩm available.
+ * Middleware linh hoạt để tìm một document dựa trên ID.
+ * Nó nhận một object cấu hình và trả về một middleware.
  */
-function resolveProduct(model) {
+const resolveId = (options) => {
+  // Hàm middleware thực tế sẽ được trả về và sử dụng bởi router
   return async (req, res, next) => {
     try {
-      const productId = req.params.productId || req.body.productId || req.query.productId;
+      // 1. Lấy các tùy chọn từ object cấu hình
+      const idParamName = options.param; // vd: 'productId'
+      const Model = options.model;       // vd: Product Model
+      const reqKey = options.reqKey;     // vd: 'product'
+
+      // 2. Lấy giá trị ID từ request body (dựa trên tên param đã cấu hình)
+      const idValue = req.body[idParamName];
       
-      if (!productId) {
+      if (!idValue) {
         return res.status(400).json({ 
           success: false, 
-          message: 'Product ID is required' 
+          message: `Missing required field: ${idParamName}` 
         });
       }
 
-      let product;
-      
-      // Tìm theo ObjectId
-      if (mongoose.Types.ObjectId.isValid(productId)) {
-        product = await model.findOne({ 
-          $or: [
-            { _id: productId },
-            { productId: productId }
-          ],
-          status: 'available',
-          soldOut: false
-        });
+      // 3. Sử dụng Model đã được truyền vào để tìm kiếm
+      // (Giữ lại logic tìm kiếm thông minh của bạn)
+      let document;
+      if (mongoose.Types.ObjectId.isValid(idValue)) {
+        document = await Model.findOne({ _id: idValue });
       } else {
-        // Tìm theo productId string
-        product = await model.findOne({ 
-          productId: productId,
-          status: 'available',
-          soldOut: false
-        });
+        // Fallback to custom field if provided (như productId của bạn)
+        const customField = options.customField || idParamName;
+        document = await Model.findOne({ [customField]: idValue });
       }
 
-      if (!product) {
+      if (!document) {
         return res.status(404).json({ 
           success: false, 
-          message: 'Product not found or unavailable' 
+          message: `${Model.modelName} with ID ${idValue} not found` 
         });
       }
 
-      // Lưu product vào request để controller sử dụng
-      req.product = product;
+      // 4. Gán document tìm thấy vào request để controller có thể sử dụng
+      req[reqKey] = document;
       next();
+
     } catch (err) {
-      console.error('Resolve product error:', err);
-      res.status(500).json({ 
+      console.error('Resolve ID error:', err);
+      return res.status(500).json({ 
         success: false, 
-        message: 'Server error while resolving product',
+        message: 'Server error while resolving document',
         error: err.message 
       });
     }
   };
-}
+};
 
-module.exports = resolveProduct;
+module.exports = resolveId;

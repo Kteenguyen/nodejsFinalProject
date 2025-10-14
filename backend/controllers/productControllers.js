@@ -178,3 +178,34 @@ exports.getProductsByCategory = async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 };
+// Thêm đánh giá và xếp hạng cho sản phẩm
+exports.addReviewAndRating = async (req, res) => {
+    try {
+        // Lấy dữ liệu từ body và user đã đăng nhập
+        const { rating, comment } = req.body;
+        const product = req.product; // Lấy từ middleware resolveProduct
+        const user = req.user;       // Lấy từ middleware auth
+
+        if (!rating || !comment) {
+            return res.status(400).json({ success: false, message: 'Vui lòng cung cấp cả xếp hạng và bình luận.' });
+        }
+
+        // TODO:
+        // 1. Tạo một comment mới trong collection 'comments'
+        // 2. Liên kết comment đó với 'productId' và 'accountId'
+        // 3. Lưu comment vào database
+
+        // Phản hồi tạm thời
+        return res.status(201).json({ 
+            success: true, 
+            message: 'Cảm ơn bạn đã đánh giá sản phẩm!' 
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: 'Lỗi server',
+            error: error.message
+        });
+    }
+};
