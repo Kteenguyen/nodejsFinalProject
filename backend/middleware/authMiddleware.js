@@ -1,5 +1,3 @@
-// FileName: middleware/authMiddleware.js
-
 const jwt = require("jsonwebtoken");
 
 // 1️⃣ Middleware để xác thực token (bảo vệ route)
