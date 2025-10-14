@@ -54,6 +54,12 @@ exports.login = async (req, res) => {
     try {
         const { identifier, password } = req.body;
 
+        // ===== SỬA LỖI: Thêm validation =====
+        if (!identifier || !password) {
+            return res.status(400).json({ message: 'Vui lòng cung cấp email/username và mật khẩu.' });
+        }
+        // ===================================
+
         // Tìm user theo email hoặc username
         const user = await User.findOne({
             $or: [
@@ -67,14 +73,14 @@ exports.login = async (req, res) => {
         }
 
         // Kiểm tra mật khẩu
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await bcrypt.compare(password, user.password); // Password gốc không cần trim vì bcrypt sẽ xử lý
         if (!isMatch) {
             return res.status(401).json({ message: 'Sai mật khẩu!' });
         }
-
+        
         // Tạo token
         const token = jwt.sign(
-            { id: user.userId, email: user.email },
+            { id: user.userId, email: user.email, isAdmin: user.isAdmin },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
@@ -86,10 +92,11 @@ exports.login = async (req, res) => {
                 id: user.userId,
                 name: user.name,
                 userName: user.userName,
-                email: user.email
+                email: user.email,
+                isAdmin: user.isAdmin,
+                role: user.role
             }
         });
-
 
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -101,7 +108,7 @@ exports.login = async (req, res) => {
 exports.logout = async (req, res) => {
     try {
         // Nếu bạn dùng cookie httpOnly:
-        res.clearCookie("token"); 
+        res.clearCookie("token");
 
         return res.status(200).json({ message: "Đăng xuất thành công" });
     } catch (error) {

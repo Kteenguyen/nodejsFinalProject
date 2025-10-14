@@ -22,12 +22,13 @@ const protect = (req, res, next) => {
 };
 
 // 2️⃣ Middleware để kiểm tra quyền admin
+
 const admin = (req, res, next) => {
-    // Middleware này phải được dùng SAU middleware 'protect'
-    if (req.user && req.user.isAdmin) { // Giả sử thông tin user trong token có trường 'isAdmin'
+    // req.user được lấy từ token đã giải mã
+    if (req.user && req.user.isAdmin) {
         next();
     } else {
-        res.status(403).json({ message: "Không có quyền truy cập, yêu cầu quyền Admin" }); // 403 Forbidden
+        res.status(403).json({ message: 'Không có quyền truy cập, yêu cầu quyền Admin' });
     }
 };
 
