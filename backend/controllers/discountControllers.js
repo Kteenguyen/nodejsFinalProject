@@ -1,5 +1,3 @@
-// FileName: discountControllers.js
-
 const Discount = require('../models/discountModel');
 // uuid is ESM-only; use dynamic import helper to generate UUIDs in CommonJS
 async function generateUuid() {
