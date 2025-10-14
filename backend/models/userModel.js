@@ -1,4 +1,4 @@
-// models/User.js
+// models/userModel.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     phoneNumber: { type: String },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: { type: String, enum: ['user', 'admin'], default: 'user' }, // <-- Quyền hạn được định nghĩa ở đây
     googleId: { type: String },
     provider: { type: String, enum: ['local', 'google'], default: 'local' },
     shippingAddresses: {
@@ -32,6 +32,19 @@ const userSchema = new mongoose.Schema({
         ],
         default: []
     }
+}, {
+    // Thêm tùy chọn này để đảm bảo virtuals được bao gồm khi chuyển sang JSON
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
+
+// ======================= THÊM MỘT VIRTUAL GETTER =======================
+// Tạo một thuộc tính ảo 'isAdmin' không được lưu trong DB
+userSchema.virtual('isAdmin').get(function() {
+    // 'this' ở đây chính là document user
+    // Trả về true nếu role của user là 'admin', ngược lại trả về false
+    return this.role === 'admin';
+});
+// =======================================================================
 
 module.exports = mongoose.model('User', userSchema);
