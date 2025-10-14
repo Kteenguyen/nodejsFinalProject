@@ -8,7 +8,7 @@ const productRoutes = require('./productRoutes');
 const cartRoutes = require('./cartRoutes');
 const orderRoutes = require('./orderRoutes');
 const authRoutes = require('./authRoutes');
-
+const discountRoutes = require('./discountRoutes');
 // Mount routes
 router.use('/auth', authRoutes);
 
@@ -23,5 +23,8 @@ router.use('/products', productRoutes);
 
 // API order routes
 router.use('/orders', orderRoutes);
+
+// API discount routes
+router.use('/discounts', discountRoutes);
 
 module.exports = router;
