@@ -229,3 +229,96 @@ exports.clearCart = async (req, res) => {
         });
     }
 };
+// HÀM MỚI DÀNH CHO KHÁCH (GUEST)
+// =============================================================
+
+/**
+ * [GUEST] Thêm sản phẩm vào giỏ hàng của khách
+ */
+exports.addGuestCartItem = async (req, res) => {
+    try {
+        let { cartId, productId, quantity = 1 } = req.body;
+
+        if (!productId) return res.status(400).json({ message: 'productId is required' });
+
+        // Nếu chưa có cartId, tạo một cái mới
+        if (!cartId) {
+            cartId = `guest_${uuidv4()}`;
+        }
+
+        let cartItem = await Cart.findOne({ cartId, productId });
+
+        if (cartItem) {
+            cartItem.quantity += parseInt(quantity);
+        } else {
+            cartItem = new Cart({ cartId, productId, quantity: parseInt(quantity) });
+        }
+
+        await cartItem.save();
+
+        return res.status(200).json({ success: true, cartId, item: cartItem });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * [GUEST] Lấy giỏ hàng của khách
+ */
+exports.getGuestCart = async (req, res) => {
+    try {
+        const { cartId } = req.query;
+        if (!cartId) return res.status(200).json({ success: true, items: [], summary: {} });
+
+        const items = await Cart.find({ cartId }).populate('productId');
+        // ... (logic tính toán summary tương tự như getCart) ...
+
+        return res.status(200).json({ success: true, items });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * [GUEST] Cập nhật giỏ hàng của khách
+ */
+exports.updateGuestCartItem = async (req, res) => {
+    try {
+        let { cartId, productId, quantity = 1 } = req.body;
+
+        if (!productId) return res.status(400).json({ message: 'productId is required' });
+
+        // Nếu chưa có cartId, tạo một cái mới
+        if (!cartId) {
+            cartId = `guest_${uuidv4()}`;
+        }
+
+        let cartItem = await Cart.findOne({ cartId, productId });
+
+        if (cartItem) {
+            cartItem.quantity += parseInt(quantity);
+        } else {
+            cartItem = new Cart({ cartId, productId, quantity: parseInt(quantity) });
+        }
+
+        await cartItem.save();
+
+        return res.status(200).json({ success: true, cartId, item: cartItem });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * [GUEST] Xóa giỏ hàng của khách
+ */
+exports.clearGuestCart = async (req, res) => {
+    try {
+        const { cartId } = req.body;
+        if (!cartId) return res.status(400).json({ message: 'cartId is required' });
+        await Cart.deleteMany({ cartId });
+        return res.status(200).json({ success: true, message: 'Guest cart cleared' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
