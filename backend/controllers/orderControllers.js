@@ -110,3 +110,72 @@ exports.getOrder = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+/**
+ * [ADMIN] Lấy tất cả đơn hàng với phân trang và bộ lọc
+ */
+exports.getAllOrdersForAdmin = async (req, res) => {
+    try {
+        const { page = 1, limit = 20, status, startDate, endDate } = req.query;
+
+        const query = {};
+
+        if (status) {
+            query.status = status;
+        }
+
+        if (startDate || endDate) {
+            query.createdAt = {};
+            if (startDate) query.createdAt.$gte = new Date(startDate);
+            if (endDate) query.createdAt.$lte = new Date(endDate);
+        }
+
+        const orders = await Order.find(query)
+            .sort({ createdAt: -1 }) // Sắp xếp đơn hàng mới nhất lên đầu
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
+
+        const totalOrders = await Order.countDocuments(query);
+
+        return res.status(200).json({
+            success: true,
+            orders,
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(totalOrders / limit),
+            totalOrders
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * [ADMIN] Cập nhật trạng thái đơn hàng
+ */
+exports.updateOrderStatus = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ success: false, message: 'Trạng thái mới là bắt buộc' });
+        }
+
+        const order = await Order.findOne({ orderId });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+        }
+
+        order.status = status;
+
+        // Thêm vào lịch sử trạng thái theo yêu cầu của đề bài
+        order.statusHistory.push({ status, updatedAt: new Date() });
+
+        await order.save();
+
+        // TODO: Gửi email thông báo cho khách hàng về việc cập nhật trạng thái đơn hàng
+
+        return res.status(200).json({ success: true, order });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
