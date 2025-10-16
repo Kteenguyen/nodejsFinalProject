@@ -3,15 +3,22 @@ import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 import { AuthController } from "../controllers/AuthController";
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { GoogleLogin } from "@react-oauth/google";
 const Login = () => {
+
+    //sử dụng context để lấy hàm login
+    const { login } = useAuth();
+
     //khai báo các state để lưu trữ thông tin đăng nhập
     const [identifier, setIdentifier] = useState(""); //có thể là username hoặc email
     const [password, setPassword] = useState("");
+
     //khai báo hàm navigate để chuyển hướng trang
     const navigate = useNavigate();
 
-    //ham xử lý khi người dùng submit form đăng nhập
-    const handleLogin = async (e) => {
+    //Đăng nhập bằng tài khoản thường
+    const handleNormalLogin = async (e) => {
         e.preventDefault();
         try {
             const data = await AuthController.login(identifier, password);
@@ -21,6 +28,36 @@ const Login = () => {
             alert(error.message || "Đăng nhập thất bại!");
         }
     };
+    // 🟥 Google Login
+    const handleSuccess = async (credentialResponse) => {
+        try {
+            const tokenId = credentialResponse.credential;
+            console.log("Google ID Token:", tokenId);
+            console.log(window.location.origin);
+
+
+            const res = await AuthController.googleLogin(tokenId);
+
+            if (res.token) {
+                login(res.token, res.user);
+                window.location.href = "/";
+            }
+        } catch (error) {
+            console.error("Google login error:", error);
+        }
+    };
+
+
+
+
+    // // 🟦 Facebook Login (tương tự)
+    // const handleFacebookLogin = async () => {
+    //     const fbRes = await AuthController.facebookLogin();
+    //     if (fbRes.token) {
+    //         login(fbRes.token, fbRes.user);
+    //         window.location.href = "/";
+    //     }
+    // };
 
     return (
         <div className="flex flex-col md:flex-row min-h-screen">
@@ -54,10 +91,27 @@ const Login = () => {
                     </h3>
                     {/* DĂNG NHẬP BẰNG HÌNH THỨC KHÁC */}
                     <div className="flex gap-4 mb-6">
-                        <button className="flex-1 border border-gray-300 rounded-md py-2 flex items-center justify-center gap-2 hover:bg-gray-50">
-                            <FcGoogle className="text-xl " /> Tài khoản Google
-                        </button>
-                        <button className="flex-1 border border-gray-300 rounded-md py-2 flex items-center justify-center gap-2 hover:bg-gray-50">
+                        {/* Đăng nhập bằng google */}
+                        <GoogleLogin
+                            onSuccess={handleSuccess}
+                            onError={() => console.log("Đăng nhập Google thất bại")}
+                            useOneTap={false}
+                            ux_mode="popup"
+                            render={(renderProps) => (
+                                <button
+                                    className="flex-1 border border-gray-300 rounded-md py-2 flex items-center justify-center gap-2 hover:bg-gray-50"
+                                    onClick={renderProps.onClick}
+                                    disabled={renderProps.disabled}
+                                >
+                                    <FcGoogle className="text-xl" />
+                                    Tài khoản Google
+                                </button>
+                            )}
+                        />
+
+                        {/* Đăng nhập bằng facebook */}
+                        <button
+                            className="flex-1 border border-gray-300 rounded-md py-2 flex items-center justify-center gap-2 hover:bg-gray-50">
                             <FaFacebook className="text-blue-600 text-lg" /> Tài khoản FaceBook
                         </button>
                     </div>
@@ -70,7 +124,7 @@ const Login = () => {
                     </div>
 
                     {/* Login Form */}
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form onSubmit={handleNormalLogin} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium mb-1">Tài khoản</label>
                             <input
