@@ -36,6 +36,21 @@ const AuthController = {
             throw error.response?.data || { message: "Đăng ký thất bại" };
         }
     },
+    //Đăng nhập bằng google
+    googleLogin: async (idToken) => {
+        try {
+            console.log("Google credential:", idToken);
+            const response = await api.post("/auth/googleLogin", { idToken });
+            console.log("✅ Google login response:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Google login failed:", error);
+            throw error.response?.data || { message: "Đăng nhập Google thất bại" };
+        }
+    },
+
+
+
     //Sau này có thể đổi sang gọi API để logout dùng cookie
     logout: async () => {
         try {
@@ -52,7 +67,9 @@ const AuthController = {
             throw { message: "Đăng xuất thất bại" };
         }
     },
-    // 👉 Thêm hàm này nếu chưa có
+
+
+    // Kiểm tra xem người dùng đã đăng nhập chưa
     checkAuth: () => {
         const token = localStorage.getItem("token");
         return !!token;
