@@ -1,20 +1,20 @@
 const mongoose = require("mongoose");
 
 /**
- * Middleware linh hoạt để tìm một document dựa trên ID.
- * Nó nhận một object cấu hình và trả về một middleware.
+ * Middleware linh hoạt để tìm một document.
+ * Nó sẽ tìm kiếm đồng thời bằng cả _id (nếu hợp lệ) và một trường tùy chỉnh (productId).
  */
 const resolveId = (options) => {
-  // Hàm middleware thực tế sẽ được trả về và sử dụng bởi router
   return async (req, res, next) => {
     try {
-      // 1. Lấy các tùy chọn từ object cấu hình
-      const idParamName = options.param; // vd: 'productId'
-      const Model = options.model;       // vd: Product Model
-      const reqKey = options.reqKey;     // vd: 'product'
+      // 1. Lấy tất cả các tùy chọn từ object cấu hình
+      const idParamName = options.param;
+      const Model = options.model;
+      const reqKey = options.reqKey;
+      const customField = options.customField || idParamName; // vd: 'productId'
 
-      // 2. Lấy giá trị ID từ request body (dựa trên tên param đã cấu hình)
-      const idValue = req.body[idParamName];
+      // 2. Lấy giá trị ID từ req.params, req.body, hoặc req.query
+      const idValue = req.params[idParamName] || req.body[idParamName] || req.query[idParamName];
       
       if (!idValue) {
         return res.status(400).json({ 
@@ -22,26 +22,31 @@ const resolveId = (options) => {
           message: `Missing required field: ${idParamName}` 
         });
       }
-
-      // 3. Sử dụng Model đã được truyền vào để tìm kiếm
-      // (Giữ lại logic tìm kiếm thông minh của bạn)
-      let document;
+      
+      // 3. Xây dựng một câu truy vấn $or duy nhất
+      const query = {
+          $or: [
+              // Luôn luôn tìm bằng mã tùy chỉnh (vd: { productId: "monitor01" })
+              { [customField]: idValue } 
+          ]
+      };
+      
+      // 4. Nếu idValue có định dạng của một ObjectId, thêm điều kiện tìm bằng _id
       if (mongoose.Types.ObjectId.isValid(idValue)) {
-        document = await Model.findOne({ _id: idValue });
-      } else {
-        // Fallback to custom field if provided (như productId của bạn)
-        const customField = options.customField || idParamName;
-        document = await Model.findOne({ [customField]: idValue });
+          query.$or.push({ _id: idValue });
       }
+
+      // 5. Thực hiện MỘT câu truy vấn duy nhất để tìm kiếm
+      const document = await Model.findOne(query);
 
       if (!document) {
         return res.status(404).json({ 
           success: false, 
-          message: `${Model.modelName} with ID ${idValue} not found` 
+          message: `${Model.modelName} with ID '${idValue}' not found` 
         });
       }
 
-      // 4. Gán document tìm thấy vào request để controller có thể sử dụng
+      // 6. Gán document tìm thấy vào request
       req[reqKey] = document;
       next();
 

@@ -8,6 +8,7 @@ const cartRoutes = require('./cartRoutes');
 const orderRoutes = require('./orderRoutes');
 const authRoutes = require('./authRoutes');
 const discountRoutes = require('./discountRoutes');
+const adminRoutes = require('./adminRoutes');
 // Mount routes
 router.use('/auth', authRoutes);
 
@@ -25,5 +26,8 @@ router.use('/orders', orderRoutes);
 
 // API discount routes
 router.use('/discounts', discountRoutes);
+
+// API dashboard routes
+router.use('/admin', adminRoutes);
 
 module.exports = router;
