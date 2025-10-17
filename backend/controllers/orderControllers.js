@@ -1,97 +1,184 @@
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
 const Order = require('../models/orderModel');
 const Cart = require('../models/cartModel');
 const Product = require('../models/productModel');
+const User = require('../models/userModel');
+const sendEmail = require('../utils/sendEmail'); // <-- Đảm bảo bạn đã import
+const Discount = require('../models/discountModel');
+const discountCtrl = require('./discountControllers');
+
 // uuid is ESM-only; use dynamic import helper to generate UUIDs in CommonJS
 async function generateUuid() {
     const { v4: uuidv4 } = await import('uuid');
     return uuidv4();
 }
-const Discount = require('../models/discountModel');
-const discountCtrl = require('./discountControllers');
 
-// Trợ giúp tính toán các mặt hàng trong giỏ hàng (từ các mục nhập trong giỏ hàng)
+
+/**
+ * Helper function để tính toán thông tin item từ giỏ hàng - ĐÃ CẬP NHẬT CHO VARIANTS
+ */
 async function buildItemsFromCartEntries(entries) {
     const items = [];
     let subTotal = 0;
-    for (const e of entries) {
+
+    for (const e of entries) { // 'e' là một bản ghi từ collection Carts
         const product = await Product.findById(e.productId);
         if (!product) continue;
-        const price = product.price;
+
+        // Tìm đúng biến thể mà người dùng đã chọn trong giỏ hàng
+        const variant = product.variants.find(v => v.variantId === e.variantId);
+        if (!variant) continue; // Bỏ qua nếu biến thể không còn tồn tại
+
+        // Lấy giá từ BIẾN THỂ, không phải từ sản phẩm gốc
+        const price = variant.price;
         const qty = e.quantity;
-        items.push({ productId: product._id, name: product.productName, price, quantity: qty });
+
+        // Thêm đầy đủ thông tin vào item của đơn hàng, bao gồm cả variantId
+        items.push({
+            productId: product._id,
+            variantId: variant.variantId,
+            name: `${product.productName} - ${variant.name}`, // Tên đầy đủ hơn
+            price,
+            quantity: qty
+        });
         subTotal += price * qty;
     }
     return { items, subTotal };
 }
 
-// Tạo đơn hàng - hỗ trợ khách (cung cấp guestInfo) hoặc người dùng đã xác thực
+/**
+ * Tạo đơn hàng - ĐÃ CẬP NHẬT VỚI LOGIC TẠO TÀI KHOẢN VÀ TÍNH ĐIỂM
+ */
 exports.createOrder = async (req, res) => {
     try {
         const { cartId, shippingAddress, paymentMethod, guestInfo, discountCode } = req.body;
-        const accountId = req.user && req.user.id ? req.user.id : null;
+        const loggedInAccountId = req.user && req.user.id ? req.user.id : null;
 
         if (!shippingAddress || !paymentMethod) return res.status(400).json({ message: 'shippingAddress and paymentMethod required' });
 
-        // Lấy các mặt hàng trong giỏ hàng
         let entries = [];
-        if (accountId) {
-            entries = await Cart.find({ accountId });
+        if (loggedInAccountId) {
+            entries = await Cart.find({ accountId: loggedInAccountId });
         } else if (cartId) {
             entries = await Cart.find({ cartId });
         } else {
             return res.status(400).json({ message: 'cartId required for guest' });
         }
 
+        if (entries.length === 0) return res.status(400).json({ message: 'Giỏ hàng rỗng' });
+
+        // Gọi hàm xử lý
         const { items, subTotal } = await buildItemsFromCartEntries(entries);
 
-        if (!items || items.length === 0) return res.status(400).json({ message: 'Giỏ hàng rỗng' });
-
-        // tính toán chi phí vận chuyển (giá cố định đơn giản hoặc dựa trên tổng phụ)
-        const shippingPrice = subTotal > 1000 ? 0 : 50; // placeholder logic
-
-        // thuế 10%
+        const shippingPrice = subTotal > 1000000 ? 0 : 30000;
         const tax = +(subTotal * 0.1).toFixed(2);
-
-        // áp dụng giảm giá nếu có
-        let discount = null;
         let discountAmount = 0;
+        let discountPayload = null;
+        
         if (discountCode) {
             const d = await Discount.findOne({ discountCode: discountCode.toUpperCase() });
-            if (!d) return res.status(400).json({ message: 'Mã giảm giá không hợp lệ' });
-            if (d.uses >= d.maxUses) return res.status(400).json({ message: 'Mã giảm giá đã hết lượt' });
-            discount = { code: d.discountCode, percent: d.percent };
-            discountAmount = +(subTotal * (d.percent / 100)).toFixed(2);
+            if (d && d.uses < d.maxUses) {
+                discountAmount = +(subTotal * (d.percent / 100)).toFixed(2);
+                discountPayload = { code: d.discountCode, percent: d.percent, amount: discountAmount };
+            }
+        }
+            
+        const totalPrice = +(subTotal - discountAmount + tax + shippingPrice).toFixed(2);
+        
+        let finalAccountId = loggedInAccountId;
+        let customerEmail;
+        let customerName;
+
+        if (!loggedInAccountId && guestInfo && guestInfo.email) {
+            const guestEmail = guestInfo.email.toLowerCase();
+            customerEmail = guestEmail;
+            customerName = guestInfo.name;
+            let guestUser = await User.findOne({ email: guestEmail });
+
+            if (!guestUser) {
+                const randomPassword = await generateUuid();
+                const hashedPassword = await bcrypt.hash(randomPassword, 10);
+                
+                guestUser = new User({
+                    userId: await generateUuid(),
+                    name: guestInfo.name,
+                    email: guestEmail,
+                    userName: guestEmail,
+                    password: hashedPassword,
+                });
+                await guestUser.save();
+            }
+            finalAccountId = guestUser.userId;
+        } else if (loggedInAccountId) {
+            const user = await User.findOne({ userId: loggedInAccountId });
+            if (user) {
+                customerEmail = user.email;
+                customerName = user.name;
+            }
         }
 
-        const totalPrice = +(subTotal - discountAmount + tax + shippingPrice).toFixed(2);
-
         const order = new Order({
-            orderId: await generateUuid(),
-            accountId: accountId || null,
-            guestInfo: accountId ? null : guestInfo || null,
+            orderId: uuidv4(),
+            accountId: finalAccountId,
+            guestInfo: loggedInAccountId ? null : guestInfo,
             items,
             shippingAddress,
             paymentMethod,
             shippingPrice,
             subTotal,
-            discount: discount ? { code: discount.code, percent: discount.percent, amount: discountAmount } : null,
+            discount: discountPayload,
             tax,
-            totalPrice,
-            isPaid: false
+            totalPrice
         });
-        //... sau khi lưu đơn hàng
-        await order.save();
 
-        // Nếu sử dụng giảm giá, hãy tăng mức sử dụng
-        if (discount) {
-            await discountCtrl.incrementUsage(discount.code, order._id); // Truyền thêm order._id
+        await order.save();
+        
+        for (const item of order.items) {
+            await Product.updateOne(
+                { _id: item.productId, 'variants.variantId': item.variantId },
+                { $inc: { 'variants.$.stock': -item.quantity } }
+            );
         }
 
-        // Tùy chọn xóa giỏ hàng
-        if (accountId) {
-            await Cart.deleteMany({ accountId });
+        if (discountPayload) {
+            await discountCtrl.incrementUsage(discountPayload.code, order._id);
+        }
+        
+        if (loggedInAccountId) {
+            await Cart.deleteMany({ accountId: loggedInAccountId });
         } else if (cartId) {
             await Cart.deleteMany({ cartId });
+        }
+        
+        if (finalAccountId) {
+            const pointsEarned = Math.floor(order.totalPrice / 10000);
+            if (pointsEarned > 0) {
+                await User.findOneAndUpdate(
+                    { userId: finalAccountId },
+                    { $inc: { loyaltyPoints: pointsEarned } },
+                    { new: true }
+                );
+            }
+        }
+        
+        if (customerEmail) {
+            try {
+                await sendEmail({
+                    to: customerEmail,
+                    subject: `Xác nhận đơn hàng #${order.orderId}`,
+                    html: `
+                        <h1>Cảm ơn bạn đã đặt hàng!</h1>
+                        <p>Chào ${customerName},</p>
+                        <p>Chúng tôi đã nhận được đơn hàng của bạn. Dưới đây là thông tin chi tiết:</p>
+                        <p><strong>Mã đơn hàng:</strong> ${order.orderId}</p>
+                        <p><strong>Tổng tiền:</strong> ${order.totalPrice.toLocaleString('vi-VN')} ₫</p>
+                        <p>Chúng tôi sẽ thông báo cho bạn khi đơn hàng được vận chuyển.</p>
+                    `
+                });
+            } catch (emailError) {
+                console.error("Lỗi gửi email xác nhận đơn hàng:", emailError);
+            }
         }
 
         return res.status(201).json({ success: true, order });
@@ -99,6 +186,7 @@ exports.createOrder = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
 // Lấy chi tiết đơn hàng
 exports.getOrder = async (req, res) => {
     try {
@@ -167,12 +255,34 @@ exports.updateOrderStatus = async (req, res) => {
 
         order.status = status;
 
-        // Thêm vào lịch sử trạng thái theo yêu cầu của đề bài
         order.statusHistory.push({ status, updatedAt: new Date() });
 
         await order.save();
+        
+        // ================== CẬP NHẬT: GỬI EMAIL CẬP NHẬT TRẠNG THÁI ==================
+        let customerEmail;
+        if (order.accountId) {
+             const user = await User.findOne({ userId: order.accountId });
+             if(user) customerEmail = user.email;
+        } else if (order.guestInfo && order.guestInfo.email) {
+            customerEmail = order.guestInfo.email;
+        }
 
-        // TODO: Gửi email thông báo cho khách hàng về việc cập nhật trạng thái đơn hàng
+        if (customerEmail) {
+            try {
+                 await sendEmail({
+                    to: customerEmail,
+                    subject: `Cập nhật trạng thái đơn hàng #${order.orderId}`,
+                    html: `
+                        <p>Trạng thái đơn hàng của bạn đã được cập nhật thành: <strong>${status}</strong>.</p>
+                        <p>Bạn có thể theo dõi chi tiết đơn hàng tại website của chúng tôi.</p>
+                    `
+                });
+            } catch (emailError) {
+                console.error("Lỗi gửi email cập nhật trạng thái:", emailError);
+            }
+        }
+        // =========================================================================
 
         return res.status(200).json({ success: true, order });
     } catch (error) {

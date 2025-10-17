@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const cartController = require('../controllers/cartControllers');
 const resolveId = require('../middleware/resolveProductId');
-const auth = require('../middleware/auth');
 const Product = require('../models/productModel');
+const { protect } = require('../middleware/authMiddleware');
 
 // Middleware để resolve productId
 const resolveProduct = resolveId({
@@ -13,16 +13,17 @@ const resolveProduct = resolveId({
     reqKey: 'product'
 });
 
-// POST /api/cart/add - Thêm sản phẩm vào giỏ hàng (yêu cầu đăng nhập)
-router.post('/add', auth, resolveProduct, cartController.addToCart);
+// === ROUTE CHO NGƯỜI DÙNG ĐÃ ĐĂNG NHẬP (YÊU CẦU TOKEN) ===
+// 2. SỬA LẠI: Sử dụng 'protect' thay vì 'auth'
+router.post('/add', protect, resolveProduct, cartController.addToCart);
+router.post('/update', protect, resolveProduct, cartController.updateCartItem);
+router.get('/', protect, cartController.getCart);
+router.post('/clear', protect, cartController.clearCart);
 
-// POST /api/cart/update - Cập nhật số lượng hoặc xóa sản phẩm (yêu cầu đăng nhập)
-router.post('/update', auth, resolveProduct, cartController.updateCartItem);
-
-// GET /api/cart - Lấy giỏ hàng (yêu cầu đăng nhập)
-router.get('/', auth, cartController.getCart);
-
-// POST /api/cart/clear - Xóa toàn bộ giỏ hàng (yêu cầu đăng nhập)
-router.post('/clear', auth, cartController.clearCart);
+// === ROUTE CÔNG KHAI CHO KHÁCH (GUEST) ===
+router.get('/guest', cartController.getGuestCart);
+router.post('/guest/add', cartController.addGuestCartItem);
+router.post('/guest/update', cartController.updateGuestCartItem);
+router.post('/guest/clear', cartController.clearGuestCart);
 
 module.exports = router;

@@ -1,3 +1,5 @@
+// seeder.js
+
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
@@ -10,102 +12,72 @@ dotenv.config();
 // --- DỮ LIỆU MẪU ---
 const users = [
     {
+        userId: uuidv4(),
         name: 'Admin User',
         userName: 'admin',
         email: 'admin@example.com',
         password: '123456',
         isAdmin: true,
-        role: 'admin',
+        role: 'admin'
     },
     {
+        userId: uuidv4(),
         name: 'Normal User',
         userName: 'user',
         email: 'user@example.com',
         password: '123456',
         isAdmin: false,
-        role: 'user',
+        role: 'user'
     },
 ];
 
 const discounts = [
-  {
-    discountCode: "WELCOME10",
-    discountName: "Mã chào mừng thành viên mới",
-    percent: 10,
-    maxUses: 10,
-    uses: 0,
-  },
-  {
-    discountCode: "FLASH50",
-    discountName: "Flash Sale (đã hết)",
-    percent: 50,
-    maxUses: 5,
-    uses: 5,
-  }
+    {
+        discountID: uuidv4(),
+        discountCode: "SALE10",
+        discountName: "Giảm giá 10%",
+        percent: 10,
+        maxUses: 10,
+        uses: 0,
+    },
+    {
+        discountID: uuidv4(),
+        discountCode: "USEDUP",
+        discountName: "Mã đã hết lượt",
+        percent: 20,
+        maxUses: 2,
+        uses: 2,
+    }
 ];
 
 // --- LOGIC SCRIPT ---
-
 const importData = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('✅ Kết nối Database thành công...');
 
-        console.log('🗑️  Xóa dữ liệu cũ...');
+        console.log('🗑️  Đang xóa dữ liệu Users và Discounts cũ...');
         await User.deleteMany();
         await Discount.deleteMany();
 
-        // Xử lý dữ liệu users (thêm userId và mã hóa mật khẩu)
-        const processedUsers = await Promise.all(
+        const usersWithHashedPasswords = await Promise.all(
             users.map(async (user) => {
                 const hashedPassword = await bcrypt.hash(user.password, 10);
-                return {
-                    ...user,
-                    userId: uuidv4(),
-                    password: hashedPassword,
-                };
+                return { ...user, password: hashedPassword };
             })
         );
         
-        // 👈 SỬA LỖI: Xử lý dữ liệu discounts (thêm discountID)
-        const processedDiscounts = discounts.map((discount) => {
-            return {
-                ...discount,
-                discountID: uuidv4(), // Gán một discountID duy nhất
-            };
-        });
+        console.log('➕ Đang thêm dữ liệu mới...');
+        await User.insertMany(usersWithHashedPasswords);
+        await Discount.insertMany(discounts);
 
-        console.log('➕ Thêm dữ liệu mới...');
-        await User.insertMany(processedUsers);
-        await Discount.insertMany(processedDiscounts); // 👈 Sử dụng mảng đã được xử lý
-
-        console.log('🎉 Dữ liệu đã được thêm thành công!');
-        process.exit();
+        console.log('🎉 Dữ liệu Users và Discounts đã được thêm thành công!');
     } catch (error) {
         console.error(`❌ Lỗi: ${error.message}`);
-        process.exit(1);
+    } finally {
+        mongoose.connection.close();
+        process.exit();
     }
 };
 
-const destroyData = async () => {
-    try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('✅ Kết nối Database thành công...');
-
-        console.log('🗑️  Xóa toàn bộ dữ liệu...');
-        await User.deleteMany();
-        await Discount.deleteMany();
-        
-        console.log('🔥 Dữ liệu đã được xóa sạch!');
-        process.exit();
-    } catch (error) {
-        console.error(`❌ Lỗi: ${error.message}`);
-        process.exit(1);
-    }
-};
-
-if (process.argv[2] === '-d') {
-    destroyData();
-} else {
-    importData();
-}
+importData();
