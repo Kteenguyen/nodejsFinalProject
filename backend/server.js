@@ -13,8 +13,10 @@ app.use(cors()) // Enable CORS;
 // Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 // DB
 const { connectDB } = require('./config/dbConnection');
+
 connectDB();
 
 // Routes

@@ -77,7 +77,7 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({ message: 'Sai mật khẩu!' });
         }
-        
+
         // Tạo token
         const token = jwt.sign(
             { id: user.userId, email: user.email, isAdmin: user.isAdmin },
@@ -120,37 +120,34 @@ exports.logout = async (req, res) => {
 exports.googleLogin = async (req, res) => {
     try {
         const { idToken } = req.body;
-        if (!idToken) {
-            return res.status(400).json({ message: 'Thiếu idToken.' });
-        }
-        if (!googleClient) {
-            return res.status(500).json({ message: 'Chưa cấu hình GOOGLE_CLIENT_ID.' });
-        }
+        if (!idToken) return res.status(400).json({ message: 'Thiếu idToken.' });
+        if (!googleClient) return res.status(500).json({ message: 'Chưa cấu hình GOOGLE_CLIENT_ID.' });
 
-        const ticket = await googleClient.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+
         const payload = ticket.getPayload();
         const googleId = payload.sub;
         const email = payload.email;
         const name = payload.name || payload.given_name || '';
 
-        if (!email) {
-            return res.status(400).json({ message: 'Không lấy được email từ Google.' });
-        }
+        if (!email) return res.status(400).json({ message: 'Không lấy được email từ Google.' });
 
-        let user = await User.findOne({ mail: email });
+        let user = await User.findOne({ email });
         if (!user) {
             user = new User({
                 userId: await generateUuid(),
                 userName: email,
-                password: await bcrypt.hash(await generateUuid(), 10), // placeholder để thỏa required
-                mail: email,
+                password: await bcrypt.hash(await generateUuid(), 10),
+                email,
                 name,
                 provider: 'google',
                 googleId
             });
             await user.save();
         } else {
-            // Cập nhật thông tin provider/googleId nếu cần
             const update = {};
             if (!user.googleId) update.googleId = googleId;
             if (user.provider !== 'google') update.provider = 'google';
@@ -160,8 +157,25 @@ exports.googleLogin = async (req, res) => {
             }
         }
 
-        const token = jwt.sign({ id: user.userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        return res.status(200).json({ message: 'Đăng nhập Google thành công!', token });
+        const token = jwt.sign(
+            { id: user.userId, email: user.email, isAdmin: user.isAdmin },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        return res.status(200).json({
+            message: 'Đăng nhập Google thành công!',
+            token,
+            user: {
+                id: user.userId,
+                name: user.name,
+                userName: user.userName,
+                email: user.email,
+                isAdmin: user.isAdmin,
+                role: user.role
+            }
+        });
+
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
