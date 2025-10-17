@@ -1,10 +1,8 @@
-// FileName: seedOrders.js
+// seedOrders.js
 
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const { v4: uuidv4 } = require('uuid');
-
-// !!! ĐẢM BẢO CÁC ĐƯỜNG DẪN NÀY LÀ CHÍNH XÁC !!!
 const Order = require('./models/orderModel');
 const Product = require('./models/productModel'); 
 const User = require('./models/userModel');
@@ -12,15 +10,7 @@ const Discount = require('./models/discountModel');
 
 dotenv.config();
 
-// --- DỮ LIỆU MẪU ---
-
-// !!! BẠN CẦN THAY ĐỔI CÁC ID NÀY !!!
-// Lấy 2 _id bất kỳ từ collection 'products' trong database của bạn
-const PRODUCT_ID_1 = 'laptop01'; // <-- ID thật từ database của bạn
-const PRODUCT_ID_2 = 'laptop02'; // <-- ID thật từ database của bạn
-
 const ordersData = [
-    // --- Đơn hàng 1: Của người dùng đã đăng nhập, đang xử lý ---
     {
         paymentMethod: 'COD',
         shippingAddress: {
@@ -30,12 +20,12 @@ const ordersData = [
             city: 'Ho Chi Minh City'
         },
         items: [
-            { productId: PRODUCT_ID_1, quantity: 1 },
-            { productId: PRODUCT_ID_2, quantity: 2 }
+            // Chúng ta sẽ dùng productId để tìm sản phẩm, và script sẽ tự lấy biến thể đầu tiên
+            { productId: 'laptop01', quantity: 1 }, 
+            { productId: 'monitor01', quantity: 2 }
         ],
         status: 'Confirmed'
     },
-    // --- Đơn hàng 2: Của khách vãng lai, đã giao, có giảm giá ---
     {
         isGuestOrder: true,
         guestInfo: {
@@ -50,14 +40,12 @@ const ordersData = [
             city: 'Hanoi'
         },
         items: [
-            { productId: PRODUCT_ID_1, quantity: 1 }
+            { productId: 'laptop01', quantity: 1 }
         ],
         status: 'Delivered',
-        discountCode: 'SALE10' // Giả sử mã này tồn tại
+        discountCode: 'SALE10'
     }
 ];
-
-// --- LOGIC SCRIPT ---
 
 const importData = async () => {
     try {
@@ -69,7 +57,6 @@ const importData = async () => {
         
         console.log('➕ Đang chuẩn bị và thêm dữ liệu đơn hàng mới...');
         
-        // Lấy thông tin người dùng mẫu
         const sampleUser = await User.findOne({ email: 'user@example.com' });
         if (!sampleUser) {
             throw new Error("Không tìm thấy người dùng mẫu 'user@example.com'. Vui lòng chạy seeder cho user trước.");
@@ -82,23 +69,37 @@ const importData = async () => {
             let subTotal = 0;
 
             for (const item of orderInfo.items) {
-                const product = await Product.findOne({ productId: item.productId });
-                if (!product) {
-                    console.warn(`⚠️  Cảnh báo: Bỏ qua sản phẩm với ID không tồn tại: ${item.productId}`);
+                // Sửa lại: Tìm bằng productId tùy chỉnh
+                const product = await Product.findOne({ productId: item.productId }); 
+                if (!product || !product.variants || product.variants.length === 0) {
+                    console.warn(`⚠️  Cảnh báo: Bỏ qua sản phẩm không hợp lệ: ${item.productId}`);
                     continue;
                 }
+                
+                // ================== LOGIC MỚI BẮT ĐẦU TỪ ĐÂY ==================
+
+                // 1. Lấy thông tin biến thể đầu tiên làm mẫu
+                const variant = product.variants[0]; 
+
+                // 2. Lấy giá từ BIẾN THỂ, không phải từ sản phẩm
+                const price = variant.price; 
+                
                 entries.push({ 
                     productId: product._id, 
-                    name: product.productName, 
-                    price: product.price, 
+                    variantId: variant.variantId, // 3. THÊM variantId vào item
+                    name: `${product.productName} - ${variant.name}`, 
+                    price: price, 
                     quantity: item.quantity 
                 });
-                subTotal += product.price * item.quantity;
+                subTotal += price * item.quantity;
+                
+                // ================== KẾT THÚC LOGIC MỚI ==================
             }
 
             if (entries.length === 0) continue;
 
-            const shippingPrice = subTotal > 1000 ? 0 : 50;
+            // ... (phần còn lại của logic tính toán giữ nguyên) ...
+            const shippingPrice = subTotal > 1000000 ? 0 : 30000;
             const tax = +(subTotal * 0.1).toFixed(2);
             let discountAmount = 0;
             let discountPayload = null;
@@ -112,7 +113,7 @@ const importData = async () => {
             }
             
             const totalPrice = +(subTotal - discountAmount + tax + shippingPrice).toFixed(2);
-
+            
             const newOrder = {
                 orderId: uuidv4(),
                 accountId: orderInfo.isGuestOrder ? null : sampleUser.userId,
@@ -125,45 +126,27 @@ const importData = async () => {
                 discount: discountPayload,
                 tax,
                 totalPrice,
-                isPaid: orderInfo.status === 'Delivered', // Giả sử đơn đã giao là đã thanh toán
+                isPaid: orderInfo.status === 'Delivered',
                 status: orderInfo.status,
-                statusHistory: [ // Tạo lịch sử trạng thái mẫu
-                    { status: 'Pending', updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) }, // 2 giờ trước
-                    { status: 'Confirmed', updatedAt: new Date(Date.now() - 1 * 60 * 60 * 1000) }, // 1 giờ trước
+                statusHistory: [
+                    { status: 'Pending', updatedAt: new Date() }
                 ]
             };
-            
-            if (orderInfo.status === 'Delivered') {
-                 newOrder.statusHistory.push({ status: 'Delivered', updatedAt: new Date() });
-            }
-
             processedOrders.push(newOrder);
         }
 
-        await Order.insertMany(processedOrders);
+        if (processedOrders.length > 0) {
+            await Order.insertMany(processedOrders);
+        }
 
         console.log(`🎉 Đã thêm thành công ${processedOrders.length} đơn hàng!`);
-        process.exit();
+        
     } catch (error) {
         console.error(`❌ Lỗi khi thêm dữ liệu: ${error.message}`);
-        process.exit(1);
-    }
-};
-
-const destroyData = async () => {
-    try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        await Order.deleteMany();
-        console.log('🔥 Dữ liệu đơn hàng đã được xóa sạch!');
+    } finally {
+        mongoose.connection.close();
         process.exit();
-    } catch (error) {
-        console.error(`❌ Lỗi khi xóa dữ liệu: ${error.message}`);
-        process.exit(1);
     }
 };
 
-if (process.argv[2] === '-d') {
-    destroyData();
-} else {
-    importData();
-}
+importData();
