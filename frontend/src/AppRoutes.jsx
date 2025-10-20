@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import { useEffect } from "react";
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Dashboard from "./pages/Dashboard";
 import { AuthController } from "./controllers/AuthController";
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 function App() {
@@ -38,10 +39,13 @@ function App() {
         <div>
             {!hideHeader && <Header />}
             <Routes>
+                
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/logout" element={<LogoutRoute />} />
+
+                <Route path="/admin/dashboard" element={<Dashboard />} />
                 {/* Thêm các route khác ở đây */}
             </Routes>
         </div>

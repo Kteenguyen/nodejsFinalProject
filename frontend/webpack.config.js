@@ -21,4 +21,10 @@ module.exports = {
     resolve: {
         extensions: ['.js', '.css'], // Các phần mở rộng mà Webpack sẽ xử lý
     },
+    ignoreWarnings: [
+        {
+            module: /lucide-react/,
+            message: /Failed to parse source map/,
+        },
+    ],
 };

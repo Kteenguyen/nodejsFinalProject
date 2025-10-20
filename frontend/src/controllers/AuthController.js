@@ -50,6 +50,11 @@ const AuthController = {
     },
 
 
+    //Đang nhập bằng facebook
+    facebookLogin: async (accessToken) => {
+        const response = await api.post("/auth/facebookLogin", { accessToken });
+        return response.data;
+    },
 
     //Sau này có thể đổi sang gọi API để logout dùng cookie
     logout: async () => {

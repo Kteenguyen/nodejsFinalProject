@@ -23,12 +23,17 @@ const Login = () => {
         try {
             const data = await AuthController.login(identifier, password);
             alert("Đăng nhập thành công!");
-            navigate("/");
+            // 🧭 Điều hướng theo role
+            if (data.user.role === "admin") {
+                window.location.href = "/admin/dashboard";
+            } else {
+                navigate("/");
+            }
         } catch (error) {
             alert(error.message || "Đăng nhập thất bại!");
         }
     };
-    // 🟥 Google Login
+    //  Google Login
     const handleSuccess = async (credentialResponse) => {
         try {
             const tokenId = credentialResponse.credential;
@@ -40,7 +45,12 @@ const Login = () => {
 
             if (res.token) {
                 login(res.token, res.user);
-                window.location.href = "/";
+                // 🧭 Điều hướng theo role
+                if (res.user.role === "admin") {
+                    window.location.href = "/admin/dashboard";
+                } else {
+                    window.location.href = "/";
+                }
             }
         } catch (error) {
             console.error("Google login error:", error);
@@ -50,14 +60,19 @@ const Login = () => {
 
 
 
-    // // 🟦 Facebook Login (tương tự)
-    // const handleFacebookLogin = async () => {
-    //     const fbRes = await AuthController.facebookLogin();
-    //     if (fbRes.token) {
-    //         login(fbRes.token, fbRes.user);
-    //         window.location.href = "/";
-    //     }
-    // };
+    //  Facebook Login (tương tự)
+    const handleFacebookLogin = async () => {
+        const fbRes = await AuthController.facebookLogin();
+        if (fbRes.token) {
+            login(fbRes.token, fbRes.user);
+            // 🧭 Điều hướng theo role
+            if (res.user.role === "admin") {
+                window.location.href = "/admin/dashboard";
+            } else {
+                window.location.href = "/";
+            }
+        }
+    };
 
     return (
         <div className="flex flex-col md:flex-row min-h-screen">

@@ -4,6 +4,7 @@
   "description": "React + Vite",
   "main": "index.js",
   "dependencies": {
+    "@greatsumini/react-facebook-login": "^3.4.0",
     "@react-oauth/google": "^0.12.2",
     "@tailwindcss/postcss": "^4.1.13",
     "acorn": "^8.15.0",
@@ -107,6 +108,7 @@
     "levn": "^0.4.1",
     "lines-and-columns": "^2.0.4",
     "lodash.merge": "^4.6.2",
+    "lucide-react": "^0.546.0",
     "lz-string": "^1.5.0",
     "math-intrinsics": "^1.1.0",
     "merge2": "^1.4.1",
