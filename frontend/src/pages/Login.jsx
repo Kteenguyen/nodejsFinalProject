@@ -25,7 +25,7 @@ const Login = () => {
             alert("Đăng nhập thành công!");
             // 🧭 Điều hướng theo role
             if (data.user.role === "admin") {
-                window.location.href = "/admin/dashboard";
+                navigate("/admin");
             } else {
                 navigate("/");
             }
@@ -37,19 +37,15 @@ const Login = () => {
     const handleSuccess = async (credentialResponse) => {
         try {
             const tokenId = credentialResponse.credential;
-            console.log("Google ID Token:", tokenId);
-            console.log(window.location.origin);
-
-
             const res = await AuthController.googleLogin(tokenId);
 
             if (res.token) {
                 login(res.token, res.user);
                 // 🧭 Điều hướng theo role
                 if (res.user.role === "admin") {
-                    window.location.href = "/admin/dashboard";
+                    navigate("/admin");
                 } else {
-                    window.location.href = "/";
+                    navigate("/");
                 }
             }
         } catch (error) {
@@ -67,9 +63,9 @@ const Login = () => {
             login(fbRes.token, fbRes.user);
             // 🧭 Điều hướng theo role
             if (res.user.role === "admin") {
-                window.location.href = "/admin/dashboard";
+                navigate("/admin");
             } else {
-                window.location.href = "/";
+                navigate("/");
             }
         }
     };

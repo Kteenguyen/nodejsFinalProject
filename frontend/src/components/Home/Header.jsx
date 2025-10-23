@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthController } from '../../controllers/AuthController';
+import { Menu } from "lucide-react"; // icon 3 gạch
 
 const Header = () => {
     const [dropdownOpen, setDropdownOpen] = useState(false);

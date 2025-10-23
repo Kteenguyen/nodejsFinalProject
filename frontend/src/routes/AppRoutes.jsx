@@ -1,11 +1,11 @@
-import Header from "./components/Home/Header";
-import Home from './pages/Home';
+import Header from "../components/Home/Header";
+import Home from '../pages/Home';
 import { useEffect } from "react";
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from "./pages/Dashboard";
-import { AuthController } from "./controllers/AuthController";
+import Login from '../pages/Login';
+import Register from '../pages/Register';
+import { AuthController } from "../controllers/AuthController";
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import DashboardRoutes from "./DashboardRoutes";
 function App() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -39,14 +39,14 @@ function App() {
         <div>
             {!hideHeader && <Header />}
             <Routes>
-                
+                {/* ROUTE CHO USER */}
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/logout" element={<LogoutRoute />} />
 
-                <Route path="/admin/dashboard" element={<Dashboard />} />
-                {/* Thêm các route khác ở đây */}
+                {/* ROUTE CHO DASHBOARD */}
+                <Route path="/admin/*" element={<DashboardRoutes />} />
             </Routes>
         </div>
     );

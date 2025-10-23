@@ -1,5 +1,26 @@
 /my-app
+├── /backend     # Thư mục cho ứng dụng backend (Node.js + Express)
+|   ├── /config         # Cấu hình chung
+|    |    ├── dbConnection.js  # Kết nối cơ sở dữ liệu
+│   ├── /controllers    # Các controller cho các route
+│   │   ├── authController.js  # Controller cho xác thực
+|   |   ├── cartController.js  # Controller cho giỏ hàng
+│   │   ├── dashboardController.js  # Controller cho dashboard admin
+│   │   ├── discountController.js  # Controller cho mã giảm giá
+│   │   ├── orderController.js  # Controller cho đơn hàng
+│   │   ├── productController.js  # Controller cho sản phẩm
+│   │   ├── userController.js  # Controller cho người dùng
+│   ├── /models         # Các mô hình dữ liệu (MongoDB, Sequelize, ...)
+│   ├── /routes         # Các file định nghĩa route
+│   ├── /middlewares     # Các middleware
+│   │   ├── auth.js    # Middleware xác thực
+
+│   ├── /config         # Cấu hình (database, environment variables)
+│   ├── /utils          # Các hàm tiện ích cho backend
+│   └── server.js       # Entry point cho ứng dụng backend
 │
+└── docker-compose.yml   # Docker Compose file (nếu sử dụng Docker)
+|
 ├── /frontend          # Thư mục cho ứng dụng React
 │   ├── /public        # Thư mục công khai (index.html, favicon, ...)
 │   ├── /src           # Thư mục nguồn cho ứng dụng
@@ -15,22 +36,6 @@
 │   │
 │   └── package.json    # Thông tin dự án frontend
 │
-├── /backend           # Thư mục cho backend (Node.js/Express)
-│   ├── /services       # Các microservice
-│   │   ├── /user       # Microservice quản lý người dùng
-│   │   ├── /product    # Microservice quản lý sản phẩm
-│   │   └── /order      # Microservice quản lý đơn hàng
-│   │
-│   ├── /controllers    # Các controller cho các route
-│   ├── /models         # Các mô hình dữ liệu (MongoDB, Sequelize, ...)
-│   ├── /routes         # Các file định nghĩa route
-│   ├── /middlewares     # Các middleware
-│   ├── /config         # Cấu hình (database, environment variables)
-│   ├── /utils          # Các hàm tiện ích cho backend
-│   └── server.js       # Entry point cho ứng dụng backend
-│
-└── docker-compose.yml   # Docker Compose file (nếu sử dụng Docker)
-
 Họ tên: Nguyễn Khoa Tee
 User: ktee2k3
 Email: keytynguyen2004@gmail.com

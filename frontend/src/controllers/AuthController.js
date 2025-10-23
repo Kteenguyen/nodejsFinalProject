@@ -39,9 +39,9 @@ const AuthController = {
     //Đăng nhập bằng google
     googleLogin: async (idToken) => {
         try {
-            console.log("Google credential:", idToken);
+            // console.log("Google credential:", idToken);
             const response = await api.post("/auth/googleLogin", { idToken });
-            console.log("✅ Google login response:", response.data);
+            // console.log("✅ Google login response:", response.data);
             return response.data;
         } catch (error) {
             console.error("Google login failed:", error);
