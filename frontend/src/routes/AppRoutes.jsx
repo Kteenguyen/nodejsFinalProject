@@ -11,7 +11,9 @@ function App() {
     const navigate = useNavigate();
     // Ẩn header ở /login và /register
     const hideHeader =
-        location.pathname === "/login" || location.pathname === "/register";
+        location.pathname.startsWith("/admin") ||
+        location.pathname === "/login" ||
+        location.pathname === "/register";
 
 
     //  Kiểm tra auth khi load app
@@ -38,14 +40,19 @@ function App() {
     return (
         <div>
             {!hideHeader && <Header />}
+            {/* Phần header cần tính lại vị trí */}
             <Routes>
                 {/* ROUTE CHO USER */}
                 <Route path="/" element={<Home />} />
+
+                {/* Mục không cần header */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+
+                {/* Đăng xuất  */}
                 <Route path="/logout" element={<LogoutRoute />} />
 
-                {/* ROUTE CHO DASHBOARD */}
+                {/* ROUTE CHO DASHBOARD không cần header*/}
                 <Route path="/admin/*" element={<DashboardRoutes />} />
             </Routes>
         </div>

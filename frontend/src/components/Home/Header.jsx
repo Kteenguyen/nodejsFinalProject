@@ -65,7 +65,7 @@ const Header = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M3 6h18M3 18h18" />
                         </svg>
                     </button>
-                    <span className="font-bold text-lg text-white">Tên Ứng Dụng</span>
+                    <span className="font-bold text-lg text-white">PhoneWorld</span>
                 </div>
             </div>
 

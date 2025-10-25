@@ -14,7 +14,7 @@ exports.getUserProfile = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
         }
-        
+
         res.status(200).json({ success: true, user });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
@@ -229,7 +229,7 @@ exports.addShippingAddress = async (req, res) => {
             return res.status(409).json({ message: 'Địa chỉ đã tồn tại trong danh sách.' });
         }
 
-            const addressId = await generateUuid();
+        const addressId = await generateUuid();
         const newAddress = {
             addressId,
             label,
@@ -299,7 +299,7 @@ exports.setDefaultShippingAddress = async (req, res) => {
     try {
         const { addressId } = req.params;
         const user = await User.findOne({ userId: req.user.id });
-        
+
         let addressFound = false;
         user.shippingAddresses.forEach(addr => {
             if (addr.addressId === addressId) {
@@ -328,15 +328,71 @@ exports.setDefaultShippingAddress = async (req, res) => {
  */
 exports.getAllUsers = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, search = "" } = req.query;
+        const query = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } }
+                ]
+            }
+            : {};
+        const pipeline = [
+            { $match: query },
+            {
+                $lookup: {
+                    from: "orders",
+                    localField: "userId",
+                    foreignField: "userId",
+                    as: "orders",
+                }
+            },
+            {
+                $addFields: {
+                    delivered: {
+                        $size: {
+                            $filter: {
+                                input: "$orders",
+                                as: "o",
+                                cond: { $eq: ["$$o.status", "delivered"] },
+                            }
+                        }
+                    },
+                    pending: {
+                        $size: {
+                            $filter: {
+                                input: "$orders",
+                                as: "o",
+                                cond: { $eq: ["$$o.status", "pending"] },
+                            }
+                        }
+                    },
+                    canceled: {
+                        $size: {
+                            $filter: {
+                                input: "$orders",
+                                as: "o",
+                                cond: { $eq: ["$$o.status", "canceled"] },
+                            }
+                        }
+                    },
+                }
+            },
+            {
+                $project: {
+                    password: 0,
+                    orders: 0
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            { $skip: (page - 1) * limit },
+            { $limit: parseInt(limit) },
+        ];
 
-        const users = await User.find({})
-            .select('-password') // Không trả về mật khẩu
-            .sort({ createdAt: -1 })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
+        const users = await User.aggregate(pipeline);
 
-        const totalUsers = await User.countDocuments({});
+
+        const totalUsers = await User.countDocuments(query);
 
         res.status(200).json({
             success: true,
@@ -381,14 +437,14 @@ exports.updateUserByAdmin = async (req, res) => {
         // Cập nhật các trường được phép
         user.name = name || user.name;
         user.role = role || user.role;
-        
+
         // Cập nhật isAdmin một cách an toàn
         if (typeof isAdmin !== 'undefined') {
             user.isAdmin = isAdmin;
         }
 
         const updatedUser = await user.save();
-        
+
         // Trả về user đã cập nhật (không có mật khẩu)
         const userResponse = updatedUser.toObject();
         delete userResponse.password;
