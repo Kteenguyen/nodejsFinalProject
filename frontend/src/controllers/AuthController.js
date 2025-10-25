@@ -24,7 +24,6 @@ const AuthController = {
     },
     register: async (formData) => {
         try {
-
             // ✅ Kiểm tra JSON formData trước khi gửi
             console.log("📦 JSON gửi đi:", formData);
 
@@ -36,11 +35,16 @@ const AuthController = {
             throw error.response?.data || { message: "Đăng ký thất bại" };
         }
     },
-    //Đăng nhập bằng google
-    googleLogin: async (idToken) => {
+
+    // --- SỬA ĐỔI CHÍNH Ở ĐÂY ---
+    // Đăng nhập bằng google
+    googleLogin: async (accessToken) => { // Sửa: Nhận vào accessToken
         try {
-            // console.log("Google credential:", idToken);
-            const response = await api.post("/auth/googleLogin", { idToken });
+            console.log("Google accessToken:", accessToken); // Debug
+
+            // Sửa: Gửi accessToken về backend thay vì idToken
+            const response = await api.post("/auth/googleLogin", { accessToken });
+
             // console.log("✅ Google login response:", response.data);
             return response.data;
         } catch (error) {
@@ -48,6 +52,7 @@ const AuthController = {
             throw error.response?.data || { message: "Đăng nhập Google thất bại" };
         }
     },
+    // --- KẾT THÚC SỬA ĐỔI ---
 
 
     //Đang nhập bằng facebook

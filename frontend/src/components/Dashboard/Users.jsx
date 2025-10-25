@@ -1,7 +1,6 @@
-import { Search } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"; import { useState, useEffect } from "react";
 import { fetchUsers, fetchUserDetail } from "../../controllers/userController";
-
+import UserDetail from "../../pages/UserDetail";
 const Users = () => {
     const [search, setSearch] = useState("");
     const [users, setUsers] = useState([]);
@@ -76,7 +75,12 @@ const Users = () => {
                                     onClick={() => openDetail(u.userId)}
                                 >
                                     <td className="p-3 flex items-center gap-3">
-                                        <img src={u.avatar} className="w-10 h-10 rounded-lg" />
+                                        <img
+                                            src={u.avatar ? u.avatar : '/img/male_unknown_user.png'}
+                                            className="w-10 h-10 rounded-lg"
+
+                                            alt="No image"
+                                        />
                                         {u.name}
                                     </td>
 
@@ -114,25 +118,96 @@ const Users = () => {
             </div>
 
             {/* Pagination */}
-            <div className="flex justify-center gap-3 mt-5">
+            {/* --- Bắt đầu khối Pagination MỚI --- */}
+            <div className="flex justify-center items-center gap-2 mt-6">
+
+                {/* Nút Về Trang Đầu */}
+                <button
+                    disabled={page === 1}
+                    onClick={() => setPage(1)}
+                    className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
+                    aria-label="Trang đầu"
+                >
+                    <ChevronsLeft size={18} />
+                </button>
+
+                {/* Nút Lùi 1 Trang */}
                 <button
                     disabled={page === 1}
                     onClick={() => setPage(page - 1)}
-                    className="px-3 py-2 border rounded-lg disabled:opacity-40 hover:bg-gray-100"
+                    className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
+                    aria-label="Trang trước"
                 >
-                    Trước
+                    <ChevronLeft size={18} />
                 </button>
-                <span className="font-medium">Trang {page}/{totalPages}</span>
+
+                {/* Hiển thị các số trang */}
+                <div className="flex items-center gap-2">
+                    {(() => {
+                        // ----- Logic hiển thị số trang -----
+                        const pagesToShow = 3; // Hiển thị 3 số trang (VD: 4, 5, 6)
+                        let startPage = Math.max(1, page - Math.floor(pagesToShow / 2));
+                        let endPage = Math.min(totalPages, startPage + pagesToShow - 1);
+                        startPage = Math.max(1, endPage - pagesToShow + 1);
+
+                        const pageButtons = [];
+
+                        // Hiển thị '...' nếu không bắt đầu từ trang 1
+                        if (startPage > 1) {
+                            pageButtons.push(<span key="start-dots" className="px-2 py-1 text-gray-500">...</span>);
+                        }
+
+                        // Render các nút số trang
+                        for (let i = startPage; i <= endPage; i++) {
+                            pageButtons.push(
+                                <button
+                                    key={i}
+                                    onClick={() => setPage(i)}
+                                    className={`p-2 w-10 h-10 flex justify-center items-center rounded-lg transition font-medium
+                            ${i === page
+                                            ? 'bg-blue-600 text-white shadow-md' // Style cho trang hiện tại
+                                            : 'hover:bg-gray-100' // Style cho trang khác
+                                        }
+                        `}
+                                >
+                                    {i}
+                                </button>
+                            );
+                        }
+
+                        // Hiển thị '...' nếu không kết thúc ở trang cuối
+                        if (endPage < totalPages) {
+                            pageButtons.push(<span key="end-dots" className="px-2 py-1 text-gray-500">...</span>);
+                        }
+
+                        return pageButtons;
+                        // ----- Kết thúc logic -----
+                    })()}
+                </div>
+
+                {/* Nút Tiến 1 Trang */}
                 <button
                     disabled={page === totalPages}
                     onClick={() => setPage(page + 1)}
-                    className="px-3 py-2 border rounded-lg disabled:opacity-40 hover:bg-gray-100"
+                    className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
+                    aria-label="Trang sau"
                 >
-                    Sau
+                    <ChevronRight size={18} />
+                </button>
+
+                {/* Nút Về Trang Cuối */}
+                <button
+                    disabled={page === totalPages}
+                    onClick={() => setPage(totalPages)}
+                    className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
+                    aria-label="Trang cuối"
+                >
+                    <ChevronsRight size={18} />
                 </button>
             </div>
+            {/* --- Kết thúc khối Pagination MỚI --- */}
 
-            <UserDetailModal user={modalUser} onClose={() => setModalUser(null)} />
+            <UserDetail user={modalUser} onClose={() => setModalUser(null)} />
         </div>
     );
 };

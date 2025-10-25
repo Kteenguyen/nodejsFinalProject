@@ -7,7 +7,7 @@ const { protect, admin } = require('../middleware/authMiddleware');
 // =============================================================
 // ROUTE DÀNH CHO ADMIN (Đã hoàn thiện)
 // =============================================================
-router.get('/', userController.getAllUsers);
+router.get('/', protect, admin, userController.getAllUsers);
 router.get('/:userId', protect, admin, userController.getUserByIdForAdmin);
 router.put('/:userId', protect, admin, userController.updateUserByAdmin);
 
