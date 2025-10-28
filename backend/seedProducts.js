@@ -26,7 +26,7 @@ const seedProducts = async () => {
                 productName: 'ASUS TUF Gaming F15',
                 brand: 'ASUS',
                 productDescription: 'Laptop gaming với CPU Intel i7 và GPU RTX 3050.',
-                images: ['/images/asus-tuf-f15.jpg'],
+                images: ['/images/ASUSTUFGamingF15.png'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -38,7 +38,7 @@ const seedProducts = async () => {
                 productName: 'MSI Katana GF66',
                 brand: 'MSI',
                 productDescription: 'Hiệu năng cao với RTX 3060 cho game thủ.',
-                images: ['/images/msi-katana.jpg'],
+                images: ['/images/MSIKatanaGF66.png'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isBestSeller: true,
                 variants: [
@@ -50,7 +50,7 @@ const seedProducts = async () => {
                 productName: 'Acer Nitro 5',
                 brand: 'Acer',
                 productDescription: 'Gaming bình dân hiệu năng tốt.',
-                images: ['/images/acer-nitro5.jpg'],
+                images: ['/images/AcerNitro5.jpg'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -62,7 +62,7 @@ const seedProducts = async () => {
                 productName: 'HP Victus 16',
                 brand: 'HP',
                 productDescription: 'Chơi game mượt mà với RTX 3050 Ti.',
-                images: ['/images/hp-victus.jpg'],
+                images: ['/images/HPVictus16.png'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isBestSeller: true,
                 variants: [
@@ -74,7 +74,7 @@ const seedProducts = async () => {
                 productName: 'MacBook Air M2',
                 brand: 'Apple',
                 productDescription: 'Nhẹ, đẹp và hiệu năng cực mạnh.',
-                images: ['/images/macbook-air-m2.jpg'],
+                images: ['/images/MacBookAirM2.png'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -86,7 +86,7 @@ const seedProducts = async () => {
                 productName: 'Dell Inspiron 15 3520',
                 brand: 'Dell',
                 productDescription: 'Laptop văn phòng bền bỉ.',
-                images: ['/images/dell-inspiron.jpg'],
+                images: ['/images/DellInspiron153520.jpg'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 variants: [
                     { variantId: 'L07-8GB', name: '8GB RAM, 512GB SSD', price: 16500000, stock: 30 }
@@ -97,7 +97,7 @@ const seedProducts = async () => {
                 productName: 'Gigabyte G5',
                 brand: 'Gigabyte',
                 productDescription: 'Laptop gaming giá tốt dành cho sinh viên.',
-                images: ['/images/gigabyte-g5.jpg'],
+                images: ['/images/GigabyteG5.jpg'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isBestSeller: true,
                 variants: [
@@ -109,7 +109,7 @@ const seedProducts = async () => {
                 productName: 'Lenovo ThinkPad X1 Carbon',
                 brand: 'Lenovo',
                 productDescription: 'Doanh nhân đẳng cấp, độ bền cao.',
-                images: ['/images/thinkpad-x1.jpg'],
+                images: ['/images/LenovoThinkPadX1Carbon.jpg'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 variants: [
                     { variantId: 'L09-16GB', name: '16GB RAM, 1TB SSD', price: 42000000, stock: 6 }
@@ -120,7 +120,7 @@ const seedProducts = async () => {
                 productName: 'ASUS ZenBook OLED',
                 brand: 'ASUS',
                 productDescription: 'Màn OLED siêu đẹp dành cho sáng tạo.',
-                images: ['/images/asus-zenbook.jpg'],
+                images: ['/images/ASUSZenBookOLED.jpg'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -132,7 +132,7 @@ const seedProducts = async () => {
                 productName: 'Acer Swift 3',
                 brand: 'Acer',
                 productDescription: 'Văn phòng nhẹ đẹp giá tốt.',
-                images: ['/images/acer-swift3.jpg'],
+                images: ['/images/AcerSwift3.jpg'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 variants: [
                     { variantId: 'L11-8GB', name: '8GB RAM, 512GB SSD', price: 15800000, stock: 27 }
@@ -145,7 +145,7 @@ const seedProducts = async () => {
                 productName: 'Samsung Odyssey G3 24"',
                 brand: 'Samsung',
                 productDescription: '144Hz phù hợp gaming.',
-                images: ['/images/odyssey-g3.jpg'],
+                images: ['/images/SamsungOdysseyG324.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 isBestSeller: true,
                 variants: [
@@ -157,7 +157,7 @@ const seedProducts = async () => {
                 productName: 'LG UltraGear 27"',
                 brand: 'LG',
                 productDescription: 'Màn IPS màu đẹp cho game thủ.',
-                images: ['/images/lg-ultragear.jpg'],
+                images: ['/images/LGUltraGear27.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 variants: [
                     { variantId: 'M03-27', name: '27 inch, 165Hz', price: 6500000, stock: 22 }
@@ -168,7 +168,7 @@ const seedProducts = async () => {
                 productName: 'AOC 24G2',
                 brand: 'AOC',
                 productDescription: '144Hz giá rẻ best choice.',
-                images: ['/images/aoc-24g2.jpg'],
+                images: ['/images/AOC24G2.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -180,7 +180,7 @@ const seedProducts = async () => {
                 productName: 'ViewSonic VX2758',
                 brand: 'ViewSonic',
                 productDescription: 'Giải trí đa dụng, màu tốt.',
-                images: ['/images/viewsonic-vx2758.jpg'],
+                images: ['/images/ViewSonicVX2758.png'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 variants: [
                     { variantId: 'M05-27', name: '27 inch, 75Hz', price: 5200000, stock: 19 }
@@ -191,7 +191,7 @@ const seedProducts = async () => {
                 productName: 'Gigabyte M27Q',
                 brand: 'Gigabyte',
                 productDescription: 'Màn 2K, 170Hz gaming & đồ họa.',
-                images: ['/images/gigabyte-m27q.jpg'],
+                images: ['/images/GigabyteM27Q.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 isBestSeller: true,
                 variants: [
@@ -203,7 +203,7 @@ const seedProducts = async () => {
                 productName: 'Dell S2421HGF',
                 brand: 'Dell',
                 productDescription: 'Gaming tấm nền VA.',
-                images: ['/images/dell-24.jpg'],
+                images: ['/images/DellS2421HGF.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 variants: [
                     { variantId: 'M07-24', name: '24 inch, 144Hz', price: 4500000, stock: 25 }
@@ -214,7 +214,7 @@ const seedProducts = async () => {
                 productName: 'MSI Optix G241',
                 brand: 'MSI',
                 productDescription: 'IPS gaming, giá tốt performance.',
-                images: ['/images/msi-g241.jpg'],
+                images: ['/images/MSIOptixG241.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 variants: [
                     { variantId: 'M08-24', name: '24 inch, 144Hz IPS', price: 5100000, stock: 18 }
@@ -225,7 +225,7 @@ const seedProducts = async () => {
                 productName: 'ASUS ProArt PA248QV',
                 brand: 'ASUS',
                 productDescription: 'Màn đồ họa chuẩn màu cho designer.',
-                images: ['/images/proart-pa248.jpg'],
+                images: ['/images/ASUSProArtPA248QV.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -237,7 +237,7 @@ const seedProducts = async () => {
                 productName: 'BenQ EW2780',
                 brand: 'BenQ',
                 productDescription: 'Giải trí, hỗ trợ HDR.',
-                images: ['/images/benq-ew2780.jpg'],
+                images: ['/images/BenQEW2780.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 variants: [
                     { variantId: 'M10-27', name: '27 inch, 75Hz', price: 5900000, stock: 16 }
@@ -248,7 +248,7 @@ const seedProducts = async () => {
                 productName: 'Philips 325E1C',
                 brand: 'Philips',
                 productDescription: 'Màn cong 2K rộng rãi.',
-                images: ['/images/philips-325e.jpg'],
+                images: ['/images/Philips325E1C.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 variants: [
                     { variantId: 'M11-32', name: '32 inch, 75Hz, 2K', price: 7900000, stock: 9 }
@@ -261,7 +261,7 @@ const seedProducts = async () => {
                 productName: 'Kingston NV2',
                 brand: 'Kingston',
                 productDescription: 'SSD NVMe giá rẻ, ổn định.',
-                images: ['/images/kingston-nv2.jpg'],
+                images: ['/images/KingstonNV2.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 variants: [
                     { variantId: 'SSD02-1TB', name: '1TB', price: 1500000, stock: 60 }
@@ -272,7 +272,7 @@ const seedProducts = async () => {
                 productName: 'WD Blue SN570',
                 brand: 'WD',
                 productDescription: 'Ổ NVMe quốc dân.',
-                images: ['/images/wd-sn570.jpg'],
+                images: ['/images/WDBlueSN570.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 variants: [
                     { variantId: 'SSD03-1TB', name: '1TB', price: 1700000, stock: 50 }
@@ -283,7 +283,7 @@ const seedProducts = async () => {
                 productName: 'Crucial P3 Plus',
                 brand: 'Crucial',
                 productDescription: 'Gen4 tốc độ cao giá mềm.',
-                images: ['/images/crucial-p3-plus.jpg'],
+                images: ['/images/CrucialP3Plus.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -295,7 +295,7 @@ const seedProducts = async () => {
                 productName: 'Seagate FireCuda 530',
                 brand: 'Seagate',
                 productDescription: 'Hiệu năng cao dành cho game thủ.',
-                images: ['/images/firecuda-530.jpg'],
+                images: ['/images/SeagateFireCuda530.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 isBestSeller: true,
                 variants: [
@@ -307,7 +307,7 @@ const seedProducts = async () => {
                 productName: 'Samsung 990 Pro',
                 brand: 'Samsung',
                 productDescription: 'Phân khúc cao cấp siêu nhanh.',
-                images: ['/images/samsung-990pro.jpg'],
+                images: ['/images/Samsung990Pro.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 variants: [
                     { variantId: 'SSD06-1TB', name: '1TB', price: 3800000, stock: 25 }
@@ -318,7 +318,7 @@ const seedProducts = async () => {
                 productName: 'ADATA XPG SX8200 Pro',
                 brand: 'ADATA',
                 productDescription: 'Tối ưu hiệu năng cho gaming.',
-                images: ['/images/xpg-sx8200pro.jpg'],
+                images: ['/images/ADATAXPGSX8200Pro.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 variants: [
                     { variantId: 'SSD07-1TB', name: '1TB', price: 2100000, stock: 30 }
@@ -329,7 +329,7 @@ const seedProducts = async () => {
                 productName: 'Lexar NM610 Pro',
                 brand: 'Lexar',
                 productDescription: 'Ổ cao cấp giá cạnh tranh.',
-                images: ['/images/lexar-nm610.jpg'],
+                images: ['/images/LexarNM610Pro.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 isNewProduct: true,
                 variants: [
@@ -341,7 +341,7 @@ const seedProducts = async () => {
                 productName: 'Corsair MP600',
                 brand: 'Corsair',
                 productDescription: 'SSD hiệu suất cực cao.',
-                images: ['/images/corsair-mp600.jpg'],
+                images: ['/images/CorsairMP600.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 variants: [
                     { variantId: 'SSD09-1TB', name: '1TB', price: 3300000, stock: 18 }
@@ -352,7 +352,7 @@ const seedProducts = async () => {
                 productName: 'Patriot P310',
                 brand: 'Patriot',
                 productDescription: 'Giá rẻ, hiệu quả.',
-                images: ['/images/patriot-p310.jpg'],
+                images: ['/images/PatriotP310.png'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 variants: [
                     { variantId: 'SSD10-512', name: '512GB', price: 950000, stock: 45 }
@@ -363,7 +363,7 @@ const seedProducts = async () => {
                 productName: 'TeamGroup MP33 Pro',
                 brand: 'TeamGroup',
                 productDescription: 'Lựa chọn ngân sách tối ưu.',
-                images: ['/images/tg-mp33.jpg'],
+                images: ['/images/TeamGroupMP33Pro.png'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 variants: [
                     { variantId: 'SSD11-1TB', name: '1TB', price: 1600000, stock: 50 }
@@ -374,7 +374,7 @@ const seedProducts = async () => {
                 productName: 'Laptop Gaming Legion 5',
                 brand: 'Lenovo',
                 productDescription: 'Laptop gaming mạnh mẽ với CPU AMD Ryzen 7 và card đồ họa NVIDIA RTX 3060, màn hình 165Hz cho trải nghiệm chơi game đỉnh cao.',
-                images: ['/images/legion5.jpg'],
+                images: ['/images/LaptopGamingLegion5.jpg'],
                 category: { categoryId: 'laptop', categoryName: 'Laptop', level: 1 },
                 isNewProduct: true,
                 isBestSeller: true,
@@ -388,7 +388,7 @@ const seedProducts = async () => {
                 productName: 'Màn Hình Dell UltraSharp 4K',
                 brand: 'Dell',
                 productDescription: 'Màn hình 27 inch độ phân giải 4K, độ phủ màu 99% sRGB, lý tưởng cho công việc đồ họa và sáng tạo nội dung.',
-                images: ['/images/dell-ultrasharp.jpg'],
+                images: ['/images/DellUltraSharp4K.jpg'],
                 category: { categoryId: 'monitor', categoryName: 'Màn hình', level: 1 },
                 isBestSeller: true,
                 variants: [
@@ -401,7 +401,7 @@ const seedProducts = async () => {
                 productName: 'Ổ cứng SSD Samsung 980 Pro',
                 brand: 'Samsung',
                 productDescription: 'Ổ cứng SSD NVMe PCIe Gen 4 với tốc độ đọc ghi siêu nhanh, giúp tăng tốc độ khởi động và tải ứng dụng.',
-                images: ['/images/samsung-980pro.jpg'],
+                images: ['/images/SSDSamsung980Pro.jpg'],
                 category: { categoryId: 'ssd', categoryName: 'Ổ cứng', level: 1 },
                 isNewProduct: true,
                 variants: [

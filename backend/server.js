@@ -19,6 +19,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+//Tải ảnh tĩnh (phải để trước routes)
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+
 // DB
 const { connectDB } = require('./config/dbConnection');
 
