@@ -1,3 +1,4 @@
+// backend/routes/route.js
 const express = require('express');
 const router = express.Router();
 
@@ -9,25 +10,22 @@ const orderRoutes = require('./orderRoutes');
 const authRoutes = require('./authRoutes');
 const discountRoutes = require('./discountRoutes');
 const adminRoutes = require('./adminRoutes');
+
+// ===========================================
+// === LOGGING: ĐỂ XEM REQUEST ĐÃ VÀO ROUTE.JS CHƯA ===
+router.use((req, res, next) => {
+    console.log(`[ROUTE.JS]: Đã nhận request. Method: ${req.method}, URL: ${req.url}`);
+    next();
+});
+// ===========================================
+
 // Mount routes
 router.use('/auth', authRoutes);
-
-//API user routes
 router.use('/users', userRoutes);
-
-// API cart routes
 router.use('/cart', cartRoutes);
-
-// API product routes
 router.use('/products', productRoutes);
-
-// API order routes
 router.use('/orders', orderRoutes);
-
-// API discount routes
 router.use('/discounts', discountRoutes);
-
-// API dashboard routes
 router.use('/admin', adminRoutes);
 
 module.exports = router;

@@ -2,7 +2,8 @@
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-require('dotenv').config(); // Đảm bảo đã load .env
+const path = require('path'); // Thêm path
+require('dotenv').config();
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -13,12 +14,15 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'phone_world_avatars', // Tên thư mục trên Cloudinary
+        folder: 'phone_world_avatars',
         allowed_formats: ['jpg', 'png', 'jpeg'],
-        // public_id sẽ là tên file trên Cloudinary
-        public_id: (req, file) => `avatar-${req.body.userName || Date.now()}`,
+        public_id: (req, file) => {
+            const fileName = path.parse(file.originalname).name;
+            return `avatar-${fileName.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}`;
+        }
+
     },
 });
 
 const upload = multer({ storage: storage });
-module.exports = upload; 
+module.exports = upload;

@@ -1,245 +1,258 @@
-const User = require('../models/userModel'); // Đảm bảo đường dẫn này đúng
+// backend/controllers/authController.js
+const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
-// Bạn sẽ cần cloudinary và multer-storage-cloudinary
-// Hãy cài đặt chúng: npm install cloudinary multer-storage-cloudinary
-// Và cài đặt multer (nếu chưa có): npm install multer
 const cloudinary = require('cloudinary').v2;
-
+const generateToken = require('../utils/generateToken');
 async function generateUuid() {
     return uuidv4();
 }
-
-// =================================================================
-// CẬP NHẬT HÀM REGISTER
-// =================================================================
-exports.register = async (req, res) => {
-    try {
-        // Khi dùng FormData (để upload ảnh),
-        // các trường text sẽ nằm trong req.body, còn file nằm trong req.file
-        console.log("📥 Body nhận từ frontend:", req.body);
-        console.log("📁 File nhận từ frontend:", req.file); // Đây là file ảnh
-        
-        // Lấy dữ liệu từ req.body
-        const {
-            name,
-            userName,
-            email,
-            password,
-            phoneNumber, // <-- LẤY TRƯỜNG MỚI
-            age          // <-- LẤY TRƯỜNG MỚI
-        } = req.body;
-
-        // Chuẩn hóa và kiểm tra dữ liệu cơ bản
-        const trimUsername = userName?.trim();
-        const trimEmail = email?.trim().toLowerCase();
-
-        if (!name || !trimUsername || !password || !trimEmail) {
-            return res.status(400).json({ message: "Thiếu thông tin bắt buộc (tên, username, email, password)." });
-        }
-
-        // Kiểm tra email
-        const existingUser = await User.findOne({ email: trimEmail });
-        if (existingUser) {
-            return res.status(400).json({ message: 'Email đã được sử dụng!' });
-        }
-
-        // Mã hóa mật khẩu
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Xử lý avatar (nếu có file upload)
-        let avatarUrl = null; // Mặc định là null
-        if (req.file) {
-            // req.file.path chính là URL an toàn (secure_url)
-            // mà Cloudinary trả về (do đã cấu hình ở route)
-            avatarUrl = req.file.path; 
-            console.log("URL Avatar từ Cloudinary:", avatarUrl);
-        }
-
-        // Tạo user mới với đầy đủ thông tin
-        const newUser = new User({
-            userId: await generateUuid(),
-            name,
-            userName: trimUsername,
-            password: hashedPassword,
-            email: trimEmail,
-            phoneNumber: phoneNumber || null, // Lưu null nếu không nhập
-            age: age ? Number(age) : null, // Chuyển đổi age sang Number, lưu null nếu không nhập
-            avatar: avatarUrl, // Lưu URL ảnh (nếu có) hoặc null
-            provider: 'local' // Đánh dấu là tài khoản đăng ký thường
-        });
-
-        await newUser.save();
-
-        res.status(201).json({ message: 'Đăng ký thành công!' });
-    } catch (error) {
-        console.error("Lỗi đăng ký:", error.message);
-        // Nếu có lỗi, chúng ta nên thử xóa ảnh đã upload lên Cloudinary (nếu có)
-        if (req.file) {
-            try {
-                // req.file.filename là public_id (do đã cấu hình ở route)
-                await cloudinary.uploader.destroy(req.file.filename);
-                console.log("Đã xóa ảnh trên Cloudinary do đăng ký thất bại.");
-            } catch (cleanupError) {
-                console.error("Lỗi khi dọn dẹp ảnh Cloudinary:", cleanupError);
-            }
-        }
-        res.status(500).json({ error: error.message });
+const asyncHandler = require('express-async-handler'); // Nên dùng để bắt lỗi async
+// === COOKIE OPTIONS (KHÔNG SET SAMESITE KHI DEV) ===
+const getCookieOptions = () => {
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production', // Chỉ true khi deploy HTTPS
+        maxAge: 24 * 60 * 60 * 1000, // 1 ngày (ví dụ)
+        path: '/',
+    };
+    if (process.env.NODE_ENV === 'production') {
+        options.sameSite = 'Lax'; // Set Lax khi production
     }
+    return options;
 };
-// đang nhập
+// --- HÀM LOGIN (SET COOKIE) ---
 exports.login = async (req, res) => {
     try {
         const { identifier, password } = req.body;
-
-        if (!identifier || !password) {
-            return res.status(400).json({ message: 'Vui lòng cung cấp email/username và mật khẩu.' });
-        }
-
-        // Tìm user, nhưng phải lấy cả password (vì model có thể đang select: false)
-        const user = await User.findOne({
-            $or: [
-                { email: identifier.trim().toLowerCase() },
-                { userName: identifier.trim() }
-            ]
-        }).select('+password'); // Đảm bảo lấy password để so sánh
-
-        if (!user) {
-            return res.status(404).json({ message: 'Người dùng không tồn tại!' });
-        }
-
-        // Kiểm tra nếu user đăng ký bằng Google/Facebook mà chưa có mật khẩu
-        if (!user.password && user.provider !== 'local') {
-             return res.status(401).json({ message: 'Tài khoản này được đăng ký qua Google/Facebook. Vui lòng đăng nhập bằng Google/Facebook.' });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Sai mật khẩu!' });
+        // ... (code tìm user, check password giữ nguyên) ...
+        if (!identifier || !password) return res.status(400).json({ message: 'Vui lòng cung cấp email/username và mật khẩu.' });
+        const user = await User.findOne({ $or: [{ email: identifier.trim().toLowerCase() }, { userName: identifier.trim() }] }).select('+password');
+        if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại!' });
+        if (!user.password && user.provider !== 'local') return res.status(401).json({ message: 'Tài khoản này được đăng ký qua Google.' }); // Hoặc provider khác
+        if (user.provider === 'local') {
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) return res.status(401).json({ message: 'Sai mật khẩu!' });
         }
 
         const token = jwt.sign(
-            { id: user.userId, email: user.email, isAdmin: user.isAdmin },
+            { id: user.userId, email: user.email, isAdmin: user.isAdmin, role: user.role },
             process.env.JWT_SECRET,
-            { expiresIn: '1h' } // Bạn có thể tăng thời gian này, ví dụ '1d' hoặc '7d'
+            { expiresIn: process.env.JWT_EXPIRE || '1d' }
         );
+
+        // 👇 SET COOKIE THAY VÌ TRẢ TOKEN
+        res.cookie('token', token, getCookieOptions());
 
         return res.status(200).json({
             message: 'Đăng nhập thành công!',
-            token,
-            user: { // Trả về thông tin user an toàn (không có password)
-                id: user.userId,
+            user: {
+                id: user.userId, // Sửa thành id cho khớp payload
+                token: token,
                 name: user.name,
                 userName: user.userName,
                 email: user.email,
+                avatar: user.avatar,
                 isAdmin: user.isAdmin,
                 role: user.role,
-                avatar: user.avatar
+                provider: user.provider
+
             }
         });
 
     } catch (error) {
+        console.error("Login Error (Backend):", error.message);
         return res.status(500).json({ error: error.message });
     }
 };
 
-// Đăng xuất (Giữ nguyên)
-exports.logout = async (req, res) => {
-    try {
-        // (Nếu dùng JWT qua cookie, bạn sẽ clearCookie ở đây)
-        // res.clearCookie("token"); 
-        
-        // Vì đang dùng localStorage (theo AuthController.js frontend), 
-        // backend không cần làm gì nhiều, chỉ cần gửi tín hiệu thành công
-        return res.status(200).json({ message: "Đăng xuất thành công" });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+
+//  BỌC HÀM BẰNG asyncHandler 
+exports.register = asyncHandler(async (req, res) => {
+    // Bỏ try...catch thủ công đi, asyncHandler sẽ lo
+    console.log("📥 Body nhận từ frontend:", req.body);
+    console.log("📁 File nhận từ frontend:", req.file);
+
+    const { name, userName, email, password, phoneNumber, dateOfBirth } = req.body;
+    const trimUsername = userName?.trim();
+    const trimEmail = email?.trim().toLowerCase();
+
+    if (!name || !trimUsername || !password || !trimEmail) {
+        res.status(400);
+        // Throw lỗi để asyncHandler bắt
+        throw new Error("Thiếu thông tin bắt buộc (tên, username, email, password).");
     }
-};
 
-// Google Login (Giữ nguyên - đã cập nhật access token)
-exports.googleLogin = async (req, res) => {
+    // Check trùng cả email và username
+    const existingUser = await User.findOne({ email: trimEmail });
+    if (existingUser) {
+        res.status(400);
+        throw new Error('Email đã được sử dụng!');
+    }
+    const existingUsername = await User.findOne({ userName: trimUsername });
+    if (existingUsername) {
+        res.status(400);
+        throw new Error('Tên đăng nhập đã được sử dụng!');
+    }
+
+    let avatarUrl = null;
+    if (req.file) {
+        avatarUrl = req.file.path; // Lấy URL từ Cloudinary
+        console.log("URL Avatar từ Cloudinary:", avatarUrl);
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+        userId: await generateUuid(),
+        name, userName: trimUsername, password: hashedPassword, email: trimEmail,
+        phoneNumber: phoneNumber || null, dateOfBirth: dateOfBirth || null,
+        avatar: avatarUrl, provider: 'local'
+        // role và isAdmin sẽ lấy default từ Model
+    });
+
+    // Nếu .save() lỗi, asyncHandler sẽ tự động bắt và gửi lỗi 500 chuẩn
+    const savedUser = await newUser.save();
+
+    console.log("✅ Đăng ký thành công cho user:", savedUser.email);
+    res.status(201).json({ message: 'Đăng ký thành công!' });
+}); // <-- Kết thúc asyncHandler
+
+// ... (code googleLogin, logout) ...
+
+exports.googleLogin = asyncHandler(async (req, res) => {
+    const { accessToken } = req.body;
+    if (!accessToken) {
+        res.status(400);
+        throw new Error('Thiếu accessToken.');
+    }
+
     try {
-        const { accessToken } = req.body;
-        if (!accessToken) return res.status(400).json({ message: 'Thiếu accessToken.' });
-
+        // Lấy thông tin user từ Google
         const googleResponse = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
+            headers: { 'Authorization': `Bearer ${accessToken}` }
         });
-
         const payload = googleResponse.data;
+
         const googleId = payload.sub;
         const email = payload.email;
         const name = payload.name || payload.given_name || '';
-        const avatar = payload.picture || null; // Lấy avatar từ Google
+        const avatar = payload.picture || null;
 
-        if (!email) return res.status(400).json({ message: 'Không lấy được email từ Google.' });
+        if (!email) {
+            res.status(400);
+            throw new Error('Không lấy được email từ Google.');
+        }
 
+        // Tìm user trong DB
         let user = await User.findOne({ email });
-        
+        let isNewUser = false;
+
+        // Nếu user chưa tồn tại -> Tạo user mới
         if (!user) {
-            // Nếu user không tồn tại, tạo mới
+            isNewUser = true;
+            // Tạo username mặc định (cần đảm bảo không trùng, có thể thêm số ngẫu nhiên)
+            let baseUsername = email.split('@')[0] || `user_${Date.now()}`;
+            let finalUsername = baseUsername;
+            let counter = 1;
+            while (await User.findOne({ userName: finalUsername })) {
+                finalUsername = `${baseUsername}${counter}`;
+                counter++;
+            }
+
             user = new User({
-                userId: await generateUuid(),
-                // Tạo userName từ email (bỏ phần @...) hoặc dùng email
-                userName: email.split('@')[0] || email,
-                // Mật khẩu không cần thiết cho social login, nhưng nên hash một giá trị ngẫu nhiên
-                // Hoặc để null và logic login sẽ kiểm tra 'provider'
-                password: await bcrypt.hash(await generateUuid(), 10), 
+                userId: await generateUuid(), // Đảm bảo hàm generateUuid tồn tại và trả về UUID string
+                userName: finalUsername,
+                password: await bcrypt.hash(await generateUuid(), 10), // Tạo password ngẫu nhiên
                 email,
                 name,
-                avatar: avatar, // Lưu avatar từ Google
+                avatar,
                 provider: 'google',
                 googleId,
-                // Không có sđt/tuổi khi login bằng Google
+                role: 'user', // Gán role mặc định
+                isAdmin: false, // Mặc định không phải admin
                 phoneNumber: null,
-                age: null 
+                dateOfBirth: null
             });
             await user.save();
+            console.log("Google Login: Đã tạo user mới:", user.email);
         } else {
-            // Nếu user tồn tại (đăng ký 'local' trước đó)
+            // Nếu user đã tồn tại, cập nhật thông tin nếu cần (ví dụ: googleId, avatar)
             const update = {};
-            if (!user.googleId) update.googleId = googleId;
+            if (!user.googleId && googleId) update.googleId = googleId;
             if (user.provider !== 'google') update.provider = 'google';
-            if (!user.avatar) update.avatar = avatar; // Cập nhật avatar nếu chưa có
-            if (Object.keys(update).length) {
-                user.set(update);
+            if (!user.avatar && avatar) update.avatar = avatar; // Chỉ cập nhật nếu avatar chưa có
+
+            if (Object.keys(update).length > 0) {
+                Object.assign(user, update); // Gán các thay đổi
                 await user.save();
+                console.log("Google Login: Đã cập nhật thông tin user:", update);
             }
         }
 
-        // Tạo token JWT và trả về
-        const token = jwt.sign(
-            { id: user.userId, email: user.email, isAdmin: user.isAdmin },
-            process.env.JWT_SECRET,
-            { expiresIn: '1h' }
-        );
+        // --- Đảm bảo user đã có giá trị ở đây ---
+        if (!user) {
+            // Trường hợp cực hiếm sau khi tạo/tìm
+            res.status(500);
+            throw new Error('Không thể tìm hoặc tạo người dùng.');
+        }
 
-        return res.status(200).json({
-            message: 'Đăng nhập Google thành công!',
-            token,
+        // Tạo token cho user (mới hoặc cũ)
+        // QUAN TRỌNG: Truyền đúng ID (userId hoặc _id) vào generateToken
+        const token = generateToken(user.userId || user._id, user.email, user.isAdmin, user.role);
+
+        // Set cookie
+        res.cookie('token', token, getCookieOptions()); // Đảm bảo hàm getCookieOptions tồn tại
+
+        // Trả về response (bao gồm cả token)
+        const statusCode = isNewUser ? 201 : 200;
+        const message = isNewUser ? 'Tạo tài khoản Google và đăng nhập thành công!' : 'Đăng nhập Google thành công!';
+
+        res.status(statusCode).json({
+            message: message,
             user: {
-                id: user.userId,
+                id: user.userId || user._id, // Trả về ID đúng
                 name: user.name,
                 userName: user.userName,
                 email: user.email,
+                avatar: user.avatar,
                 isAdmin: user.isAdmin,
                 role: user.role,
-                avatar: user.avatar
-            }
+                provider: user.provider
+            },
+            token: token // TRẢ TOKEN VỀ CHO FRONTEND
         });
 
     } catch (error) {
+        // Xử lý lỗi từ Google API (ví dụ: token hết hạn)
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-            return res.status(401).json({ message: 'Google access token không hợp lệ hoặc đã hết hạn.' });
+            res.status(401);
+            throw new Error('Google access token không hợp lệ hoặc đã hết hạn.');
         }
+        // Ném lỗi để asyncHandler hoặc error handler bắt
         console.error("Lỗi Google Login (Backend):", error.message);
-        return res.status(500).json({ error: error.message });
+        throw error; // Ném lỗi để middleware error handler xử lý
+    }
+});
+// --- HÀM LOGOUT (CLEAR COOKIE) ---
+exports.logout = async (req, res) => {
+    try {
+        const clearOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            path: '/', // <-- THÊM DÒNG NÀY
+        };
+        if (process.env.NODE_ENV === 'production') {
+            clearOptions.sameSite = 'Lax';
+        }
+
+        res.clearCookie('token', clearOptions);
+
+        return res.status(200).json({ message: "Đăng xuất thành công" });
+    } catch (error) {
+        console.error("Logout Error (Backend):", error.message);
+        res.status(500).json({ error: error.message });
     }
 };
-
-// (Bạn có thể thêm hàm facebookLogin ở đây nếu cần)

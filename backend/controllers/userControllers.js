@@ -1,25 +1,24 @@
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-
+const asyncHandler = require('express-async-handler'); // Nên dùng để bắt lỗi async
 //Lấy thông tin cá nhân của người dùng đang đăng nhập
-exports.getUserProfile = async (req, res) => {
-    try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
-        }
+exports.getUserProfile = asyncHandler(async (req, res) => {
+    // Nếu request đến được đây, nghĩa là protect đã chạy thành công
+    // và đã gắn user đầy đủ từ DB vào req.user.
+    const user = req.user;
 
-        const user = await User.findOne({ userId }).select('-password');
-        if (!user) {
-            return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
-        }
-
-        res.status(200).json({ success: true, user });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    if (!user) {
+        // Trường hợp này thực tế không nên xảy ra nếu protect chạy đúng và có user
+        // Nhưng để phòng thủ thì vẫn check.
+        console.error("getUserProfile Error: req.user is null/undefined after protect middleware.");
+        res.status(500); // Lỗi logic server
+        throw new Error('Không thể truy xuất thông tin người dùng sau xác thực.');
     }
-};
+
+    // user đã là object user từ DB (không chứa password)
+    res.status(200).json({ success: true, user });
+});
 
 // Cập nhật thông tin cá nhân
 exports.updateUserProfile = async (req, res) => {

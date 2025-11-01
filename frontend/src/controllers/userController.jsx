@@ -1,8 +1,8 @@
-import axiosInstance from "../utils/axiosInstance";
+import api from "../services/api";
 
 const API = "/users";
 export const fetchUsers = async (page = 1, limit = 5, search = "") => {
-    const response = await axiosInstance.get("/users", {
+    const response = await api.get("/users", {
         params: { page, limit, search }
     });
     return response.data;
@@ -10,6 +10,6 @@ export const fetchUsers = async (page = 1, limit = 5, search = "") => {
 
 
 export const fetchUserDetail = async (userId) => {
-    const res = await axiosInstance.get(`${API}/${userId}`);
+    const res = await api.get(`${API}/${userId}`);
     return res.data;
 };

@@ -15,9 +15,5 @@ router.post('/login', login);
 // /api/auth/googleLogin
 router.post('/googleLogin', googleLogin);
 
-// === CÁC ROUTE CẦN XÁC THỰC ===
-// 3. Sử dụng middleware 'protect' đúng cách (nó là một hàm)
-// Route logout yêu cầu người dùng phải đăng nhập trước
-router.post("/logout", protect, logout);
-
+router.post("/logout", logout);
 module.exports = router;

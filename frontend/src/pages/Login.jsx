@@ -20,7 +20,13 @@ const Login = () => {
     const handleNormalLogin = async (e) => {
         e.preventDefault();
         try {
+            // 1. Gọi API (Backend set cookie)
             const data = await AuthController.login(identifier, password);
+
+            // 👇 BƯỚC 1: BÁO CHO CONTEXT BIẾT (THIẾU DÒNG NÀY)
+            login(data.user);
+
+            // 2. Thông báo và điều hướng
             toast.success("Đăng nhập thành công!");
             setTimeout(() => {
                 if (data.user.role === "admin") {
@@ -37,18 +43,24 @@ const Login = () => {
     const handleGoogleLoginSuccess = async (tokenResponse) => {
         try {
             const accessToken = tokenResponse.access_token;
+            // 1. Gọi API (Backend set cookie)
             const res = await AuthController.googleLogin(accessToken);
-            if (res.token) {
-                login(res.token, res.user);
-                toast.success("Đăng nhập Google thành công!");
-                setTimeout(() => {
-                    if (res.user.role === "admin") {
-                        navigate("/admin");
-                    } else {
-                        navigate("/");
-                    }
-                }, 1500);
-            }
+            console.log(res);
+
+            // 👇 BƯỚC 2: SỬA LẠI CÁCH GỌI (CHỈ CẦN user)
+            // if (res.token) { // Bỏ check res.token, vì backend đã set cookie
+            login(res.user); // Sửa từ login(res.token, res.user)
+
+            toast.success("Đăng nhập Google thành công!");
+            console.log(res.user.role);
+            setTimeout(() => {
+                if (res.user.role === "admin") {
+                    navigate("/admin");
+                } else {
+                    navigate("/");
+                }
+            }, 1500);
+            // }
         } catch (error) {
             console.error("Google login error:", error);
             toast.error("Đăng nhập Google thất bại!");
@@ -67,18 +79,22 @@ const Login = () => {
 
     const handleFacebookLogin = async () => {
         try {
+            // 1. Gọi API (Backend set cookie)
             const fbRes = await AuthController.facebookLogin();
-            if (fbRes.token) {
-                login(fbRes.token, fbRes.user);
-                toast.success("Đăng nhập Facebook thành công!");
-                setTimeout(() => {
-                    if (fbRes.user.role === "admin") {
-                        navigate("/admin");
-                    } else {
-                        navigate("/");
-                    }
-                }, 1500);
-            }
+
+            // 👇 BƯỚC 3: SỬA LẠI CÁCH GỌI (CHỈ CẦN user)
+            // if (fbRes.token) {
+            login(fbRes.user); // Sửa từ login(fbRes.token, fbRes.user)
+
+            toast.success("Đăng nhập Facebook thành công!");
+            setTimeout(() => {
+                if (fbRes.user.role === "admin") {
+                    navigate("/admin");
+                } else {
+                    navigate("/");
+                }
+            }, 1500);
+            // }
         } catch (error) {
             console.error("Facebook login error:", error);
             toast.error("Đăng nhập Facebook thất bại!");

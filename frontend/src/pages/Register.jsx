@@ -75,7 +75,7 @@ const Register = () => {
             }, 2000);
 
         } catch (error) {
-            toast.error(error.message || "Đăng ký thất bại. Vui lòng thử lại.");
+            toast.error(error.message);
         }
     };
 

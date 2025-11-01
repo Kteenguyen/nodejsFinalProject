@@ -4,7 +4,8 @@ import {
     ShoppingCart,
     Settings,
     Menu,
-    ChevronLeft
+    ChevronLeft,
+    LogOut // <<< Vẫn dùng icon LogOut
 } from "lucide-react";
 
 import { useNavigate, useLocation } from "react-router-dom";
@@ -33,6 +34,12 @@ const SideBar = ({ onToggle }) => {
     useEffect(() => {
         setActive(location.pathname);
     }, [location.pathname]);
+
+    const handleLogout = () => {
+        // <<< Thêm logic đăng xuất của bạn ở đây
+        console.log("Đã đăng xuất!");
+        // Ví dụ: navigate('/login');
+    };
 
     return (
         <div className={`min-h-screen bg-white shadow-xl border-r flex flex-col
@@ -91,6 +98,24 @@ const SideBar = ({ onToggle }) => {
                     );
                 })}
             </nav>
+
+            {/* Khối Logout */}
+            <div className={`w-full transition-all duration-300 mt-auto
+                 ${collapsed ? "flex justify-center" : "px-4"}
+                 py-4`}>
+
+                <button
+                    onClick={handleLogout}
+                    className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
+                        text-gray-700 hover:text-red-600 hover:bg-red-50
+                        ${collapsed ? "justify-center" : ""}
+                    `}
+                >
+                    {/* <<< CHỈNH SỬA TẠI ĐÂY: Thêm class 'rotate-180' >>> */}
+                    <LogOut size={22} className={`${collapsed ? "" : "min-w-[22px]"} rotate-180`} />
+                    {!collapsed && <span>Đăng xuất</span>}
+                </button>
+            </div>
 
         </div>
     );
