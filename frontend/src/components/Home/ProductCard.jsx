@@ -1,17 +1,24 @@
 //src/components/ProductCard.jsx
 
 const ProductCard = ({ product }) => {
+    const imageUrl = product.images?.[0] || '/images/placeholder.png';
+    const price = product.variants?.[0]?.price || 0;
+
     return (
         <div className="border rounded-lg p-4 shadow hover:shadow-lg">
             <img
-                src={product.image ? product.image : 'public/images/placeholder.png'}
-                alt={product.name}
+                src={`http://localhost:3001${product.images[0]}`}
+                alt={product.productName}
                 className="w-full h-40 object-cover rounded"
             />
 
-            <h3 className="text-lg font-semibold mt-2">{product.name}</h3>
-            <p className="text-gray-600">{product.description}</p>
-            <p className="text-red-500 font-bold">{product.price} ₫</p>
+            <h3 className="text-lg font-semibold mt-2">
+                {product.productName}
+            </h3>
+
+            <p className="text-red-500 font-bold">
+                {price.toLocaleString()} ₫
+            </p>
         </div>
     );
 };

@@ -19,7 +19,7 @@ app.use(cors({
 // Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+
 // DB
 const { connectDB } = require('./config/dbConnection');
 
