@@ -2,6 +2,7 @@ const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const asyncHandler = require('express-async-handler'); // Nên dùng để bắt lỗi async
+const mongoose = require('mongoose');
 //Lấy thông tin cá nhân của người dùng đang đăng nhập
 exports.getUserProfile = asyncHandler(async (req, res) => {
     // Nếu request đến được đây, nghĩa là protect đã chạy thành công
@@ -178,87 +179,65 @@ exports.resetPassword = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.addShippingAddress = asyncHandler(async (req, res) => {
 
-// Thêm địa chỉ giao hàng (có thể nhiều)
-exports.addShippingAddress = async (req, res) => {
-    try {
-        const userId = req.user && req.user.id;
-        if (!userId) {
-            return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
+    // (ĐÚNG) Dùng user từ 'protect' middleware
+    const user = req.user;
+
+    if (user) {
+        const { recipientName, phoneNumber, street, ward, district, city, isDefault } = req.body;
+
+        if (!recipientName || !phoneNumber || !street || !ward || !district || !city) {
+            res.status(400);
+            throw new Error("Thiếu thông tin bắt buộc: recipientName, phoneNumber, street, ward, district, city.");
         }
 
-        const {
-            label,
-            recipientName,
-            phoneNumber,
-            street,
-            ward,
-            district,
-            city,
-            country,
-            postalCode,
-            isDefault
-        } = req.body;
-
-        if (!recipientName || !phoneNumber || !street || !city) {
-            return res.status(400).json({ message: 'Thiếu thông tin bắt buộc: recipientName, phoneNumber, street, city.' });
+        // 👇👇👇 FIX LỖI "forEach OF UNDEFINED" 👇👇👇
+        // Nếu user mới, 'shippingAddresses' có thể chưa phải là 1 mảng.
+        // Phải khởi tạo nó nếu nó chưa tồn tại!
+        if (!user.shippingAddresses) {
+            user.shippingAddresses = [];
         }
+        // 👆👆👆 HẾT FIX 👆👆👆
 
-        const user = await User.findOne({ userId });
-        if (!user) {
-            return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
-        }
-
-        // Luôn đảm bảo là một danh sách, không ghi đè
-        user.shippingAddresses = Array.isArray(user.shippingAddresses) ? user.shippingAddresses : [];
-
-        // Chặn trùng địa chỉ (so sánh các trường chính)
-        const normalized = value => (value || '').trim().toLowerCase();
-        const isDup = user.shippingAddresses.some(a =>
-            normalized(a.recipientName) === normalized(recipientName) &&
-            normalized(a.phoneNumber) === normalized(phoneNumber) &&
-            normalized(a.street) === normalized(street) &&
-            normalized(a.ward) === normalized(ward) &&
-            normalized(a.district) === normalized(district) &&
-            normalized(a.city) === normalized(city) &&
-            normalized(a.country || 'Vietnam') === normalized(country || 'Vietnam') &&
-            normalized(a.postalCode) === normalized(postalCode)
-        );
-        if (isDup) {
-            return res.status(409).json({ message: 'Địa chỉ đã tồn tại trong danh sách.' });
-        }
-
-        const addressId = await generateUuid();
         const newAddress = {
-            addressId,
-            label,
+            _id: new mongoose.Types.ObjectId(),
             recipientName,
             phoneNumber,
+            addressDetail: `${street}, ${ward}, ${district}, ${city}`,
             street,
             ward,
             district,
             city,
-            country,
-            postalCode,
-            isDefault: Boolean(isDefault)
+            isDefault: isDefault === true,
         };
 
-        // Nếu đặt mặc định, gỡ mặc định cũ (không xóa địa chỉ cũ)
+        // (Giờ code này đã an toàn vì user.shippingAddresses 100% là 1 mảng)
         if (newAddress.isDefault) {
-            user.shippingAddresses = (user.shippingAddresses || []).map(a => ({ ...a.toObject?.() || a, isDefault: false }));
+            user.shippingAddresses.forEach(addr => {
+                if (addr) addr.isDefault = false;
+            });
         }
 
-        // Thêm mới vào cuối danh sách, không ghi đè danh sách hiện có
-        user.shippingAddresses = [...user.shippingAddresses, newAddress];
-        await user.save();
+        // Nếu đây là địa chỉ đầu tiên, ép nó làm mặc định
+        if (user.shippingAddresses.length === 0) {
+            newAddress.isDefault = true;
+        }
 
-        const { password, _id, __v, ...safeUser } = user.toObject();
-        return res.status(201).json({ message: 'Thêm địa chỉ giao hàng thành công!', address: newAddress, user: safeUser });
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
+        user.shippingAddresses.push(newAddress);
+        await user.save(); // Lưu lại user (với địa chỉ mới)
+
+        res.status(201).json({
+            message: "Địa chỉ giao hàng đã được thêm thành công!",
+            address: newAddress,
+            shippingAddresses: user.shippingAddresses
+        });
+
+    } else {
+        res.status(404);
+        throw new Error("Không tìm thấy người dùng.");
     }
-};
-
+});
 //Cập nhật một địa chỉ giao hàng
 exports.updateShippingAddress = async (req, res) => {
     try {

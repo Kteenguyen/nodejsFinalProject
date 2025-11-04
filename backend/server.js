@@ -24,7 +24,7 @@ app.use(cors({
 // 2. COOKIE PARSER (ĐỂ ĐỌC req.cookies)
 //    *** BẠN ĐANG THIẾU DÒNG NÀY ***
 app.use(cookieParser());
-
+app.use(express.static(path.join(__dirname, 'public')));
 // 3. BODY PARSERS (Để đọc req.body)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

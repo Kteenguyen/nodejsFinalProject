@@ -1,13 +1,13 @@
 // frontend/src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { AuthController } from "../controllers/AuthController"; // Import AuthController
+import { AuthController } from "../controllers/AuthController";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [isLoadingAuth, setIsLoadingAuth] = useState(true); // State loading
+    const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
     // ✅ Hàm gọi API (/api/users/profile) để kiểm tra cookie
     const checkAuthStatus = useCallback(async () => {
@@ -16,18 +16,19 @@ export const AuthProvider = ({ children }) => {
             const result = await AuthController.checkAuth();
 
             if (result.isAuthenticated && result.user) {
-                // ... (logic thành công) ...
+                setUser(result.user);
+                setIsAuthenticated(true);
                 console.log("AuthContext: User authenticated from cookie:", result.user.email);
             } else {
-                // ... (logic thất bại) ...
-                console.log("AuthContext: User not authenticated."); // ✅ Chỉ log thông báo này, không phải lỗi đỏ
+                setUser(null);
+                setIsAuthenticated(false);
+                console.log("AuthContext: User not authenticated.");
             }
         } catch (error) {
-            // ✅ Chỉ log lỗi ra console nếu nó KHÔNG phải 401
+            // (Đã sửa ở bước trước: Chỉ log lỗi nếu không phải 401)
             if (error.response && error.response.status !== 401) {
                 console.error("AuthContext: Error checking auth (not 401):", error);
             } else {
-                // Nếu là lỗi 401, không cần log lỗi đỏ nữa
                 console.log("AuthContext: No valid authentication token found.");
             }
             setUser(null);
@@ -42,24 +43,25 @@ export const AuthProvider = ({ children }) => {
         checkAuthStatus();
     }, [checkAuthStatus]);
 
-    // 👉 Hàm login (chỉ cần nhận userInfo)
-    // (Vì backend đã set cookie khi gọi API login/googleLogin)
+    // 👉 Hàm login (ĐÃ SỬA CONSOLE.LOG)
     const login = (userInfo) => {
         setUser(userInfo);
         setIsAuthenticated(true);
-        console.log("AuthContext: Login successful for user:", userInfo.email);
+
+        // 👇👇👇 SỬA LẠI DÒNG NÀY ĐỂ DEBUG 👇👇👇
+        // (Log cả object thay vì chỉ .email, vì 'register' có thể không trả về email)
+        console.log("AuthContext: Login successful. Received userInfo object:", userInfo);
     };
 
     // 👉 Hàm logout (gọi API để backend xóa cookie)
     const logout = async () => {
         try {
-            await AuthController.logout(); // Gọi API /logout
+            await AuthController.logout();
             setUser(null);
             setIsAuthenticated(false);
             console.log("AuthContext: User logged out.");
         } catch (error) {
             console.error("AuthContext: Error during logout:", error);
-            // Dù lỗi API, frontend vẫn clear state
             setUser(null);
             setIsAuthenticated(false);
         }
@@ -72,7 +74,7 @@ export const AuthProvider = ({ children }) => {
         isLoadingAuth,
         login,
         logout,
-        checkAuthStatus // Dùng để refresh
+        checkAuthStatus
     };
 
     // Hiển thị loading trong khi kiểm tra auth lần đầu

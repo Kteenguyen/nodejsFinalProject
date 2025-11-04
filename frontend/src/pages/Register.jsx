@@ -2,13 +2,13 @@ import { AuthController } from "../controllers/AuthController";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Link } from "react-router-dom"; // Import Link
-import { FcGoogle } from "react-icons/fc";
-import { FaFacebook } from "react-icons/fa";
+import { useAuth } from '../context/AuthContext';
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Register = () => {
+    const { login } = useAuth();
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
@@ -68,10 +68,13 @@ const Register = () => {
             }
 
             const data = await AuthController.register(registerFormData);
-
-            toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
+            // 👇 THÊM DÒNG NÀY ĐỂ DEBUG 👇
+            console.log("Response data from backend after register:", data);
+            // 👆 HẾT DEBUG 👆
+            await login(data); // Tự động đăng nhập sau khi đăng ký thành công
+            toast.success("Đăng ký thành công! Hãy thêm địa chỉ của bạn.");
             setTimeout(() => {
-                navigate("/login");
+                navigate("/register-address");
             }, 2000);
 
         } catch (error) {

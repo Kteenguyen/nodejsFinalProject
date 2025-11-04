@@ -1,3 +1,4 @@
+// frontend/src/components/SideBar.jsx
 import {
     LayoutDashboard,
     Users,
@@ -5,11 +6,12 @@ import {
     Settings,
     Menu,
     ChevronLeft,
-    LogOut // <<< Vẫn dùng icon LogOut
+    LogOut
 } from "lucide-react";
 
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext"; // 👈 BƯỚC 1: IMPORT useAuth
 
 const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
@@ -21,6 +23,7 @@ const menuItems = [
 const SideBar = ({ onToggle }) => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { logout } = useAuth(); // 👈 BƯỚC 2: LẤY HÀM LOGOUT TỪ CONTEXT
 
     const [active, setActive] = useState(location.pathname);
     const [collapsed, setCollapsed] = useState(false);
@@ -35,89 +38,78 @@ const SideBar = ({ onToggle }) => {
         setActive(location.pathname);
     }, [location.pathname]);
 
-    const handleLogout = () => {
-        // <<< Thêm logic đăng xuất của bạn ở đây
-        console.log("Đã đăng xuất!");
-        // Ví dụ: navigate('/login');
+    // 👇 BƯỚC 3: SỬA LẠI HÀM LOGOUT
+    const handleLogout = async () => {
+        try {
+            await logout(); // Gọi hàm logout từ AuthContext (nó sẽ gọi API và clear state)
+            console.log("SideBar: Đã gọi logout thành công.");
+            navigate('/login'); // Chuyển hướng về trang đăng nhập
+        } catch (error) {
+            console.error("SideBar: Lỗi khi đăng xuất:", error);
+            // Dù lỗi, vẫn ép chuyển hướng
+            navigate('/login');
+        }
     };
 
     return (
-        <div className={`min-h-screen bg-white shadow-xl border-r flex flex-col
-            transition-all duration-500 ease-in-out mt-6 rounded-r-2xl
-            ${collapsed ? "w-20" : "w-64"}`}>
-
-            {/* Top Section */}
-            <div className="flex flex-col items-center w-full py-4 space-y-3">
-
-                {/* Avatar */}
-                <img
-                    src="/img/logo.png"
-                    alt="Admin"
-                    className="w-14 h-14 object-cover rounded-lg border border-gray-300 shadow"
-                />
-
-                {/* Admin Info */}
+        <aside className={`flex flex-col h-screen bg-white shadow-lg
+             transition-all duration-300 ease-in-out
+             ${collapsed ? "w-20" : "w-64"}`}
+        >
+            {/* ... (Phần Logo và Nút Toggle giữ nguyên như file của fen) ... */}
+            
+            {/* Nút Toggle (ví dụ) */}
+            <div className={`flex items-center border-b
+                ${collapsed ? "justify-center" : "justify-between"}
+                 px-4 py-4 h-[65px]`}>
                 {!collapsed && (
-                    <div className="text-center">
-                        <p className="font-semibold text-gray-800 text-sm">Nguyễn Khoa Tài</p>
-                        <p className="text-xs text-gray-500 -mt-1">Administrator</p>
-                    </div>
+                    <span className="font-semibold text-lg text-blue-600">Admin</span>
                 )}
-
-                {/* Toggle Button */}
-                <button
-                    onClick={toggleSidebar}
-                    className="p-2 hover:bg-gray-200 rounded-lg transition"
-                >
-                    {collapsed ? <Menu size={22} /> : <ChevronLeft size={22} />}
+                <button onClick={toggleSidebar} className="text-gray-600 hover:text-blue-600">
+                    {collapsed ? <Menu size={24} /> : <ChevronLeft size={24} />}
                 </button>
-
             </div>
 
             {/* Menu */}
-            <nav className={`flex flex-col gap-2 w-full transition-all duration-300
-                ${collapsed ? "items-center" : "items-start px-4"}`}>
-
+            <nav className="flex-1 px-4 py-4 space-y-2">
                 {menuItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = active === item.path;
-
+                    const isActive = active.startsWith(item.path);
                     return (
                         <button
-                            key={item.path}
-                            onClick={() => navigate(item.path)}
-                            className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
+                            key={item.label}
+                            onClick={() => {
+                                setActive(item.path);
+                                navigate(item.path);
+                            }}
+                            className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
                                 ${isActive ? "bg-blue-100 text-blue-600"
                                     : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
                                 ${collapsed ? "justify-center" : ""}
                             `}
                         >
-                            <Icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
+                            <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
                             {!collapsed && <span>{item.label}</span>}
                         </button>
                     );
                 })}
             </nav>
 
-            {/* Khối Logout */}
+            {/* Khối Logout (Nút bấm đã gọi hàm handleLogout đã sửa) */}
             <div className={`w-full transition-all duration-300 mt-auto
                  ${collapsed ? "flex justify-center" : "px-4"}
                  py-4`}>
-
                 <button
                     onClick={handleLogout}
                     className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
                         text-gray-700 hover:text-red-600 hover:bg-red-50
-                        ${collapsed ? "justify-center" : ""}
+                        ${collapsed ? "justify-center" : "px-4"}
                     `}
                 >
-                    {/* <<< CHỈNH SỬA TẠI ĐÂY: Thêm class 'rotate-180' >>> */}
                     <LogOut size={22} className={`${collapsed ? "" : "min-w-[22px]"} rotate-180`} />
                     {!collapsed && <span>Đăng xuất</span>}
                 </button>
             </div>
-
-        </div>
+        </aside>
     );
 };
 

@@ -44,3 +44,23 @@ Password: 123456
 
 lỗi form đăng ký chưa đưa lên được (database đã kết nối,
  2 bên đã kết nối được với nhau)
+
+ Khó khăn: Đắn đo việc lựa chọn api hợp lý
+ - chức năng tự động điền địa chỉ 
+ -> sử dụng API của các đơn vị vận chuyển (GHN, GHTK, Viettel Post...) (Miễn phí):
+
+    + Ưu điểm:
+    CỰC KỲ chính xác cho địa chỉ hành chính Việt Nam (Tỉnh/Thành, Quận/Huyện, Phường/Xã),
+    vì họ dùng để đi giao hàng.
+    Miễn phí (thường chỉ cần đăng ký tài khoản/API key).
+
+    + Nhược điểm:
+    Đây không phải là API "gợi ý" (autocomplete) khi fen gõ 1 chuỗi.
+    Nó là API "chọn" (dropdown). Fen phải làm 3 ô: Chọn Tỉnh -> API trả về Quận -> Chọn Quận -> API trả về Phường.
+
+
+Tài khoản test
+- Họ tên: Nguyễn Khoa Tee
+- User: ktee2k333
+- Email: keytynguyen2003@gmail.com
+- Password: 123456

@@ -68,10 +68,7 @@ exports.login = async (req, res) => {
     }
 };
 
-
-//  BỌC HÀM BẰNG asyncHandler 
 exports.register = asyncHandler(async (req, res) => {
-    // Bỏ try...catch thủ công đi, asyncHandler sẽ lo
     console.log("📥 Body nhận từ frontend:", req.body);
     console.log("📁 File nhận từ frontend:", req.file);
 
@@ -81,11 +78,10 @@ exports.register = asyncHandler(async (req, res) => {
 
     if (!name || !trimUsername || !password || !trimEmail) {
         res.status(400);
-        // Throw lỗi để asyncHandler bắt
         throw new Error("Thiếu thông tin bắt buộc (tên, username, email, password).");
     }
 
-    // Check trùng cả email và username
+    // Check trùng
     const existingUser = await User.findOne({ email: trimEmail });
     if (existingUser) {
         res.status(400);
@@ -99,26 +95,60 @@ exports.register = asyncHandler(async (req, res) => {
 
     let avatarUrl = null;
     if (req.file) {
-        avatarUrl = req.file.path; // Lấy URL từ Cloudinary
-        console.log("URL Avatar từ Cloudinary:", avatarUrl);
+        avatarUrl = req.file.path;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const newUserId = await generateUuid(); // Tạo UUID
 
     const newUser = new User({
-        userId: await generateUuid(),
-        name, userName: trimUsername, password: hashedPassword, email: trimEmail,
-        phoneNumber: phoneNumber || null, dateOfBirth: dateOfBirth || null,
-        avatar: avatarUrl, provider: 'local'
-        // role và isAdmin sẽ lấy default từ Model
+        userId: newUserId, // Dùng UUID
+        name,
+        userName: trimUsername,
+        password: hashedPassword,
+        email: trimEmail,
+        phoneNumber: phoneNumber || null,
+        dateOfBirth: dateOfBirth || null,
+        avatar: avatarUrl,
+        provider: 'local'
     });
 
-    // Nếu .save() lỗi, asyncHandler sẽ tự động bắt và gửi lỗi 500 chuẩn
     const savedUser = await newUser.save();
 
-    console.log("✅ Đăng ký thành công cho user:", savedUser.email);
-    res.status(201).json({ message: 'Đăng ký thành công!' });
-}); // <-- Kết thúc asyncHandler
+    if (savedUser) {
+        // --- LOGIC MỚI: TỰ ĐỘNG LOGIN SAU KHI ĐĂNG KÝ ---
+        // 1. Tạo Token
+        const token = generateToken(
+            savedUser.userId, // Dùng userId (UUID)
+            savedUser.email,
+            savedUser.isAdmin,
+            savedUser.role
+        );
+
+        // 2. Set Cookie
+        res.cookie('token', token, getCookieOptions());
+
+        // 3. Trả về thông tin user (giống hệt hàm login)
+        console.log("✅ Đăng ký VÀ ĐĂNG NHẬP thành công cho user:", savedUser.email);
+        res.status(201).json({
+            message: 'Đăng ký thành công!',
+            user: {
+                userId: savedUser.userId,
+                name: savedUser.name,
+                userName: savedUser.userName,
+                email: savedUser.email,
+                avatar: savedUser.avatar,
+                isAdmin: savedUser.isAdmin,
+                role: savedUser.role,
+                provider: savedUser.provider
+            },
+            token: token
+        });
+    } else {
+        res.status(400);
+        throw new Error('Đăng ký thất bại, dữ liệu không hợp lệ.');
+    }
+});
 
 // ... (code googleLogin, logout) ...
 

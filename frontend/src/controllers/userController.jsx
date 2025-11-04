@@ -1,5 +1,4 @@
-import api from "../services/api";
-
+const {api} = require("../services/api");
 const API = "/users";
 export const fetchUsers = async (page = 1, limit = 5, search = "") => {
     const response = await api.get("/users", {

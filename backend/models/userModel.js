@@ -14,9 +14,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     loyaltyPoints: { type: Number, default: 0 },
     googleId: { type: String },
-    // Sửa: Thêm 'local' vào enum
     provider: { type: String, enum: ['local', 'google', 'facebook'], default: 'local' },
-
     passwordResetToken: String,
     passwordResetExpires: Date,
 
