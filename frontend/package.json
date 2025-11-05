@@ -216,4 +216,5 @@
     "postcss-loader": "^8.2.0",
     "style-loader": "^4.0.0"
   }
+
 }

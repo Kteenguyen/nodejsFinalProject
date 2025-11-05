@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-    // ✅ Hàm gọi API (/api/users/profile) để kiểm tra cookie
     const checkAuthStatus = useCallback(async () => {
         setIsLoadingAuth(true);
         try {
@@ -18,19 +17,22 @@ export const AuthProvider = ({ children }) => {
             if (result.isAuthenticated && result.user) {
                 setUser(result.user);
                 setIsAuthenticated(true);
-                console.log("AuthContext: User authenticated from cookie:", result.user.email);
+                // Log thành công chỉ 1 lần
+                // console.log("AuthContext: User authenticated from cookie:", result.user.email); 
             } else {
                 setUser(null);
                 setIsAuthenticated(false);
-                console.log("AuthContext: User not authenticated.");
             }
         } catch (error) {
-            // (Đã sửa ở bước trước: Chỉ log lỗi nếu không phải 401)
-            if (error.response && error.response.status !== 401) {
-                console.error("AuthContext: Error checking auth (not 401):", error);
+            // 👇👇👇 KHỐI CODE ĐÃ SỬA ĐỂ XỬ LÝ LỖI 401 ÍT LƯU Ý HƠN 👇👇👇
+            if (error.response && error.response.status === 401) {
+                console.log("AuthContext: No active session (401 Unauthorized).");
             } else {
-                console.log("AuthContext: No valid authentication token found.");
+                // Log các lỗi khác một cách nghiêm túc hơn
+                console.error("AuthContext: Error checking authentication status:", error);
             }
+
+
             setUser(null);
             setIsAuthenticated(false);
         } finally {
@@ -43,13 +45,9 @@ export const AuthProvider = ({ children }) => {
         checkAuthStatus();
     }, [checkAuthStatus]);
 
-    // 👉 Hàm login (ĐÃ SỬA CONSOLE.LOG)
     const login = (userInfo) => {
         setUser(userInfo);
         setIsAuthenticated(true);
-
-        // 👇👇👇 SỬA LẠI DÒNG NÀY ĐỂ DEBUG 👇👇👇
-        // (Log cả object thay vì chỉ .email, vì 'register' có thể không trả về email)
         console.log("AuthContext: Login successful. Received userInfo object:", userInfo);
     };
 

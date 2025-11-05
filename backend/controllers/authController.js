@@ -23,6 +23,7 @@ const getCookieOptions = () => {
     }
     return options;
 };
+
 // --- HÀM LOGIN (SET COOKIE) ---
 exports.login = async (req, res) => {
     try {
@@ -150,8 +151,6 @@ exports.register = asyncHandler(async (req, res) => {
     }
 });
 
-// ... (code googleLogin, logout) ...
-
 exports.googleLogin = asyncHandler(async (req, res) => {
     const { accessToken } = req.body;
     if (!accessToken) {
@@ -264,6 +263,132 @@ exports.googleLogin = asyncHandler(async (req, res) => {
         // Ném lỗi để asyncHandler hoặc error handler bắt
         console.error("Lỗi Google Login (Backend):", error.message);
         throw error; // Ném lỗi để middleware error handler xử lý
+    }
+});
+exports.facebookLogin = asyncHandler(async (req, res) => {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+        res.status(400);
+        throw new Error('Không có access token từ Facebook.');
+    }
+
+    try {
+        // 1. Dùng accessToken để lấy thông tin user từ Facebook
+        // (Khác Google: Phải chỉ định rõ các trường 'fields' cần lấy)
+        const fbResponse = await axios.get(
+            `https://graph.facebook.com/me`,
+            {
+                params: {
+                    fields: 'id,name,email,picture.type(large)',
+                    access_token: accessToken,
+                }
+            }
+        );
+
+        const { email, name, picture } = fbResponse.data;
+        const trimEmail = email?.trim().toLowerCase();
+
+        // 2. 🚨 QUAN TRỌNG: Xử lý lỗi Facebook không trả về email
+        // (Người dùng có thể đăng ký Facebook bằng SĐT)
+        if (!trimEmail) {
+            res.status(400);
+            throw new Error('Tài khoản Facebook của bạn không được liên kết với email. Vui lòng cập nhật email trên Facebook hoặc đăng ký tài khoản thường.');
+        }
+
+        // 3. Tìm user trong DB
+        let user = await User.findOne({ email: trimEmail });
+
+        if (user) {
+            // 4a. Nếu user tồn tại
+            if (user.provider !== 'facebook') {
+                // Nếu email đã đăng ký (local hoặc Google)
+                res.status(400);
+                throw new Error(`Email này đã được đăng ký bằng ${user.provider}. Vui lòng đăng nhập bằng phương thức đó.`);
+            }
+            // Nếu đúng là user 'facebook' -> Đăng nhập
+            console.log("User Facebook đã tồn tại, tiến hành đăng nhập:", user.email);
+
+        } else {
+            // 4b. Nếu user không tồn tại -> Tạo user mới
+            console.log("User Facebook chưa tồn tại, tạo user mới:", trimEmail);
+
+            const newUserId = await generateUuid();
+            user = new User({
+                userId: newUserId,
+                name: name,
+                userName: trimEmail.split('@')[0] + '_' + newUserId.substring(0, 4), // Tạo username tạm
+                email: trimEmail,
+                password: null, // Không cần password
+                avatar: picture?.data?.url || null, // Lấy ảnh đại diện
+                provider: 'facebook',
+                role: 'user', // Mặc định là user
+            });
+            await user.save();
+        }
+
+        // 5. Tạo Token và Set Cookie (Giống hệt Google/Login)
+        const token = generateToken(
+            user.userId,
+            user.email,
+            user.isAdmin,
+            user.role
+        );
+
+        res.cookie('token', token, getCookieOptions());
+
+        // 6. Trả về thông tin user
+        res.status(200).json({
+            message: 'Đăng nhập Facebook thành công!',
+            user: {
+                userId: user.userId,
+                name: user.name,
+                userName: user.userName,
+                email: user.email,
+                avatar: user.avatar,
+                isAdmin: user.isAdmin,
+                role: user.role,
+                provider: user.provider
+            },
+            token: token
+        });
+
+    } catch (error) {
+        console.error("Lỗi Facebook Login (Backend):", error.response?.data?.error || error.message);
+        // Bắt lỗi nếu token hết hạn
+        if (error.response && (error.response.status === 401 || error.response.status === 400)) {
+            res.status(401);
+            throw new Error('Facebook access token không hợp lệ hoặc đã hết hạn.');
+        }
+        throw error;
+    }
+});
+exports.checkSession = asyncHandler(async (req, res) => {
+    const token = req.cookies.token;
+
+    // 1. Nếu không có token -> Trả về 200 OK (nhưng false)
+    if (!token) {
+        return res.status(200).json({ isAuthenticated: false, user: null });
+    }
+
+    try {
+        // 2. Xác thực token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // 3. Tìm user (Giống hệt logic trong 'protect')
+        // (Quan trọng: Phải tìm bằng 'userId' (UUID) giống 'protect')
+        const user = await User.findOne({ userId: decoded.id }).select('-password');
+
+        // 4. Nếu tìm thấy user -> Trả về 200 OK (và true)
+        if (user) {
+            return res.status(200).json({ isAuthenticated: true, user: user });
+        } else {
+            // 5. Nếu token hợp lệ nhưng không tìm thấy user -> Trả về 200 OK (nhưng false)
+            return res.status(200).json({ isAuthenticated: false, user: null });
+        }
+    } catch (error) {
+        // 6. Nếu token sai/hết hạn -> Trả về 200 OK (nhưng false)
+        return res.status(200).json({ isAuthenticated: false, user: null });
     }
 });
 // --- HÀM LOGOUT (CLEAR COOKIE) ---

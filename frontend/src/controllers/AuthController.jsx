@@ -1,5 +1,5 @@
 // frontend/src/controllers/AuthController.js
-import  api  from "../services/api";
+import api from "../services/api";
 import provinceApi from "../services/provinceApi";
 const AuthController = {
     login: async (identifier, password) => {
@@ -30,7 +30,7 @@ const AuthController = {
             const response = await api.post("/auth/googleLogin", { accessToken });
             // KHÔNG LƯU GÌ VÀO LOCALSTORAGE
             return response.data; // Trả về { message, user, token }
-        } catch (error) { 
+        } catch (error) {
             console.error("Google Login failed:", error.response?.data || error.message);
             throw new Error(error.response?.data?.message || "Đăng nhập Google thất bại");
         }
@@ -50,57 +50,62 @@ const AuthController = {
 
     checkAuth: async () => {
         try {
-            // API này dùng 'protect' middleware ở backend để xác thực cookie
-            const response = await api.get("/users/profile");
+            // 👇 SỬA LẠI: Gọi route mới (luôn trả về 200 OK)
+            const response = await api.get("/auth/check-session");
 
-            // Nếu thành công, backend trả về { user: {...} }
-            // (Hãy đảm bảo backend/controllers/userController.js -> getUserProfile trả về { user: req.user })
-            if (response.data.user) {
+            // response.data giờ sẽ là:
+            // { isAuthenticated: true, user: {...} } 
+            // HOẶC
+            // { isAuthenticated: false, user: null }
+
+            // (Không cần sửa logic bên dưới, nó đã khớp)
+            if (response.data.isAuthenticated && response.data.user) {
                 return { isAuthenticated: true, user: response.data.user };
             }
-            // Trường hợp lạ
+
             return { isAuthenticated: false, user: null };
 
         } catch (error) {
-            // Lỗi 404 (chưa đăng nhập) hoặc lỗi mạng...
+            // Lỗi này giờ CHỈ xảy ra nếu backend sập (500) hoặc mất mạng
+            // Sẽ không bao giờ là lỗi 401 nữa
+            console.error("checkAuth (check-session) failed:", error.message);
             return { isAuthenticated: false, user: null };
         }
     },
-    /**
-     * Lấy danh sách Tỉnh/Thành phố
-     */
     getProvinces: async () => {
         try {
-            const response = await provinceApi.get("/p/");
-            return response.data; // Mảng các Tỉnh/Thành
+            // 👇 SỬA LẠI ĐƯỜNG DẪN
+            const response = await provinceApi.get("/province");
+            // API GHN trả về { data: [...] }
+            return response.data.data; // 👈 SỬA LẠI
         } catch (error) {
-            console.error("Lỗi khi lấy danh sách Tỉnh/Thành:", error);
+            console.error("Lỗi khi lấy danh sách Tỉnh/Thành (GHN):", error);
             throw new Error("Không thể tải danh sách Tỉnh/Thành.");
         }
     },
 
-    /**
-     * Lấy danh sách Quận/Huyện từ mã Tỉnh
-     */
     getDistricts: async (provinceCode) => {
         try {
-            const response = await provinceApi.get(`/p/${provinceCode}?depth=2`);
-            return response.data.districts; // Mảng các Quận/Huyện
+            // 👇 SỬA LẠI ĐƯỜNG DẪN VÀ PARAMS
+            const response = await provinceApi.get("/district", {
+                params: { province_id: provinceCode }
+            });
+            return response.data.data; // 👈 SỬA LẠI
         } catch (error) {
-            console.error("Lỗi khi lấy danh sách Quận/Huyện:", error);
+            console.error("Lỗi khi lấy danh sách Quận/Huyện (GHN):", error);
             throw new Error("Không thể tải danh sách Quận/Huyện.");
         }
     },
 
-    /**
-     * Lấy danh sách Phường/Xã từ mã Quận
-     */
     getWards: async (districtCode) => {
         try {
-            const response = await provinceApi.get(`/d/${districtCode}?depth=2`);
-            return response.data.wards; // Mảng các Phường/Xã
+            // 👇 SỬA LẠI ĐƯỜNG DẪN VÀ PARAMS
+            const response = await provinceApi.get("/ward", {
+                params: { district_id: districtCode }
+            });
+            return response.data.data; // 👈 SỬA LẠI
         } catch (error) {
-            console.error("Lỗi khi lấy danh sách Phường/Xã:", error);
+            console.error("Lỗi khi lấy danh sách Phường/Xã (GHN):", error);
             throw new Error("Không thể tải danh sách Phường/Xã.");
         }
     },

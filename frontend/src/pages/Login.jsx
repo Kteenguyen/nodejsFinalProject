@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom"; // Import Link để điều hướng
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
+import FacebookLogin from '@greatsumini/react-facebook-login';
 import { AuthController } from "../controllers/AuthController";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -9,7 +10,6 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
 const Login = () => {
     const { login } = useAuth();
     const [identifier, setIdentifier] = useState("");
@@ -20,13 +20,9 @@ const Login = () => {
     const handleNormalLogin = async (e) => {
         e.preventDefault();
         try {
-            // 1. Gọi API (Backend set cookie)
+            //  Gọi API (Backend set cookie)
             const data = await AuthController.login(identifier, password);
-
-            // 👇 BƯỚC 1: BÁO CHO CONTEXT BIẾT (THIẾU DÒNG NÀY)
             login(data.user);
-
-            // 2. Thông báo và điều hướng
             toast.success("Đăng nhập thành công!");
             setTimeout(() => {
                 if (data.user.role === "admin") {
@@ -47,9 +43,7 @@ const Login = () => {
             const res = await AuthController.googleLogin(accessToken);
             console.log(res);
 
-            // 👇 BƯỚC 2: SỬA LẠI CÁCH GỌI (CHỈ CẦN user)
-            // if (res.token) { // Bỏ check res.token, vì backend đã set cookie
-            login(res.user); // Sửa từ login(res.token, res.user)
+            login(res.user);
 
             toast.success("Đăng nhập Google thành công!");
             console.log(res.user.role);
@@ -76,31 +70,38 @@ const Login = () => {
         onSuccess: handleGoogleLoginSuccess,
         onError: handleGoogleLoginError,
     });
+    const handleFacebookLoginSuccess = async (response) => {
+        console.log("Facebook response:", response);
+        if (response.accessToken) {
+            try {
+                // 1. Gửi accessToken lên backend
+                const res = await AuthController.facebookLogin(response.accessToken);
 
-    const handleFacebookLogin = async () => {
-        try {
-            // 1. Gọi API (Backend set cookie)
-            const fbRes = await AuthController.facebookLogin();
+                // 2. Báo cho AuthContext
+                login(res.user);
 
-            // 👇 BƯỚC 3: SỬA LẠI CÁCH GỌI (CHỈ CẦN user)
-            // if (fbRes.token) {
-            login(fbRes.user); // Sửa từ login(fbRes.token, fbRes.user)
+                toast.success("Đăng nhập Facebook thành công!");
 
-            toast.success("Đăng nhập Facebook thành công!");
-            setTimeout(() => {
-                if (fbRes.user.role === "admin") {
-                    navigate("/admin");
-                } else {
-                    navigate("/");
-                }
-            }, 1500);
-            // }
-        } catch (error) {
-            console.error("Facebook login error:", error);
-            toast.error("Đăng nhập Facebook thất bại!");
+                // 3. Điều hướng
+                setTimeout(() => {
+                    if (res.user.role === "admin") {
+                        navigate("/admin");
+                    } else {
+                        navigate("/");
+                    }
+                }, 1500);
+            } catch (error) {
+                toast.error(error.message || "Đăng nhập Facebook thất bại!");
+            }
+        } else {
+            toast.error("Không lấy được access token từ Facebook.");
         }
     };
 
+    const handleFacebookLoginError = () => {
+        console.log("Đăng nhập Facebook thất bại");
+        toast.error("Đăng nhập Facebook thất bại!");
+    };
     return (
         <div className="flex flex-col md:flex-row h-screen overflow-hidden">
             <ToastContainer
@@ -153,15 +154,22 @@ const Login = () => {
                             <FcGoogle className="text-xl" />
                             Tài khoản Google
                         </button>
-                        <button
-                            type="button"
-                            className="flex-1 w-full bg-white border border-gray-300 rounded-md py-2.5 px-4 flex items-center justify-center gap-3 
-                                       hover:bg-gray-50 transition-all shadow-sm font-medium text-gray-700"
-                            onClick={handleFacebookLogin}
-                        >
-                            <FaFacebook className="text-xl text-blue-600" />
-                            Tài khoản Facebook
-                        </button>
+                        <FacebookLogin
+                            appId={process.env.REACT_APP_FACEBOOK_APP_ID}
+                            onSuccess={handleFacebookLoginSuccess}
+                            onFail={handleFacebookLoginError}
+                            // THÊM CÁI NÀY NẾU FEN DÙNG NÚT CUSTOM CỦA MÌNH
+                            render={({ onClick, logout }) => (
+                                <button
+                                    type="button"
+                                    onClick={onClick} // 👈 ĐÂY MỚI LÀ CHỖ GỌI HÀM CỦA THƯ VIỆN
+                                    className="flex-1 w-full bg-white border border-gray-300 rounded-md py-2.5 px-4 flex items-center justify-center gap-3 shadow-sm hover:bg-gray-50 text-gray-700 font-medium transition-colors"
+                                >
+                                    <FaFacebook className="text-xl text-blue-600" />
+                                    Tài khoản Facebook
+                                </button>
+                            )}
+                        />
                     </div>
 
                     <div className="flex items-center justify-center mb-6">
