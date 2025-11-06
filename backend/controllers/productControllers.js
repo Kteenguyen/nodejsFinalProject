@@ -3,13 +3,13 @@ const Comment = require('../models/commentModel');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
-// Hiển thị danh sách sản phẩm với phân trang, lọc và sắp xếp (#16)
+// RUBIK #10, #14, #15, #16 — có hỗ trợ search "không dấu" (mặc định) & full-text (tùy chọn)
 exports.getProducts = async (req, res) => {
   try {
     const page  = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 12, 60);
 
-    // Shim giữ tương thích ngược: sort=name_asc | name_desc | price_asc | price_desc | newest | oldest
+    // Giữ tương thích ngược: ?sort=name_asc|name_desc|price_asc|price_desc|newest|oldest
     let { sort, sortBy = 'newest', sortOrder = 'asc' } = req.query || {};
     if (sort) {
       const map = {
@@ -26,34 +26,52 @@ exports.getProducts = async (req, res) => {
     const {
       categoryId,
       brand,
-      keyword,
+      keyword = '',
       minPrice,
       maxPrice,
+      // NEW: chế độ search — 'norm' (mặc định, không dấu) | 'text' (Mongo text index)
+      searchMode = 'norm'
     } = req.query;
 
     const match = { status: 'available' };
     if (categoryId) match['category.categoryId'] = categoryId;
+
+    // Multi-brand: brand=Asus,MSI
     if (brand) {
-      // hỗ trợ multi-brand: brand=Asus,MSI
       const arr = String(brand).split(',').map(s => s.trim()).filter(Boolean);
       match.brand = arr.length > 1
         ? { $in: arr.map(b => new RegExp(`^${b}$`, 'i')) }
         : { $regex: brand, $options: 'i' };
     }
-    if (keyword) {
-      match.$or = [
-        { productName:        { $regex: keyword, $options: 'i' } },
-        { productDescription: { $regex: keyword, $options: 'i' } },
-        { brand:              { $regex: keyword, $options: 'i' } },
-      ];
+
+    // ====== SEARCH (#14) ======
+    const hasKeyword = String(keyword).trim().length > 0;
+    const useText = hasKeyword && (String(searchMode).toLowerCase() === 'text');
+
+    if (hasKeyword) {
+      if (useText) {
+        // Yêu cầu đã tạo text index trong model: productName, productDescription, brand
+        match.$text = { $search: String(keyword).trim() };
+      } else {
+        // Tìm KHÔNG DẤU / không phân biệt hoa thường (cần 3 field *Norm trong model)
+        const kw = String(keyword).trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        match.$or = [
+          { productNameNorm:        { $regex: kw, $options: 'i' } },
+          { productDescriptionNorm: { $regex: kw, $options: 'i' } },
+          { brandNorm:              { $regex: kw, $options: 'i' } },
+        ];
+      }
     }
+
+    // Price filter dựa trên biến thể
     if (minPrice || maxPrice) {
       match['variants.price'] = {};
       if (minPrice) match['variants.price'].$gte = Number(minPrice);
       if (maxPrice) match['variants.price'].$lte = Number(maxPrice);
     }
 
-    // Sắp xếp: tên / giá(minPrice) / thời gian
+    // Sắp xếp mặc định (khi KHÔNG ở chế độ text)
     const sortStage = (() => {
       if (sortBy === 'name')  return { productName: (sortOrder === 'desc' ? -1 : 1) };
       if (sortBy === 'price') return { minPrice:    (sortOrder === 'desc' ? -1 : 1) };
@@ -61,10 +79,13 @@ exports.getProducts = async (req, res) => {
       return { createdAt: -1 }; // newest
     })();
 
+    // ====== PIPELINE ======
     const pipeline = [
       { $match: match },
-      { $addFields: { minPrice: { $min: "$variants.price" } } }, // quan trọng cho sort & hiển thị giá
-      { $sort: sortStage },
+      ...(useText ? [{ $addFields: { score: { $meta: 'textScore' } } }] : []),
+      { $addFields: { minPrice: { $min: "$variants.price" } } },
+      // Nếu searchMode=text: ưu tiên độ liên quan (score DESC), tie-breaker theo minPrice ASC
+      { $sort: useText ? { score: { $meta: 'textScore' }, minPrice: 1 } : sortStage },
       {
         $facet: {
           items: [
@@ -73,7 +94,8 @@ exports.getProducts = async (req, res) => {
             { $project: {
                 productId: 1, productName: 1, brand: 1, category: 1,
                 images: { $slice: ["$images", 1] },
-                minPrice: 1, createdAt: 1, variants: 1, status: 1
+                minPrice: 1, createdAt: 1, variants: 1, status: 1,
+                ...(useText ? { score: 1 } : {})
             } }
           ],
           total: [{ $count: "count" }]
@@ -83,7 +105,7 @@ exports.getProducts = async (req, res) => {
 
     const [result] = await Product.aggregate(pipeline);
     const total = result?.total?.[0]?.count || 0;
-    const totalPages = Math.max(Math.ceil(total / limit), 1); // đáp #10
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
 
     return res.status(200).json({
       success: true,
