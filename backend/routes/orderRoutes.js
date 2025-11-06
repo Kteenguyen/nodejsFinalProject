@@ -1,42 +1,42 @@
 const express = require('express');
 const router = express.Router();
-const orderCtrl = require('../controllers/orderControllers');
-const { protect, admin } = require('../middleware/authMiddleware');
-const identifyUser = require('../middleware/identifyUser');
-// POST /api/orders - tạo đơn hàng
 
-// SỬA LẠI: Thay thế 'protect' bằng 'identifyUser'
-// Middleware này sẽ gán req.user nếu có token, hoặc bỏ qua nếu không có
+const orderCtrl = require('../controllers/orderControllers');
+const discountCtrl = require('../controllers/discountControllers');
+
+const identifyUser = require('../middleware/identifyUser'); // gán req.user nếu có token, bỏ qua nếu không
+const { protect, admin } = require('../middleware/authMiddleware');
+
+/**
+ * CREATE ORDER (#21 — gửi email sau khi đặt)
+ * - Cho phép guest hoặc user đăng nhập.
+ */
 router.post('/', identifyUser, orderCtrl.createOrder);
 
-// 2. SỬA LẠI: Thêm middleware 'protect' vào route
-// Logic của bạn tự xử lý guest (nếu không có token) và user đã đăng nhập (nếu có token)
-// nên chúng ta có thể áp dụng middleware một cách linh hoạt hơn hoặc tạo route riêng.
-// Cách tiếp cận đơn giản là tạo 2 route riêng biệt.
+/**
+ * ADMIN LIST (#29) — nên đặt trước route param để không bị nuốt
+ */
+router.get('/admin/all', protect, admin, orderCtrl.listOrders);
 
-// Route cho người dùng đã đăng nhập (YÊU CẦU TOKEN)
-router.post('/', protect, orderCtrl.createOrder);
+/**
+ * USER: danh sách đơn của tôi (tùy chọn)
+ */
+router.get('/my', protect, orderCtrl.listMyOrders);
 
-// Route cho khách (KHÔNG YÊU CẦU TOKEN) - có thể tạo một controller riêng hoặc xử lý trong createOrder
-// Hiện tại, controller của bạn đã xử lý được cả 2 trường hợp, nhưng việc thiếu middleware
-// khiến nó không bao giờ nhận diện được người dùng đã đăng nhập.
-// Chỉ cần thêm 'protect' vào route chính là đủ.
-
-// === ROUTE CHO ADMIN ===
-// GET /api/orders/admin - Lấy tất cả đơn hàng (yêu cầu quyền Admin)
-router.get('/admin/all', protect, admin, orderCtrl.getAllOrdersForAdmin);
-
-
-// GET /api/orders/:orderId - nhận đơn hàng (Nên được bảo vệ)
-// Logic này nên kiểm tra xem người dùng có phải chủ đơn hàng không, hoặc có phải admin không
+/**
+ * ORDER DETAIL — owner hoặc admin
+ */
 router.get('/:orderId', protect, orderCtrl.getOrder);
+
+/**
+ * UPDATE STATUS — admin
+ */
 router.put('/:orderId/status', protect, admin, orderCtrl.updateOrderStatus);
 
-// CÁC ROUTE KHÁC (giữ nguyên, nhưng cũng cần xem xét bảo vệ nếu cần)
-const discountCtrl = require('../controllers/discountControllers');
+/**
+ * DISCOUNT — tạo mã (admin), validate (public)
+ */
 router.post('/discount', protect, admin, discountCtrl.createCode);
 router.get('/discount/validate', discountCtrl.validateCode);
-router.post('/discount', discountCtrl.createCode);
-
 
 module.exports = router;
