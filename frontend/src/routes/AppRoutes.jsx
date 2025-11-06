@@ -1,65 +1,86 @@
 // frontend/src/routes/AppRoutes.jsx
 import Header from "../components/Home/Header";
 import Home from '../pages/Home';
-import { useEffect } from "react"; // Chỉ cần useEffect cho LogoutRoute
+import { useEffect } from "react"; // chỉ cần useEffect cho LogoutRoute
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import RegisterAddress from '../pages/RegisterAddress';
 import { AuthController } from "../controllers/AuthController";
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import DashboardRoutes from "./DashboardRoutes";
 import { useAuth } from "../context/AuthContext";
 
+// ====== NEW: import các trang/tp mới ======
+import ProductDetail from '../pages/ProductDetail';     // Trang chi tiết sản phẩm (#11)
+import CartPage from '../pages/Cart';                   // Trang giỏ hàng (#17)
+import CategoryProducts from '../components/Home/CategoryProducts'; // Khối danh mục (dùng làm page với wrapper)
+
 function App() {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const { logout, isLoadingAuth } = useAuth();
-    const hideHeader =
-        location.pathname.startsWith("/admin") ||
-        location.pathname === "/login" ||
-        location.pathname === "/register"||
-        location.pathname === "/register-address";
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
+  const hideHeader =
+    location.pathname.startsWith("/admin") ||
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/register-address";
 
-    const LogoutRoute = () => {
-        useEffect(() => {
-            const handleLogout = async () => {
-                try {
-                    // 1. Gọi API (Backend xóa cookie)
-                    await AuthController.logout();
-                } catch (err) {
-                    console.error("Logout API failed:", err);
-                    // Dù API lỗi, vẫn ép logout ở frontend
-                } finally {
-                    // 2. Cập nhật AuthContext (Frontend xóa state)
-                    logout();
-                    // 3. Điều hướng về login
-                    navigate("/login");
-                }
-            };
-            handleLogout();
-            // Thêm logout và navigate làm dependencies
-        }, [logout, navigate]);
+  const LogoutRoute = () => {
+    useEffect(() => {
+      const handleLogout = async () => {
+        try {
+          // 1) Gọi API backend xoá cookie
+          await AuthController.logout();
+        } catch (err) {
+          console.error("Logout API failed:", err);
+        } finally {
+          // 2) Cập nhật AuthContext (xoá state)
+          logout();
+          // 3) Điều hướng về login
+          navigate("/login");
+        }
+      };
+      handleLogout();
+    }, [logout, navigate]);
 
-        return <p>Đang đăng xuất...</p>;
-    };
+    return <p>Đang đăng xuất...</p>;
+  };
 
+  // ====== NEW: wrapper lấy :id và truyền vào ProductDetail ======
+  const ProductDetailRoute = () => {
+    const { id } = useParams(); // /products/:id
+    return <ProductDetail productId={id} />;
+  };
 
-    return (
-        <div>
-            {!hideHeader && <Header />}
-            <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/register-address" element={<RegisterAddress />} />
+  // ====== NEW: wrapper cho trang danh mục dùng CategoryProducts ======
+  const CategoryRoute = () => {
+    const { categoryId } = useParams(); // /category/:categoryId
+    const title = `Danh mục: ${categoryId}`;
+    return <CategoryProducts categoryId={categoryId} title={title} />;
+  };
 
-                <Route path="/logout" element={<LogoutRoute />} />
-                {/* Route admin bây giờ sẽ cần cơ chế bảo vệ riêng bên trong DashboardRoutes */}
-                <Route path="/admin/*" element={<DashboardRoutes />} />
-            </Routes>
-        </div>
-    );
+  return (
+    <div>
+      {!hideHeader && <Header />}
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={<Home />} />
+        <Route path="/products/:id" element={<ProductDetailRoute />} />   {/* #11 */}
+        <Route path="/cart" element={<CartPage />} />                     {/* #17 */}
+        <Route path="/category/:categoryId" element={<CategoryRoute />} />{/* #16 (ordering trong component) */}
+
+        {/* Auth */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/register-address" element={<RegisterAddress />} />
+        <Route path="/logout" element={<LogoutRoute />} />
+
+        {/* Admin */}
+        <Route path="/admin/*" element={<DashboardRoutes />} />
+      </Routes>
+    </div>
+  );
 }
 
 export default App;
