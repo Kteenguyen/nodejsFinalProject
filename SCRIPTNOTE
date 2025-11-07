@@ -37,10 +37,7 @@
 │   │
 │   └── package.json    # Thông tin dự án frontend
 │
-Họ tên: Nguyễn Khoa Tee
-User: ktee2k3
-Email: keytynguyen2004@gmail.com
-Password: 123456
+
 
 lỗi form đăng ký chưa đưa lên được (database đã kết nối,
  2 bên đã kết nối được với nhau)
@@ -64,3 +61,5 @@ Tài khoản test
 - User: ktee2k333
 - Email: keytynguyen2003@gmail.com
 - Password: 123456
+lý do không hiện file ảnh tĩnh: https không cho load http
+cách khắc phục: đưa ảnh lên host trả về https hoặc dùng dịch vụ lưu trữ ảnh như cloudinary, imgur...

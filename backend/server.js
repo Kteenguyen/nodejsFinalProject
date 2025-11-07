@@ -1,67 +1,73 @@
-// backend/server.js
+// backend/server.js (ĐÃ NÂNG CẤP LÊN HTTPS)
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-const cookieParser = require('cookie-parser'); // Đã require
+const cookieParser = require('cookie-parser');
 const express = require('express');
 const cors = require('cors');
-const { connectDB } = require('./config/dbConnection');
-const siteRoutes = require('./routes/route'); // Chỉ cần import 1 lần
+const siteRoutes = require('./routes/route'); // Đảm bảo đúng tên file routes chính của fen
+const { connectDB } = require('./config/dbConnection'); // Đảm bảo đúng tên file db connection
+
+// --- 1. IMPORT CÁC MODULE CẦN THIẾT CHO HTTPS ---
+const https = require('https');
+const fs = require('fs'); // File System
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
 
-// --- CẤU HÌNH MIDDLEWARE (THEO ĐÚNG THỨ TỰ) ---
+// --- 2. ĐỌC FILE CHỨNG CHỈ VÀ KHÓA ---
+// (Đảm bảo file key.pem và cert.pem nằm cùng cấp với server.js)
+const httpsOptions = {
+    key: fs.readFileSync(path.join(__dirname, 'key.pem')),
+    cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
+};
 
-// 1. CORS (Cho phép request từ frontend)
+// --- CẤU HÌNH MIDDLEWARE ---
+
+// CORS (QUAN TRỌNG: Phải cho phép cả 2)
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "https://localhost:3000"], // Cho phép cả HTTP (dự phòng) và HTTPS
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
 }));
 
-// 2. COOKIE PARSER (ĐỂ ĐỌC req.cookies)
-//    *** BẠN ĐANG THIẾU DÒNG NÀY ***
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-// 3. BODY PARSERS (Để đọc req.body)
+// Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Phục vụ file tĩnh (Fix lỗi 404 cho ảnh)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- KẾT NỐI DATABASE ---
 connectDB();
 
-// --- CÁC ROUTE CHÍNH CỦA BẠN ---
-// (Xóa các route test và route log lặp lại)
-app.use('/api', siteRoutes);
+// --- CÁC ROUTE CHÍNH ---
+// Đảm bảo tên biến route chính của fen là 'siteRoutes' và nó chứa các route con như /api/auth, /api/users
+app.use('/api', siteRoutes); 
 
-// --- ERROR HANDLERS (PHẢI ĐỂ CUỐI CÙNG) ---
-
-// Bắt lỗi 404 (Not Found) - NẾU KHÔNG CÓ ROUTE NÀO KHỚP
+// --- ERROR HANDLERS ---
+// ... (phần error handlers giữ nguyên như trong hướng dẫn trước) ...
 app.use((req, res, next) => {
     console.log(`[SERVER.JS 404]: Không tìm thấy route: ${req.originalUrl}`);
     const error = new Error(`Không tìm thấy - ${req.originalUrl}`);
     res.status(404);
-    next(error); // Chuyển lỗi xuống errorHandler tổng
+    next(error);
 });
 
-// Bắt lỗi 500 (Global Error Handler)
-// (Xóa handler lỗi bị đặt sai chỗ ở trên)
-const errorHandler = (err, req, res, next) => {
+app.use((err, req, res, next) => {
     const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
     console.error("🚨 [SERVER.JS ERROR HANDLER]: ĐÃ BẮT LỖI TỔNG:", err.message);
-
     res.status(statusCode).json({
         message: err.message,
         stack: process.env.NODE_ENV === 'production' ? null : err.stack,
     });
-};
-app.use(errorHandler);
+});
 
-// --- KHỞI ĐỘNG SERVER ---
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+// --- 3. KHỞI CHẠY SERVER HTTPS THAY VÌ HTTP ---
+https.createServer(httpsOptions, app).listen(port, () => {
+    console.log(`🚀 HTTPS Backend server đang chạy tại: https://localhost:${port}`);
 });
 
 module.exports = app;

@@ -1,6 +1,6 @@
 // src/components/CategoryProducts.jsx
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { ProductController } from '../../controllers/productController'; 
 import ProductCard from './ProductCard';
 
 const CategoryProducts = ({ categoryId, title }) => {
@@ -10,16 +10,19 @@ const CategoryProducts = ({ categoryId, title }) => {
     useEffect(() => {
         const fetchCategoryProducts = async () => {
             try {
-                const res = await axios.get(`http://localhost:3001/api/products/category/${categoryId}`);
-                setProducts(res.data.products || []);
+                const products = await ProductController.getProductsByCategory(categoryId);
+                setProducts(products);
             } catch (err) {
-                console.error(`Lỗi fetch sản phẩm danh mục ${categoryId}:`, err);
+                console.error(`Lỗi fetch sản phẩm danh mục ${categoryId} (Component):`, err.message);
             } finally {
                 setLoading(false);
             }
         };
-        fetchCategoryProducts();
-    }, [categoryId]);
+
+        if (categoryId) {
+            fetchCategoryProducts();
+        }
+    }, [categoryId]); // Giữ categoryId làm dependency
 
     if (loading) return <p>Loading {title}...</p>;
     if (!products.length) return null;

@@ -7,7 +7,7 @@ const ProductCard = ({ product }) => {
     return (
         <div className="border rounded-lg p-4 shadow hover:shadow-lg">
             <img
-                src={`http://localhost:3001${product.images[0]}`}
+                src={`https://localhost:3001${product.images[0]}`}
                 alt={product.productName}
                 className="w-full h-40 object-cover rounded"
             />

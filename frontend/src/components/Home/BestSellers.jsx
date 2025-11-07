@@ -1,6 +1,7 @@
 // src/components/BestSellers.jsx
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+// import axios from 'axios'; // 👈 BỎ DÒNG NÀY
+import { ProductController } from '../../controllers/productController'; 
 import ProductCard from './ProductCard';
 
 const BestSellers = () => {
@@ -10,10 +11,11 @@ const BestSellers = () => {
     useEffect(() => {
         const fetchBestSellers = async () => {
             try {
-                const res = await axios.get('http://localhost:3001/api/products/collections/bestsellers');
-                setBestSellers(res.data.products || []);
+                // 👇 SỬA LẠI LOGIC GỌI API
+                const products = await ProductController.getBestSellers();
+                setBestSellers(products);
             } catch (error) {
-                console.error("Lỗi fetch Best Sellers:", error);
+                console.error("Lỗi fetch Best Sellers (Component):", error.message);
             } finally {
                 setLoading(false);
             }

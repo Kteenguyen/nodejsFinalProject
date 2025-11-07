@@ -1,6 +1,7 @@
 // src/components/NewProducts.jsx
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+// import axios from 'axios'; // 👈 BỎ DÒNG NÀY
+import { ProductController } from '../../controllers/productController'
 import ProductCard from './ProductCard';
 
 const NewProducts = () => {
@@ -10,10 +11,12 @@ const NewProducts = () => {
     React.useEffect(() => {
         const fetchNewProducts = async () => {
             try {
-                const res = await axios.get('http://localhost:3001/api/products/collections/new');
-                setNewProducts(res.data.products || []); // Backend trả { success: true, products: [...] }
+                // 👇 SỬA LẠI LOGIC GỌI API
+                const products = await ProductController.getNewProducts();
+                setNewProducts(products);
             } catch (error) {
-                console.error("Lỗi fetch sản phẩm mới:", error);
+                // Lỗi đã được log trong controller
+                console.error("Lỗi fetch sản phẩm mới (Component):", error.message);
             } finally {
                 setLoading(false);
             }

@@ -35,7 +35,15 @@ const AuthController = {
             throw new Error(error.response?.data?.message || "Đăng nhập Google thất bại");
         }
     },
-
+    facebookLogin: async (accessToken) => { 
+        try {
+            const response = await api.post("/auth/facebookLogin", { accessToken });
+            return response.data;
+        } catch (error) {
+            console.error("Facebook Login failed (Controller):", error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || "Đăng nhập Facebook thất bại.");
+        }
+    },
     logout: async () => {
         try {
             // Gọi API logout để backend xóa cookie
