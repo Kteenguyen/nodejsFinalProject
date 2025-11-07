@@ -3,135 +3,198 @@ const Comment = require('../models/commentModel');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
-// Hiển thị danh sách sản phẩm với phân trang, lọc và sắp xếp
+// RUBIK #10, #14, #15, #16 — có hỗ trợ search "không dấu" (mặc định) & full-text (tùy chọn)
 exports.getProducts = async (req, res) => {
-    try {
-        const {
-            page = 1,
-            limit = 10,
-            categoryId,
-            brand,
-            minPrice,
-            maxPrice,
-            sortBy,
-            sortOrder,
-            keyword
-        } = req.query;
+  try {
+    const page  = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 12, 60);
 
-        const query = { status: 'available' }; // Chỉ lấy sản phẩm available
-
-        // Thêm các điều kiện lọc
-        if (categoryId) {
-            query['category.categoryId'] = categoryId;
-        }
-        if (brand) {
-            query.brand = { $regex: brand, $options: 'i' }; // Tìm kiếm không phân biệt hoa thường
-        }
-        if (minPrice || maxPrice) {
-            query.price = {};
-            if (minPrice) query.price.$gte = parseFloat(minPrice);
-            if (maxPrice) query.price.$lte = parseFloat(maxPrice);
-        }
-
-        // Thêm điều kiện tìm kiếm theo từ khóa
-        if (keyword) {
-            query.$or = [
-                { productName: { $regex: keyword, $options: 'i' } },
-                { productDescription: { $regex: keyword, $options: 'i' } },
-                { brand: { $regex: keyword, $options: 'i' } }
-            ];
-        }
-
-        // Tạo đối tượng sắp xếp
-        const sort = {};
-        if (sortBy) {
-            switch (sortBy) {
-                case 'name':
-                    sort.productName = sortOrder === 'desc' ? -1 : 1;
-                    break;
-                case 'price':
-                    sort.price = sortOrder === 'desc' ? -1 : 1;
-                    break;
-                case 'newest':
-                    sort.createdAt = -1;
-                    break;
-                case 'oldest':
-                    sort.createdAt = 1;
-                    break;
-                default:
-                    sort.createdAt = -1;
-            }
-        } else {
-            sort.createdAt = -1; // Mặc định sắp xếp mới nhất
-        }
-
-        // Lấy tổng số sản phẩm để tính số trang
-        const totalProducts = await Product.countDocuments(query);
-        const products = await Product.find(query)
-            .sort(sort)
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
-
-        res.status(200).json({
-            success: true,
-            products,
-            currentPage: parseInt(page),
-            totalPages: Math.ceil(totalProducts / limit),
-            totalProducts: totalProducts,
-            hasNextPage: page < Math.ceil(totalProducts / limit),
-            hasPrevPage: page > 1,
-            data: products,
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Lỗi server',
-            error: error.message
-        });
+    // Giữ tương thích ngược: ?sort=name_asc|name_desc|price_asc|price_desc|newest|oldest
+    let { sort, sortBy = 'newest', sortOrder = 'asc' } = req.query || {};
+    if (sort) {
+      const map = {
+        name_asc:  ['name','asc'],
+        name_desc: ['name','desc'],
+        price_asc: ['price','asc'],
+        price_desc:['price','desc'],
+        newest:    ['newest','desc'],
+        oldest:    ['oldest','asc'],
+      };
+      if (map[sort]) [sortBy, sortOrder] = map[sort];
     }
+
+    const {
+      categoryId,
+      brand,
+      keyword = '',
+      minPrice,
+      maxPrice,
+      // NEW: chế độ search — 'norm' (mặc định, không dấu) | 'text' (Mongo text index)
+      searchMode = 'norm'
+    } = req.query;
+
+    const match = { status: 'available' };
+    if (categoryId) match['category.categoryId'] = categoryId;
+
+    // Multi-brand: brand=Asus,MSI
+    if (brand) {
+      const arr = String(brand).split(',').map(s => s.trim()).filter(Boolean);
+      match.brand = arr.length > 1
+        ? { $in: arr.map(b => new RegExp(`^${b}$`, 'i')) }
+        : { $regex: brand, $options: 'i' };
+    }
+
+    // ====== SEARCH (#14) ======
+    const hasKeyword = String(keyword).trim().length > 0;
+    const useText = hasKeyword && (String(searchMode).toLowerCase() === 'text');
+
+    if (hasKeyword) {
+      if (useText) {
+        // Yêu cầu đã tạo text index trong model: productName, productDescription, brand
+        match.$text = { $search: String(keyword).trim() };
+      } else {
+        // Tìm KHÔNG DẤU / không phân biệt hoa thường (cần 3 field *Norm trong model)
+        const kw = String(keyword).trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        match.$or = [
+          { productNameNorm:        { $regex: kw, $options: 'i' } },
+          { productDescriptionNorm: { $regex: kw, $options: 'i' } },
+          { brandNorm:              { $regex: kw, $options: 'i' } },
+        ];
+      }
+    }
+
+    // Price filter dựa trên biến thể
+    if (minPrice || maxPrice) {
+      match['variants.price'] = {};
+      if (minPrice) match['variants.price'].$gte = Number(minPrice);
+      if (maxPrice) match['variants.price'].$lte = Number(maxPrice);
+    }
+
+    // Sắp xếp mặc định (khi KHÔNG ở chế độ text)
+    const sortStage = (() => {
+      if (sortBy === 'name')  return { productName: (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'price') return { minPrice:    (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'oldest') return { createdAt: 1 };
+      return { createdAt: -1 }; // newest
+    })();
+
+    // ====== PIPELINE ======
+    const pipeline = [
+      { $match: match },
+      ...(useText ? [{ $addFields: { score: { $meta: 'textScore' } } }] : []),
+      { $addFields: { minPrice: { $min: "$variants.price" } } },
+      // Nếu searchMode=text: ưu tiên độ liên quan (score DESC), tie-breaker theo minPrice ASC
+      { $sort: useText ? { score: { $meta: 'textScore' }, minPrice: 1 } : sortStage },
+      {
+        $facet: {
+          items: [
+            { $skip: (page - 1) * limit },
+            { $limit: limit },
+            { $project: {
+                productId: 1, productName: 1, brand: 1, category: 1,
+                images: { $slice: ["$images", 1] },
+                minPrice: 1, createdAt: 1, variants: 1, status: 1,
+                ...(useText ? { score: 1 } : {})
+            } }
+          ],
+          total: [{ $count: "count" }]
+        }
+      }
+    ];
+
+    const [result] = await Product.aggregate(pipeline);
+    const total = result?.total?.[0]?.count || 0;
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+
+    return res.status(200).json({
+      success: true,
+      products: result.items,
+      totalProducts: total,
+      currentPage: page,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
 };
 
-// Hiển thị chi tiết một sản phẩm
+// Hiển thị chi tiết một sản phẩm (RUBIK #11)
 exports.getProductDetails = async (req, res) => {
-    try {
-        const { productId } = req.params;
-
-        let product;
-        if (mongoose.Types.ObjectId.isValid(productId)) {
-            product = await Product.findById(productId);
-        } else {
-            product = await Product.findOne({ productId });
-        }
-
-        if (!product) {
-            return res.status(404).json({
-                success: false,
-                message: "Không tìm thấy sản phẩm"
-            });
-        }
-
-        // lấy comments + rating
-        const comments = await Comment.find({ productId: product._id })
-            .populate('accountId', 'name email');
-
-        return res.status(200).json({
-            success: true,
-            product: {
-                ...product.toObject(),
-                comments: comments,
-                averageRating: comments.length > 0
-                    ? comments.reduce((sum, c) => sum + c.rating, 0) / comments.length
-                    : 0
-            }
-        });
-
-    } catch (err) {
-        return res.status(500).json({
-            success: false,
-            message: "Lỗi server",
-            error: err.message
-        });
+  try {
+    // Dùng document do middleware resolveProductMiddleware đã gán
+    const product = req.product;
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
     }
+
+    // Lấy comments (không bắt buộc populate để tránh lệch kiểu accountId)
+    const comments = await Comment.find({ productId: product._id }).lean();
+
+    // Tính điểm trung bình
+    const avg = comments.length
+      ? comments.reduce((s, c) => s + (Number(c.rating) || 0), 0) / comments.length
+      : 0;
+
+    // Lấy minPrice từ variants (nếu có)
+    const minPrice = Array.isArray(product.variants) && product.variants.length
+      ? Math.min(...product.variants.map(v => Number(v.price) || Infinity))
+      : 0;
+
+    return res.status(200).json({
+      success: true,
+      product: {
+        ...product.toObject(),
+        minPrice,
+        comments,
+        averageRating: Number(avg.toFixed(2))
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: err.message });
+  }
+};
+
+// #17: Nhận các dòng giỏ và enrich để UI hiển thị
+exports.batchProductLines = async (req, res) => {
+  try {
+    const lines = Array.isArray(req.body.lines) ? req.body.lines : []; // [{productId, productMongoId, variantId, qty}]
+    if (!lines.length) return res.json([]);
+
+    const ids = [...new Set(lines.map(l => l.productMongoId || l._id || l.productId))];
+
+    const or = [];
+    const mongoIds = ids.filter(id => mongoose.isValidObjectId(id));
+    if (mongoIds.length) or.push({ _id: { $in: mongoIds } });
+    const customIds = ids.filter(id => !mongoose.isValidObjectId(id));
+    if (customIds.length) or.push({ productId: { $in: customIds } });
+
+    const products = await Product.find(or.length ? { $or: or } : {}).lean();
+
+    const out = [];
+    for (const line of lines) {
+      const p = products.find(x =>
+        String(x._id) === String(line.productMongoId || line._id) ||
+        x.productId === line.productId
+      );
+      if (!p) continue;
+      const v = (p.variants || []).find(_v => String(_v.variantId) === String(line.variantId));
+      if (!v) continue;
+      out.push({
+        productId: p.productId, productMongoId: p._id,
+        variantId: v.variantId, sku: v.variantId,
+        name: p.productName, brand: p.brand,
+        attrs: { name: v.name },
+        image: (p.images && p.images[0]) || '',
+        price: v.price, qty: Number(line.qty || 1)
+      });
+    }
+    return res.json(out);
+  } catch (e) {
+    return res.status(500).json({ success:false, message:'Lỗi server', error: e.message });
+  }
 };
 
 

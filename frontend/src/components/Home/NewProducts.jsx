@@ -1,22 +1,25 @@
 // src/components/NewProducts.jsx
 import React, { useState, useEffect } from 'react';
-// import axios from 'axios'; // 👈 BỎ DÒNG NÀY
-import { ProductController } from '../../controllers/productController'
+import { ProductController } from '../../controllers/productController'; // Import controller
 import ProductCard from './ProductCard';
 
 const NewProducts = () => {
     const [newProducts, setNewProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    React.useEffect(() => {
+    useEffect(() => {
         const fetchNewProducts = async () => {
+            setLoading(true);
+            setError('');
             try {
-                // 👇 SỬA LẠI LOGIC GỌI API
+                // Gọi hàm từ ProductController
                 const products = await ProductController.getNewProducts();
                 setNewProducts(products);
-            } catch (error) {
-                // Lỗi đã được log trong controller
-                console.error("Lỗi fetch sản phẩm mới (Component):", error.message);
+            } catch (err) {
+                console.error("Lỗi fetch sản phẩm mới (Component):", err.message);
+                setError('Không thể tải sản phẩm mới. Vui lòng thử lại.');
+                setNewProducts([]);
             } finally {
                 setLoading(false);
             }
@@ -24,14 +27,17 @@ const NewProducts = () => {
         fetchNewProducts();
     }, []);
 
-    if (loading) return <p>Loading...</p>;
-
     return (
-        <section>
+        <section className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Sản phẩm mới</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                {newProducts.map((product) => (
-                    <ProductCard key={product._id} product={product} />
+            {loading && <p className="text-center py-4 text-gray-600">Đang tải sản phẩm mới...</p>}
+            {error && <p className="text-red-500 text-center py-4">{error}</p>}
+            {!loading && !error && newProducts.length === 0 && (
+                <p className="text-center py-4 text-gray-600">Hiện chưa có sản phẩm mới nào.</p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {!loading && !error && newProducts.map((product) => (
+                    <ProductCard key={product._id || product.productId} product={product} />
                 ))}
             </div>
         </section>

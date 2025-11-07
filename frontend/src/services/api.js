@@ -1,26 +1,26 @@
 // frontend/src/services/api.js
+import axios from 'axios';
 
-import axios from "axios";
+const API_BASE_URL = 'https://localhost:3001/api';
 
 const api = axios.create({
-    baseURL: "https://localhost:3001/api", // backend server
-    withCredentials: true,
+    baseURL: API_BASE_URL,
+    withCredentials: true, // Quan trọng để gửi cookies (session, JWT)
+    headers: {
+        'Content-Type': 'application/json',
+    },
 });
 
-
-// Thêm một Interceptor để xử lý lỗi một cách "thanh lịch"
+// Có thể thêm interceptors ở đây để xử lý lỗi hoặc refresh token tự động
 api.interceptors.response.use(
-    (response) => response, // Nếu request thành công, chỉ cần trả về response
+    (response) => response,
     (error) => {
-        // Nếu lỗi là 401 (Unauthorized)
-        if (error.response && error.response.status === 401) {
-        } else if (error.response && error.response.status === 403) {
-            console.error("axiosInstance: Bị lỗi 403 Forbidden:", error.response.data);
-        } else {
-            // Log tất cả các lỗi khác (lỗi mạng, lỗi server 5xx, lỗi khác 4xx)
-            console.error("axiosInstance: Bị lỗi khác:", error.message, error.response?.data);
-        }
-        return Promise.reject(error); // Vẫn từ chối Promise để các component gọi API có thể bắt lỗi
+        // Ví dụ: nếu token hết hạn (status 401), có thể thử refresh token
+        // if (error.response && error.response.status === 401) {
+        //     // Logic refresh token
+        // }
+        return Promise.reject(error);
     }
 );
+
 export default api;
