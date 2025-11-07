@@ -4,7 +4,27 @@ import api from "../services/api"; // Import instance axios đã cấu hình
 // ============================================
 // CÁC HÀM GỌI API
 // ============================================
-
+/**
+ * Lấy chi tiết một sản phẩm bằng ID
+ * (Refactored từ ProductDetail.jsx)
+ * @param {string} productId ID của sản phẩm (ví dụ: 'monitor04')
+ */
+const getProductById = async (productId) => {
+    if (!productId) {
+        throw new Error("Product ID là bắt buộc");
+    }
+    try {
+        // Dùng 'api.get', nó sẽ tự động dùng base URL 'https://localhost:3001/api'
+        // Nó sẽ gọi tới: /api/products/:productId
+        const response = await api.get(`/products/${productId}`);
+        
+        // Backend của fen trả về { success: true, product: {...} }
+        return response.data.product; 
+    } catch (error) {
+        console.error(`Lỗi fetch chi tiết sản phẩm ${productId} (Controller):`, error);
+        throw error; // Ném lỗi để component cha xử lý
+    }
+};
 /**
  * Lấy danh sách sản phẩm theo Category ID.
  * Hỗ trợ sắp xếp, phân trang.
@@ -117,9 +137,13 @@ function getMinPrice(product) {
 
 // Export tất cả các hàm để sử dụng ở các component
 export const ProductController = {
+    //API Calls
+    getProductById,
     getProductsByCategory,
     getNewProducts,
     getBestSellers,
+
+    // Helpers
     getImageUrl,
     getMinPrice
 };
