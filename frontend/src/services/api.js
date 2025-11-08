@@ -7,9 +7,10 @@ const api = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true, // Quan trọng để gửi cookies (session, JWT)
     validateStatus: (status) => {
+        if (status === 401) return true;
         // Chỉ ném lỗi cho status >= 500 (Server Error)
         // và KHÔNG ném lỗi cho 401 (Unauthorized)
-        return status >= 200 && status < 500 && status !== 401; 
+        return status >= 200 && status < 500 && status !== 401;
     },
     headers: {
         'Content-Type': 'application/json',

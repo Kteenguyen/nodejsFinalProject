@@ -5,30 +5,48 @@ const asyncHandler = require('express-async-handler'); // Nên dùng để bắt
 const mongoose = require('mongoose');
 //Lấy thông tin cá nhân của người dùng đang đăng nhập
 exports.getUserProfile = asyncHandler(async (req, res) => {
-    // req.user đã được gán từ middleware 'protect'
-    const user = req.user;
-    // if (!user) {
-    //     console.error("getUserProfile Error: req.user is null/undefined after protect middleware.");
-    //     res.status(500);
-    //     throw new Error('Không thể truy xuất thông tin người dùng sau xác thực.');
-    // }
-    res.status(200).json({ success: true, user });
+    // 1. Lấy token từ cookie (tên cookie phải khớp với lúc fen login)
+    const token = req.cookies.jwt; // (Hoặc 'token', 'access_token',...)
+
+    if (token) {
+        try {
+            // 2. Xác thực token
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+            // 3. Tìm user (giống hệt logic 'protect' cũ)
+            const user = await User.findById(decoded.id).select('-password');
+
+            if (user) {
+                // 4a. CÓ TOKEN HỢP LỆ: Trả về user
+                res.status(200).json({ success: true, user: user });
+            } else {
+                // 4b. Token hợp lệ nhưng user không tồn tại
+                res.status(200).json({ success: false, user: null, message: 'User not found' });
+            }
+        } catch (error) {
+            // 4c. Token KHÔNG HỢP LỆ (hết hạn, sai,...)
+            console.error("getUserProfile Error: Invalid token", error.message);
+            // Vẫn trả 200 OK để console không bị đỏ
+            res.status(200).json({ success: false, user: null, message: 'Invalid token' });
+        }
+    } else {
+        // 4d. KHÔNG CÓ TOKEN (Khách vãng lai)
+        // Vẫn trả 200 OK để console không bị đỏ
+        res.status(200).json({ success: false, user: null, message: 'No token' });
+    }
 });
 
-// Cập nhật thông tin cá nhân
 exports.updateUserProfile = async (req, res) => {
     try {
-        // req.user.id chính là Mongo _id
+        // (Giả sử route PUT /users/me của fen VẪN DÙNG 'protect')
         const userId = req.user && req.user.id;
-        // if (!userId) {
-        //     return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
-        // }
+        if (!userId) {
+            // Dòng này bây giờ là dự phòng, vì 'protect' đã check
+            return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
+        }
 
-        // Chỉ cho phép cập nhật các trường này
         const { name, phoneNumber, dateOfBirth, avatar } = req.body;
         const updates = { name, phoneNumber, dateOfBirth, avatar };
-
-        // Lọc ra các trường undefined để tránh ghi đè
         Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
 
         const updatedUser = await User.findByIdAndUpdate(
