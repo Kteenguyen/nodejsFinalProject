@@ -9,11 +9,11 @@ import { AuthController } from "../controllers/AuthController";
 import { Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import DashboardRoutes from "./DashboardRoutes";
 import { useAuth } from "../context/AuthContext";
-
-// ====== NEW: import các trang/tp mới ======
-import ProductDetail from '../pages/ProductDetail';     // Trang chi tiết sản phẩm (#11)
-import CartPage from '../pages/Cart';                   // Trang giỏ hàng (#17)
-import CategoryProducts from '../components/Home/CategoryProducts'; // Khối danh mục (dùng làm page với wrapper)
+import ProfilePage from '../pages/ProfilePage';
+import ProductsPage from '../pages/ProductsPage';
+import ProductDetail from '../pages/ProductDetail';
+import CartPage from '../pages/Cart';
+import CategoryProducts from '../components/Home/CategoryProducts';
 
 function App() {
   const location = useLocation();
@@ -66,9 +66,11 @@ function App() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<Home />} />
+        <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:id" element={<ProductDetailRoute />} />   {/* #11 */}
         <Route path="/cart" element={<CartPage />} />                     {/* #17 */}
         <Route path="/category/:categoryId" element={<CategoryRoute />} />{/* #16 (ordering trong component) */}
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* Auth */}
         <Route path="/login" element={<Login />} />

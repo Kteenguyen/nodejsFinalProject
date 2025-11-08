@@ -5,6 +5,30 @@ import api from "../services/api"; // Import instance axios đã cấu hình
 // CÁC HÀM GỌI API
 // ============================================
 /**
+ * Lấy danh sách TẤT CẢ sản phẩm (hỗ trợ phân trang)
+ * (Refactored từ ProductsPage.jsx)
+ * @param {object} options Các tùy chọn như page, limit
+ */
+const getProducts = async (options = {}) => {
+    const { page = 1, limit = 12 } = options;
+    try {
+        // Xây dựng query params
+        const params = new URLSearchParams({
+            page,
+            limit
+        });
+
+        // Gọi API /api/products (route GET '/' của productRoutes.js)
+        const response = await api.get('/products', { params });
+
+        // Trả về data (VD: { products: [...], totalPages: X })
+        return response.data;
+    } catch (error) {
+        console.error("Lỗi fetch (all) products (Controller):", error);
+        throw error; // Ném lỗi để component cha xử lý
+    }
+};
+/**
  * Lấy chi tiết một sản phẩm bằng ID
  * (Refactored từ ProductDetail.jsx)
  * @param {string} productId ID của sản phẩm (ví dụ: 'monitor04')
@@ -17,9 +41,9 @@ const getProductById = async (productId) => {
         // Dùng 'api.get', nó sẽ tự động dùng base URL 'https://localhost:3001/api'
         // Nó sẽ gọi tới: /api/products/:productId
         const response = await api.get(`/products/${productId}`);
-        
+
         // Backend của fen trả về { success: true, product: {...} }
-        return response.data.product; 
+        return response.data.product;
     } catch (error) {
         console.error(`Lỗi fetch chi tiết sản phẩm ${productId} (Controller):`, error);
         throw error; // Ném lỗi để component cha xử lý
@@ -142,7 +166,7 @@ export const ProductController = {
     getProductsByCategory,
     getNewProducts,
     getBestSellers,
-
+    getProducts,
     // Helpers
     getImageUrl,
     getMinPrice

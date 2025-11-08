@@ -1,3 +1,87 @@
+/* frontend/src/index.css */
+
+/* 1. ĐỊNH NGHĨA BẢNG MÀU MỚI (Xanh đen, Xám, Teal, Be ngả trắng) */
+@layer base {
+  :root {
+    /* Bảng màu chính từ ảnh */
+    --color-primary: #222831;       /* Xanh đen (Nền Header) */
+    --color-accent: #31363F;       /* Xám đậm (Nút) */
+    --color-accent-hover: #76ABAE;  /* Teal (Hover / Link) */
+    --color-background: #FAF6F0;    /* Be ngả trắng (Nền web) */
+    --color-surface: #FFFFFF;      /* Trắng (Nền card, menu) */
+    
+    /* Màu text */
+    --text-primary: #222831;       /* Text chính (Xanh đen) trên nền sáng */
+    --text-secondary: #31363F;     /* Text phụ (Xám đậm) trên nền sáng */
+    --text-on-dark: #FAF6F0;      /* Text (Be) trên nền tối (primary) */
+    --text-accent: #76ABAE;       /* Text (Teal) cho link */
+  }
+
+  /* 2. ÁP DỤNG MÀU NỀN VÀ MÀU CHỮ MẶC ĐỊNH CHO WEB */
+  body {
+    @apply bg-background text-text-primary;
+  }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 3. CẬP NHẬT CÁC CUSTOM CLASS (BUTTONS, LINKS) ĐỂ DÙNG MÀU MỚI */
+@layer components {
+
+  /* === NÚT VUÔNG (Đồng bộ) - CHO HEADER === */
+  /* Nút chính (Đăng nhập, Giỏ hàng) */
+  .btn-accent-header {
+    @apply flex items-center justify-center h-10 px-4 md:h-12 md:px-5;
+    @apply bg-accent text-text-on-dark rounded-md; /* Nền Xám đậm, Chữ Be */
+    @apply hover:bg-accent-hover transition-colors duration-200;
+    /* === THÊM HIỆU ỨNG HOVER 3D VÀO ĐÂY === */
+    @apply transform ease-out hover:scale-110 hover:-translate-y-1 hover:shadow-2xl; 
+  }
+  /* Nút Avatar (kích thước khác 1 chút) */
+  .btn-avatar-header {
+    @apply flex items-center justify-center h-10 px-2 md:h-12 md:px-3;
+    @apply bg-accent text-text-on-dark rounded-md; /* Nền Xám đậm, Chữ Be */
+    @apply hover:bg-accent-hover transition-colors duration-200;
+    /* === THÊM HIỆU ỨNG HOVER 3D VÀO ĐÂY === */
+    @apply transform ease-out hover:scale-110 hover:-translate-y-1 hover:shadow-2xl;
+  }
+  /* Nút Hamburger (màu text trên nền tối, bo vuông) */
+  .btn-hamburger-header {
+    @apply md:hidden flex items-center justify-center h-10 w-10 rounded-md;
+    @apply text-text-on-dark hover:bg-black/[.15] transition-colors duration-200;
+  }
+
+
+  /* === CHO NAV LINK (Nền tối 'primary') === */
+  .nav-link-dark {
+    @apply text-text-on-dark hover:text-white font-medium transition-colors duration-200 relative;
+    /* Gạch chân màu Accent-Hover (Teal) */
+    @apply after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-accent-hover after:transition-all after:duration-300;
+    @apply hover:after:w-full;
+  }
+  
+  /* === CHO MENU XỔ XUỐNG (Nền 'surface' trắng) === */
+  .mobile-nav-link {
+    @apply flex items-center py-3 px-4 rounded-lg text-text-primary font-medium text-base;
+    @apply hover:bg-background hover:text-text-accent transition-colors duration-200;
+  }
+  .menu-item {
+    @apply flex items-center w-full px-4 py-2 text-sm text-text-primary;
+    @apply hover:bg-background hover:text-text-accent transition-colors duration-200;
+  }
+  .menu-item-danger {
+    @apply flex items-center w-full px-4 py-2 text-sm text-red-600;
+    @apply hover:bg-red-50 hover:text-red-700 transition-colors duration-200;
+  }
+}
+
+/* Keyframe cho animation giỏ hàng (pulse) - Giữ nguyên */
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: .9; }
+}
+.animate-pulse-badge {
+  animation: pulse-badge 1.5s infinite ease-in-out;
+}
