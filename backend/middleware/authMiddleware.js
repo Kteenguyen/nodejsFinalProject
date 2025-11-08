@@ -11,11 +11,11 @@ const protect = asyncHandler(async (req, res, next) => {
     }
 
     // --- LOGIC QUAN TRỌNG: NẾU KHÔNG CÓ TOKEN, TRẢ VỀ 401 NGAY LẬP TỨC ---
-    if (!token) {
-        console.log("🚫 protect: Không tìm thấy token trong cookie. Trả về 401.");
-        res.status(401);
-        throw new Error('Không được ủy quyền, không có token'); // Lỗi này sẽ được error handler bắt
-    }
+    // if (!token) {
+    //     console.log("🚫 protect: Không tìm thấy token trong cookie. Trả về 401.");
+    //     res.status(401);
+    //     throw new Error('Không được ủy quyền, không có token'); // Lỗi này sẽ được error handler bắt
+    // }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);

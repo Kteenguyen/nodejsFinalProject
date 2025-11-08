@@ -5,9 +5,11 @@ import { useEffect } from "react"; // chỉ cần useEffect cho LogoutRoute
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import RegisterAddress from '../pages/RegisterAddress';
-import { AuthController } from "../controllers/AuthController";
+import {AuthController}  from "../controllers/AuthController";
 import { Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import DashboardRoutes from "./DashboardRoutes";
+import ForgotPassword from '../pages/ForgotPassword';
+import ResetPassword from '../pages/ResetPassword';
 import { useAuth } from "../context/AuthContext";
 import ProfilePage from '../pages/ProfilePage';
 import ProductsPage from '../pages/ProductsPage';
@@ -77,7 +79,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/register-address" element={<RegisterAddress />} />
         <Route path="/logout" element={<LogoutRoute />} />
-
+        <Route path="/forgot-password" element={<ForgotPassword />} /> 
+        <Route path="/reset-password/:token" element={<ResetPassword />} /> 
         {/* Admin */}
         <Route path="/admin/*" element={<DashboardRoutes />} />
       </Routes>

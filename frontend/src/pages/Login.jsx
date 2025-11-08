@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"; // Import Link để điều hướng
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
 import FacebookLogin from '@greatsumini/react-facebook-login';
-import { AuthController } from "../controllers/AuthController";
+import {AuthController} from "../controllers/AuthController";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useGoogleLogin } from "@react-oauth/google";

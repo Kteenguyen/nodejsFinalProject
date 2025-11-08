@@ -5,30 +5,55 @@ const asyncHandler = require('express-async-handler'); // Nên dùng để bắt
 const mongoose = require('mongoose');
 //Lấy thông tin cá nhân của người dùng đang đăng nhập
 exports.getUserProfile = asyncHandler(async (req, res) => {
-    // Nếu request đến được đây, nghĩa là protect đã chạy thành công
-    // và đã gắn user đầy đủ từ DB vào req.user.
+    // req.user đã được gán từ middleware 'protect'
     const user = req.user;
-
-    if (!user) {
-        // Trường hợp này thực tế không nên xảy ra nếu protect chạy đúng và có user
-        // Nhưng để phòng thủ thì vẫn check.
-        console.error("getUserProfile Error: req.user is null/undefined after protect middleware.");
-        res.status(500); // Lỗi logic server
-        throw new Error('Không thể truy xuất thông tin người dùng sau xác thực.');
-    }
-
-    // user đã là object user từ DB (không chứa password)
+    // if (!user) {
+    //     console.error("getUserProfile Error: req.user is null/undefined after protect middleware.");
+    //     res.status(500);
+    //     throw new Error('Không thể truy xuất thông tin người dùng sau xác thực.');
+    // }
     res.status(200).json({ success: true, user });
 });
 
 // Cập nhật thông tin cá nhân
 exports.updateUserProfile = async (req, res) => {
     try {
-        // Lấy userId từ middleware xác thực (bắt buộc)
+        // req.user.id chính là Mongo _id
         const userId = req.user && req.user.id;
-        if (!userId) {
-            return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
+        // if (!userId) {
+        //     return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
+        // }
+
+        // Chỉ cho phép cập nhật các trường này
+        const { name, phoneNumber, dateOfBirth, avatar } = req.body;
+        const updates = { name, phoneNumber, dateOfBirth, avatar };
+
+        // Lọc ra các trường undefined để tránh ghi đè
+        Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            updates,
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
         }
+        res.status(200).json({ success: true, user: updatedUser });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Cập nhật thông tin cá nhân
+exports.updateUserProfile = async (req, res) => {
+    try {
+        // Lấy userId từ middleware xác thực (bắt buộc)
+        // const userId = req.user && req.user.id;
+        // if (!userId) {
+        //     return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
+        // }
 
         const { name, phoneNumber, address } = req.body;
 
@@ -61,47 +86,39 @@ exports.updateUserProfile = async (req, res) => {
 };
 
 // Đổi mật khẩu
-exports.changePassword = async (req, res) => {
-    try {
-        // Lấy userId từ auth middleware (bắt buộc)
-        const userId = req.user && req.user.id;
-        if (!userId) {
-            return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
-        }
+exports.changeMyPassword = asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
 
-        const { currentPassword, newPassword } = req.body;
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ message: 'Vui lòng cung cấp currentPassword và newPassword.' });
-        }
-        if (newPassword.length < 6) {
-            return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự.' });
-        }
-
-        const user = await User.findOne({ userId });
-        if (!user) {
-            return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
-        }
-
-        const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
-        if (!isCurrentValid) {
-            return res.status(401).json({ message: 'Mật khẩu hiện tại không đúng.' });
-        }
-
-        // Tránh đặt mật khẩu mới trùng mật khẩu cũ
-        const isSameAsOld = await bcrypt.compare(newPassword, user.password);
-        if (isSameAsOld) {
-            return res.status(400).json({ message: 'Mật khẩu mới không được trùng mật khẩu hiện tại.' });
-        }
-
-        const hashed = await bcrypt.hash(newPassword, 10);
-        user.password = hashed;
-        await user.save();
-
-        return res.status(200).json({ message: 'Đổi mật khẩu thành công!' });
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        res.status(400);
+        throw new Error('Vui lòng nhập đầy đủ thông tin.');
     }
-};
+
+    if (newPassword !== confirmPassword) {
+        res.status(400);
+        throw new Error('Mật khẩu mới không khớp.');
+    }
+
+    // Lấy user (với password)
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+        res.status(404);
+        throw new Error('Không tìm thấy người dùng.');
+    }
+
+    // Kiểm tra mật khẩu cũ
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+        res.status(400);
+        throw new Error('Mật khẩu hiện tại không đúng.');
+    }
+
+    // Cập nhật mật khẩu mới
+    user.password = newPassword;
+    await user.save(); // pre-save hook trong userModel sẽ tự động hash
+
+    res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công.' });
+});
 
 //Quên mật khẩu - Bước 1: Yêu cầu reset
 exports.forgotPassword = async (req, res) => {
@@ -157,6 +174,39 @@ exports.forgotPassword = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+exports.changeMyPassword = asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        res.status(400);
+        throw new Error('Vui lòng nhập đầy đủ thông tin.');
+    }
+
+    if (newPassword !== confirmPassword) {
+        res.status(400);
+        throw new Error('Mật khẩu mới không khớp.');
+    }
+
+    // Lấy user (với password)
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) {
+        res.status(404);
+        throw new Error('Không tìm thấy người dùng.');
+    }
+
+    // Kiểm tra mật khẩu cũ
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+        res.status(400);
+        throw new Error('Mật khẩu hiện tại không đúng.');
+    }
+
+    // Cập nhật mật khẩu mới
+    user.password = newPassword;
+    await user.save(); // pre-save hook trong userModel sẽ tự động hash
+
+    res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công.' });
+});
 //Quên mật khẩu - Bước 2: Đặt lại mật khẩu
 exports.resetPassword = async (req, res) => {
     try {
@@ -179,64 +229,32 @@ exports.resetPassword = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-exports.addShippingAddress = asyncHandler(async (req, res) => {
-
-    // (ĐÚNG) Dùng user từ 'protect' middleware
-    const user = req.user;
-
-    if (user) {
-        const { recipientName, phoneNumber, street, ward, district, city, isDefault } = req.body;
-
-        if (!recipientName || !phoneNumber || !street || !ward || !district || !city) {
-            res.status(400);
-            throw new Error("Thiếu thông tin bắt buộc: recipientName, phoneNumber, street, ward, district, city.");
-        }
-
-        // 👇👇👇 FIX LỖI "forEach OF UNDEFINED" 👇👇👇
-        // Nếu user mới, 'shippingAddresses' có thể chưa phải là 1 mảng.
-        // Phải khởi tạo nó nếu nó chưa tồn tại!
-        if (!user.shippingAddresses) {
-            user.shippingAddresses = [];
-        }
-        // 👆👆👆 HẾT FIX 👆👆👆
-
-        const newAddress = {
-            _id: new mongoose.Types.ObjectId(),
-            recipientName,
-            phoneNumber,
-            addressDetail: `${street}, ${ward}, ${district}, ${city}`,
-            street,
-            ward,
-            district,
-            city,
-            isDefault: isDefault === true,
-        };
-
-        // (Giờ code này đã an toàn vì user.shippingAddresses 100% là 1 mảng)
-        if (newAddress.isDefault) {
-            user.shippingAddresses.forEach(addr => {
-                if (addr) addr.isDefault = false;
-            });
-        }
-
-        // Nếu đây là địa chỉ đầu tiên, ép nó làm mặc định
-        if (user.shippingAddresses.length === 0) {
-            newAddress.isDefault = true;
-        }
-
-        user.shippingAddresses.push(newAddress);
-        await user.save(); // Lưu lại user (với địa chỉ mới)
-
-        res.status(201).json({
-            message: "Địa chỉ giao hàng đã được thêm thành công!",
-            address: newAddress,
-            shippingAddresses: user.shippingAddresses
-        });
-
-    } else {
+exports.getMyAddresses = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id);
+    if (!user) {
         res.status(404);
-        throw new Error("Không tìm thấy người dùng.");
+        throw new Error('Không tìm thấy người dùng.');
     }
+    res.status(200).json({ success: true, addresses: user.shippingAddresses });
+});
+exports.addAddress = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+        res.status(404);
+        throw new Error('Không tìm thấy người dùng.');
+    }
+    const newAddress = req.body; // { fullName, phoneNumber, address, ... }
+
+    // Nếu đây là địa chỉ đầu tiên, hoặc user set nó là default
+    if (newAddress.isDefault || user.shippingAddresses.length === 0) {
+        user.shippingAddresses.forEach(addr => addr.isDefault = false);
+        newAddress.isDefault = true;
+    }
+
+    user.shippingAddresses.push(newAddress);
+    await user.save();
+
+    res.status(201).json({ success: true, addresses: user.shippingAddresses });
 });
 //Cập nhật một địa chỉ giao hàng
 exports.updateShippingAddress = async (req, res) => {
@@ -260,17 +278,21 @@ exports.updateShippingAddress = async (req, res) => {
 };
 
 //Xóa một địa chỉ giao hàng
-exports.deleteShippingAddress = async (req, res) => {
-    try {
-        await User.updateOne(
-            { userId: req.user.id },
-            { $pull: { shippingAddresses: { addressId: req.params.addressId } } }
-        );
-        res.status(200).json({ message: 'Xóa địa chỉ thành công!' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+exports.deleteAddress = asyncHandler(async (req, res) => {
+    const { addressId } = req.params;
+    const user = await User.findById(req.user.id);
+
+    user.shippingAddresses.pull(addressId); // Xóa sub-document
+
+    // Kiểm tra nếu địa chỉ mặc định bị xóa, chọn cái đầu tiên làm mặc định mới
+    const defaultAddress = user.shippingAddresses.find(addr => addr.isDefault);
+    if (!defaultAddress && user.shippingAddresses.length > 0) {
+        user.shippingAddresses[0].isDefault = true;
     }
-};
+
+    await user.save();
+    res.status(200).json({ success: true, addresses: user.shippingAddresses });
+});
 
 //Đặt một địa chỉ làm mặc định
 exports.setDefaultShippingAddress = async (req, res) => {

@@ -1,6 +1,4 @@
 // frontend/src/components/Home/AddressForm.jsx
-// (Component này giờ chỉ làm nhiệm vụ hiển thị, toàn bộ logic nằm ở trang cha)
-
 import { useState } from "react";
 
 // (Component Toggle Switch giữ nguyên từ file gốc của fen)
@@ -21,7 +19,6 @@ const ToggleSwitch = ({ checked, onChange }) => {
 };
 
 // === COMPONENT FORM ĐỊA CHỈ (ĐÃ SỬA) ===
-// (Đây là "Controlled Component", nhận data và handlers từ props)
 const AddressForm = ({
     // Data cho 3 dropdowns
     provinces = [],
@@ -40,34 +37,38 @@ const AddressForm = ({
     selectedWard,           // { code, name }
     onWardChange,           // (value, name) => {}
 
-    // State của Chi tiết
-    addressDetail,          // string
-    onAddressDetailChange,  // (value) => {}
+    // State của chi tiết
+    addressDetail,
+    onAddressDetailChange,
 
-    // State của Mặc định
-    isDefault,              // boolean
-    onIsDefaultChange,      // (value) => {}
+    // State của default
+    isDefault,
+    onIsDefaultChange,
 
-    // State loading (để vô hiệu hóa)
-    isLoading = false
+    isLoading = false // Thêm prop isLoading
 }) => {
+
+    // === HÀM XỬ LÝ KHI CHỌN ===
+    // (Lấy cả 'code' và 'name' từ event)
+    const handleSelectChange = (handler) => (e) => {
+        const selectedCode = e.target.value;
+        const selectedName = e.target.options[e.target.selectedIndex].text;
+        handler(selectedCode, selectedName);
+    };
 
     return (
         <div className="space-y-4">
-
-            {/* 1. Tỉnh/Thành */}
+            {/* 1. Tỉnh/Thành phố */}
             <div>
-                <label htmlFor="province" className="block text-sm font-medium mb-1">Tỉnh / Thành phố</label>
+                <label htmlFor="province" className="block text-sm font-medium mb-1">Tỉnh/Thành phố</label>
                 <select
                     id="province"
-                    value={selectedProvince.code || ""}
-                    onChange={(e) => onProvinceChange(
-                        e.target.value,
-                        e.target.options[e.target.selectedIndex].text
-                    )}
+                    name="province"
+                    // === FIX LỖI: KIỂM TRA NULL TRƯỚC KHI TRUY CẬP .code ===
+                    value={selectedProvince?.code || ''}
+                    onChange={handleSelectChange(onProvinceChange)}
                     required
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={isLoading && provinces.length === 0}
                 >
                     <option value="" disabled>-- Chọn Tỉnh/Thành --</option>
                     {provinces.map(p => (
@@ -78,16 +79,15 @@ const AddressForm = ({
 
             {/* 2. Quận/Huyện */}
             <div>
-                <label htmlFor="district" className="block text-sm font-medium mb-1">Quận / Huyện</label>
+                <label htmlFor="district" className="block text-sm font-medium mb-1">Quận/Huyện</label>
                 <select
                     id="district"
-                    value={selectedDistrict.code || ""}
-                    onChange={(e) => onDistrictChange(
-                        e.target.value,
-                        e.target.options[e.target.selectedIndex].text
-                    )}
+                    name="district"
+                    // === FIX LỖI (DÒNG 63): KIỂM TRA NULL TRƯỚC KHI TRUY CẬP .code ===
+                    value={selectedDistrict?.code || ''}
+                    onChange={handleSelectChange(onDistrictChange)}
                     required
-                    disabled={!selectedProvince.code || isLoading} // Vô hiệu hóa nếu chưa chọn Tỉnh
+                    disabled={districts.length === 0} // Vô hiệu hóa nếu chưa có Tỉnh
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                     <option value="" disabled>-- Chọn Quận/Huyện --</option>
@@ -99,16 +99,15 @@ const AddressForm = ({
 
             {/* 3. Phường/Xã */}
             <div>
-                <label htmlFor="ward" className="block text-sm font-medium mb-1">Phường / Xã</label>
+                <label htmlFor="ward" className="block text-sm font-medium mb-1">Phường/Xã</label>
                 <select
                     id="ward"
-                    value={selectedWard.code || ""}
-                    onChange={(e) => onWardChange(
-                        e.target.value,
-                        e.target.options[e.target.selectedIndex].text
-                    )}
+                    name="ward"
+                    // === FIX LỖI: KIỂM TRA NULL TRƯỚC KHI TRUY CẬP .code ===
+                    value={selectedWard?.code || ''}
+                    onChange={handleSelectChange(onWardChange)}
                     required
-                    disabled={!selectedDistrict.code || isLoading} // Vô hiệu hóa nếu chưa chọn Quận
+                    disabled={wards.length === 0} // Vô hiệu hóa nếu chưa có Huyện
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                     <option value="" disabled>-- Chọn Phường/Xã --</option>

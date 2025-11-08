@@ -1,5 +1,5 @@
 import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"; import { useState, useEffect } from "react";
-import { fetchUsers, fetchUserDetail } from "../../controllers/userController";
+import { UserController } from "../../controllers/userController";
 import UserDetail from "../../pages/UserDetail";
 const Users = () => {
     const [search, setSearch] = useState("");
@@ -12,7 +12,7 @@ const Users = () => {
 
     const getUsersData = async () => {
         setLoading(true);
-        const data = await fetchUsers({ page, limit: 5, search });
+        const data = await UserController.getUsers({ page, limit: 5, search });
         setUsers(data.users);
         setTotalPages(data.totalPages);
         setLoading(false);
@@ -32,7 +32,7 @@ const Users = () => {
     }, [page]);
 
     const openDetail = async (userId) => {
-        const detail = await fetchUserDetail(userId);
+        const detail = await UserController.getUserDetail(userId);
         setModalUser(detail.user);
     };
 

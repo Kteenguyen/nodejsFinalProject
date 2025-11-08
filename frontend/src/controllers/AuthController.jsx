@@ -1,12 +1,19 @@
 // frontend/src/controllers/AuthController.js
 import api from "../services/api";
-import provinceApi from "../services/provinceApi";
-const AuthController = {
+import { toast } from 'react-toastify';
+import axios from 'axios'; // Import axios để kiểm tra instance của lỗi
+
+const handleApiError = (error, customMessage = "Đã xảy ra lỗi") => {
+    const message = error.response?.data?.message || error.message || customMessage;
+    toast.error(message);
+    throw new Error(message);
+};
+
+export const AuthController = {
     login: async (identifier, password) => {
         try {
             const response = await api.post("/auth/login", { identifier, password });
-            // KHÔNG LƯU GÌ VÀO LOCALSTORAGE
-            return response.data; // Trả về { message, user, token }
+            return response.data;
         } catch (error) {
             console.error("Login failed:", error.response?.data || error.message);
             throw new Error(error.response?.data?.message || "Đăng nhập thất bại");
@@ -28,27 +35,26 @@ const AuthController = {
     googleLogin: async (accessToken) => {
         try {
             const response = await api.post("/auth/googleLogin", { accessToken });
-            // KHÔNG LƯU GÌ VÀO LOCALSTORAGE
-            return response.data; // Trả về { message, user, token }
+            return response.data;
         } catch (error) {
-            console.error("Google Login failed:", error.response?.data || error.message);
+            console.error("Google login failed:", error.response?.data || error.message);
             throw new Error(error.response?.data?.message || "Đăng nhập Google thất bại");
         }
     },
-    facebookLogin: async (accessToken) => { 
+
+    facebookLogin: async (accessToken) => {
         try {
             const response = await api.post("/auth/facebookLogin", { accessToken });
             return response.data;
         } catch (error) {
-            console.error("Facebook Login failed (Controller):", error.response?.data || error.message);
-            throw new Error(error.response?.data?.message || "Đăng nhập Facebook thất bại.");
+            console.error("Facebook login failed:", error.response?.data || error.message);
+            throw new Error(error.response?.data?.message || "Đăng nhập Facebook thất bại");
         }
     },
+
     logout: async () => {
         try {
-            // Gọi API logout để backend xóa cookie
             const response = await api.post("/auth/logout");
-            // KHÔNG XÓA GÌ TỪ LOCALSTORAGE
             return response.data;
         } catch (error) {
             console.error("Logout failed:", error.response?.data || error.message);
@@ -56,84 +62,54 @@ const AuthController = {
         }
     },
 
+    // =========================================================
+    // === 🔴 FIX HOÀN TOÀN checkAuth KHÔNG NÉM LỖI KHI 401 🔴 ===
+    // =========================================================
     checkAuth: async () => {
         try {
-            // 👇 SỬA LẠI: Gọi route mới (luôn trả về 200 OK)
-            const response = await api.get("/auth/check-session");
+            const response = await api.get("/users/me");
 
-            // response.data giờ sẽ là:
-            // { isAuthenticated: true, user: {...} } 
-            // HOẶC
-            // { isAuthenticated: false, user: null }
+            // Nếu API trả về 200 (OK)
+            // (Giả định response.data có user và là đã xác thực)
+            return { isAuthenticated: true, user: response.data.user };
 
-            // (Không cần sửa logic bên dưới, nó đã khớp)
-            if (response.data.isAuthenticated && response.data.user) {
-                return { isAuthenticated: true, user: response.data.user };
+        } catch (error) {
+            // Khi API trả về 401, Axios sẽ ném lỗi vào khối catch này.
+
+            if (error.response?.status === 401) {
+                // Đây là trường hợp người dùng CHƯA ĐĂNG NHẬP.
+                // ✅ Thay vì ném lỗi, chúng ta CHỈ TRẢ VỀ một đối tượng báo hiệu chưa xác thực.
+                return { isAuthenticated: false, user: null };
             }
 
+            // Log các lỗi khác (5xx Server Error, 404 Not Found, hoặc lỗi mạng thực sự)
+            console.error("Check auth failed (Serious Error):", error.response?.data || error.message);
+
+            // Đối với các lỗi nghiêm trọng, vẫn trả về false
+            // ✅ **QUAN TRỌNG: KHÔNG DÙNG `throw new Error(...)` Ở ĐÂY NỮA**
             return { isAuthenticated: false, user: null };
-
-        } catch (error) {
-            // Lỗi này giờ CHỈ xảy ra nếu backend sập (500) hoặc mất mạng
-            // Sẽ không bao giờ là lỗi 401 nữa
-            console.error("checkAuth (check-session) failed:", error.message);
-            return { isAuthenticated: false, user: null };
         }
-    },
-    getProvinces: async () => {
+    },    // =========================================================
+
+    forgotPassword: async (email) => {
         try {
-            // 👇 SỬA LẠI ĐƯỜNG DẪN
-            const response = await provinceApi.get("/province");
-            // API GHN trả về { data: [...] }
-            return response.data.data; // 👈 SỬA LẠI
+            const response = await api.post('/auth/forgot-password', { email });
+            toast.success(response.data.message || "Yêu cầu thành công, kiểm tra email!");
+            return true;
         } catch (error) {
-            console.error("Lỗi khi lấy danh sách Tỉnh/Thành (GHN):", error);
-            throw new Error("Không thể tải danh sách Tỉnh/Thành.");
+            handleApiError(error, "Lỗi yêu cầu đặt lại mật khẩu!");
+            return false;
         }
     },
 
-    getDistricts: async (provinceCode) => {
+    resetPassword: async (token, passwordData) => {
         try {
-            // 👇 SỬA LẠI ĐƯỜNG DẪN VÀ PARAMS
-            const response = await provinceApi.get("/district", {
-                params: { province_id: provinceCode }
-            });
-            return response.data.data; // 👈 SỬA LẠI
+            const response = await api.put(`/auth/reset-password/${token}`, passwordData);
+            toast.success(response.data.message || "Đặt lại mật khẩu thành công!");
+            return true;
         } catch (error) {
-            console.error("Lỗi khi lấy danh sách Quận/Huyện (GHN):", error);
-            throw new Error("Không thể tải danh sách Quận/Huyện.");
-        }
-    },
-
-    getWards: async (districtCode) => {
-        try {
-            // 👇 SỬA LẠI ĐƯỜNG DẪN VÀ PARAMS
-            const response = await provinceApi.get("/ward", {
-                params: { district_id: districtCode }
-            });
-            return response.data.data; // 👈 SỬA LẠI
-        } catch (error) {
-            console.error("Lỗi khi lấy danh sách Phường/Xã (GHN):", error);
-            throw new Error("Không thể tải danh sách Phường/Xã.");
-        }
-    },
-
-    /**
-     * Lưu địa chỉ giao hàng mới vào backend
-     * (Sử dụng route POST /users/shipping-address đã có, cần Auth)
-     * @param {Object} addressData Dữ liệu địa chỉ { fullName, phoneNumber, addressDetail, ward, district, city, isDefault }
-     */
-    addShippingAddress: async (addressData) => {
-        try {
-            // Gọi API backend của fen (route này được 'protect' nên cần cookie)
-            const response = await api.post("/users/shipping-address", addressData);
-            return response.data;
-        } catch (error) {
-            console.error("Lỗi khi lưu địa chỉ:", error.response?.data || error.message);
-            throw new Error(error.response?.data?.message || "Lưu địa chỉ thất bại.");
+            handleApiError(error, "Lỗi đặt lại mật khẩu!");
+            return false;
         }
     }
 };
-
-
-export { AuthController };

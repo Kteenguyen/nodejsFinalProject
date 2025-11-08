@@ -9,29 +9,22 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-    const checkAuthStatus = useCallback(async () => {
+const checkAuthStatus = useCallback(async () => {
         setIsLoadingAuth(true);
         try {
-            const result = await AuthController.checkAuth();
+            // **Bước này sẽ TRẢ VỀ { isAuthenticated: false, ... } thay vì ném lỗi cho 401**
+            const result = await AuthController.checkAuth(); 
 
             if (result.isAuthenticated && result.user) {
                 setUser(result.user);
                 setIsAuthenticated(true);
-                // Log thành công chỉ 1 lần
-                // console.log("AuthContext: User authenticated from cookie:", result.user.email); 
             } else {
                 setUser(null);
-                setIsAuthenticated(false);
-            }
+                setIsAuthenticated(false);            }
         } catch (error) {
-            // 👇👇👇 KHỐI CODE ĐÃ SỬA ĐỂ XỬ LÝ LỖI 401 ÍT LƯU Ý HƠN 👇👇👇
-            if (error.response && error.response.status === 401) {
-                console.log("AuthContext: No active session (401 Unauthorized).");
-            } else {
-                // Log các lỗi khác một cách nghiêm túc hơn
-                console.error("AuthContext: Error checking authentication status:", error);
-            }
-
+            // 🛑 Khối này chỉ chạy khi có lỗi mạng thực sự (Server down, Network offline, v.v.)
+            // Không còn phải xử lý riêng 401 nữa.
+            console.error("AuthContext: Error checking authentication status (Serious Error):", error);
 
             setUser(null);
             setIsAuthenticated(false);
@@ -39,7 +32,6 @@ export const AuthProvider = ({ children }) => {
             setIsLoadingAuth(false);
         }
     }, []);
-
     // ✅ Tự động kiểm tra khi app tải lần đầu
     useEffect(() => {
         checkAuthStatus();

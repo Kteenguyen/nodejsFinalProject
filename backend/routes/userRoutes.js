@@ -1,52 +1,37 @@
 // backend/routes/userRoutes.js
 const express = require('express');
 const router = express.Router();
+const { 
+    getUserProfile,
+    updateUserProfile,
+    changeMyPassword,
+    getMyAddresses,
+    addAddress,
+    updateShippingAddress,
+    deleteAddress
+    // ... (Thêm các hàm admin của fen nếu muốn)
+} = require('../controllers/userControllers'); // 👈 Sửa tên file (có S)
+const { protect } = require('../middleware/authMiddleware');
 
-// === LOGGING (Middleware chạy đầu tiên) ===
-router.use((req, res, next) => {
-    console.log(`[USERROUTES.JS]: Đã nhận request. Method: ${req.method}, URL: ${req.url}`);
-    next();
-});
+// Tất cả các route dưới đây đều yêu cầu đăng nhập
+router.use(protect); 
 
-const userController = require('../controllers/userControllers');
-const { protect, admin } = require('../middleware/authMiddleware');
-const { getUserProfile } = require('../controllers/userControllers');
+// === Hồ sơ cá nhân ===
+router.route('/me')
+    .get(getUserProfile) // GET /api/users/me
+    .put(updateUserProfile); // PUT /api/users/me
 
-// =============================================================
-// ROUTE DÀNH CHO NGƯỜI DÙNG (PHẢI ĐẶT TRƯỚC)
-// =============================================================
+router.put('/change-password', changeMyPassword); // PUT /api/users/change-password
 
-// --- Quản lý Profile (FIX: ĐẶT LÊN TRÊN CÙNG) ---
-// GET /api/users/profile
-router.get('/profile', protect, (req, res, next) => {
-    // Log này phải xuất hiện
-    console.log("[USERROUTES.JS]: Đã khớp route GET /profile. Đang gọi getUserProfile...");
-    next();
-}, getUserProfile);
+// === Quản lý địa chỉ ===
+router.route('/addresses')
+    .get(getMyAddresses) // GET /api/users/addresses
+    .post(addAddress); // POST /api/users/addresses
 
-// PUT /api/users/profile
-router.put('/profile', protect, userController.updateUserProfile);
+router.route('/addresses/:addressId')
+    .put(updateShippingAddress) // PUT /api/users/addresses/:addressId
+    .delete(deleteAddress); // DELETE /api/users/addresses/:addressId
 
-// --- Đổi Mật khẩu ---
-router.put('/password', protect, userController.changePassword);
-
-// --- Quên Mật khẩu (CÔNG KHAI - KHÔNG CẦN PROTECT) ---
-router.post('/forgot-password', userController.forgotPassword);
-router.patch('/reset-password/:token', userController.resetPassword);
-
-// --- Quản lý Địa chỉ Giao hàng ---
-router.post('/shipping-address', protect, userController.addShippingAddress);
-router.put('/shipping-address/:addressId', protect, userController.updateShippingAddress);
-router.delete('/shipping-address/:addressId', protect, userController.deleteShippingAddress);
-router.patch('/shipping-address/:addressId/set-default', protect, userController.setDefaultShippingAddress);
-
-
-// =============================================================
-// ROUTE DÀNH CHO ADMIN (ĐẶT SAU CÁC ROUTE CỤ THỂ)
-// (Các route này cần :userId động nên phải ở dưới /profile)
-// =============================================================
-router.get('/', protect, admin, userController.getAllUsers); // Lấy TẤT CẢ users
-router.get('/:userId', protect, admin, userController.getUserByIdForAdmin); // Lấy 1 user (phải là admin)
-router.put('/:userId', protect, admin, userController.updateUserByAdmin); // Cập nhật 1 user (phải là admin)
+// (Các route admin của fen)
 
 module.exports = router;

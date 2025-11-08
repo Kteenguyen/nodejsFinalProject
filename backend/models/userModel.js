@@ -1,11 +1,22 @@
+// backend/models/userModel.js
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+
+// === 1. TẠO SCHEMA CHO ĐỊA CHỈ (MỚI) ===
+const addressSchema = new mongoose.Schema({
+    fullName: { type: String, required: [true, 'Vui lòng nhập họ tên'] },
+    phoneNumber: { type: String, required: [true, 'Vui lòng nhập số điện thoại'] },
+    address: { type: String, required: [true, 'Vui lòng nhập địa chỉ'] }, // Số nhà, tên đường
+    city: { type: String, required: [true, 'Vui lòng nhập Tỉnh/Thành phố'] },
+    district: { type: String, required: [true, 'Vui lòng nhập Quận/Huyện'] },
+    ward: { type: String, required: [true, 'Vui lòng nhập Phường/Xã'] },
+    isDefault: { type: Boolean, default: false }
+}, { _id: true }); // Bật _id để dễ dàng Sửa/Xóa
 
 const userSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     name: { type: String },
     userName: { type: String, required: true },
-    // Sửa: select: false để password không bị trả về khi query
     password: { type: String, required: true, select: false },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     phoneNumber: { type: String, default: null },
@@ -18,7 +29,7 @@ const userSchema = new mongoose.Schema({
         type: [
             {
                 type: String,
-                enum: ['local', 'google', 'facebook', 'github', 'twitter'] // Thêm các provider khác nếu có
+                enum: ['local', 'google', 'facebook', 'github', 'twitter']
             }
         ],
         required: true,
@@ -26,18 +37,17 @@ const userSchema = new mongoose.Schema({
     passwordResetToken: String,
     passwordResetExpires: Date,
 
-    shippingAddresses: {}
+    // === 2. SỬA LẠI 'shippingAddresses' (QUAN TRỌNG) ===
+    shippingAddresses: {
+        type: [addressSchema], // Đổi thành một MẢNG các địa chỉ
+        default: []
+    }
 }, {
-    timestamps: true, // Thêm timestamps
+    timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
 });
 
-// Virtual 'isAdmin' (giữ nguyên)
-userSchema.virtual('isAdmin').get(function () {
-    return this.role === 'admin';
-});
+// ... (Các virtuals, methods, pre-save hooks của fen giữ nguyên) ...
 
-
-const User = mongoose.model('User', userSchema);
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);

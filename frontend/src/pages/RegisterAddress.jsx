@@ -1,208 +1,190 @@
 // frontend/src/pages/RegisterAddress.jsx
 import { useNavigate } from "react-router-dom";
-import AddressForm from "../components/Home/AddressForm"; // 👈 SỬ DỤNG COMPONENT CỦA FEN
-import { AuthController } from "../controllers/AuthController";
-import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext"; // Import useAuth để lấy thông tin user
+import AddressForm from "../components/Home/AddressForm";
+// 1. Thêm UserController và useCallback
+import { AuthController } from "../controllers/AuthController"; 
+import { UserController } from "../controllers/userController"; 
+import { useState, useEffect, useCallback } from "react"; 
+import { useAuth } from "../context/AuthContext";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
 const RegisterAddress = () => {
     const navigate = useNavigate();
-    const { user } = useAuth(); // Lấy thông tin user (đã login)
-
+    const { user, checkAuthStatus } = useAuth(); // Thêm checkAuthStatus để refresh user sau khi lưu
+    
     // === TOÀN BỘ STATE ĐƯỢC QUẢN LÝ Ở TRANG CHA ===
 
     // State cho form (Họ tên, SĐT)
-    const [fullName, setFullName] = useState(user?.name || ""); // Lấy sẵn tên user
-    const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || ""); // Lấy sẵn SĐT
+    const [fullName, setFullName] = useState(user?.name || "");
+    const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
 
     // State cho AddressForm (Tỉnh/Quận/Phường/Chi tiết/Mặc định)
     const [addressDetail, setAddressDetail] = useState("");
     const [isDefault, setIsDefault] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
     // State cho data Tỉnh/Quận/Phường
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
 
-    // State lưu lựa chọn (lưu cả code và tên)
-    const [selectedProvince, setSelectedProvince] = useState({ code: null, name: "" });
-    const [selectedDistrict, setSelectedDistrict] = useState({ code: null, name: "" });
-    const [selectedWard, setSelectedWard] = useState({ code: null, name: "" });
+    // State lưu object { code, name } của lựa chọn hiện tại
+    const [selectedProvince, setSelectedProvince] = useState(null);
+    const [selectedDistrict, setSelectedDistrict] = useState(null);
+    const [selectedWard, setSelectedWard] = useState(null);
 
-    const [isLoading, setIsLoading] = useState(false);
 
-    // --- EFFECT: Tải Tỉnh/Thành khi component mount ---
+    // ===================================================
+    // 2. LOGIC GỌI API ĐỂ LẤY TỈNH/THÀNH PHỐ
+    // ===================================================
+
+    // 👉 2.1. Lấy danh sách Tỉnh/Thành phố (Chỉ gọi 1 lần khi component mount)
     useEffect(() => {
-        const loadProvinces = async () => {
-            setIsLoading(true);
+        const fetchProvinces = async () => {
             try {
-                const data = await AuthController.getProvinces();
+                // Đảm bảo UserController đã được import đúng
+                const data = await UserController.getProvinces(); 
                 setProvinces(data);
-            } catch (err) {
-                toast.error(err.message);
-            } finally {
-                setIsLoading(false);
+            } catch (error) {
+                // Lỗi đã được xử lý trong UserController (có toast.error)
             }
         };
-        loadProvinces();
+        fetchProvinces();
     }, []);
 
-    // --- EFFECT: Tải Quận/Huyện khi Tỉnh thay đổi ---
+    // 👉 2.2. Lấy danh sách Quận/Huyện (Gọi khi selectedProvince thay đổi)
     useEffect(() => {
-        const loadDistricts = async () => {
-            if (selectedProvince.code) {
-                setIsLoading(true);
-                setDistricts([]); // Reset districts
-                setWards([]);     // Reset wards
-                setSelectedDistrict({ code: null, name: "" });
-                setSelectedWard({ code: null, name: "" });
-
-                try {
-                    const data = await AuthController.getDistricts(selectedProvince.code);
-                    setDistricts(data);
-                } catch (err) {
-                    toast.error(err.message);
-                } finally {
-                    setIsLoading(false);
-                }
+        const fetchDistricts = async () => {
+            if (!selectedProvince) {
+                setDistricts([]);
+                setSelectedDistrict(null);
+                return;
+            }
+            try {
+                // Sử dụng ProvinceID (Code) của Tỉnh đã chọn để gọi API
+                const data = await UserController.getDistricts(selectedProvince.code);
+                setDistricts(data);
+                // Reset Quận/Huyện và Phường/Xã khi Tỉnh thay đổi
+                setSelectedDistrict(null);
+                setSelectedWard(null); 
+            } catch (error) {
+                // Xử lý lỗi
             }
         };
-        loadDistricts();
-    }, [selectedProvince.code]);
+        fetchDistricts();
+    }, [selectedProvince]); // Dependency: selectedProvince
 
-    // --- EFFECT: Tải Phường/Xã khi Quận thay đổi ---
+
+    // 👉 2.3. Lấy danh sách Phường/Xã (Gọi khi selectedDistrict thay đổi)
     useEffect(() => {
-        const loadWards = async () => {
-            if (selectedDistrict.code) {
-                setIsLoading(true);
-                setWards([]); // Reset wards
-                setSelectedWard({ code: null, name: "" });
-
-                try {
-                    const data = await AuthController.getWards(selectedDistrict.code);
-                    setWards(data);
-                } catch (err) {
-                    toast.error(err.message);
-                } finally {
-                    setIsLoading(false);
-                }
+        const fetchWards = async () => {
+            if (!selectedDistrict) {
+                setWards([]);
+                setSelectedWard(null);
+                return;
+            }
+            try {
+                // Sử dụng DistrictID (Code) của Huyện đã chọn để gọi API
+                const data = await UserController.getWards(selectedDistrict.code);
+                setWards(data);
+                setSelectedWard(null); // Reset Phường/Xã khi Huyện thay đổi
+            } catch (error) {
+                // Xử lý lỗi
             }
         };
-        loadWards();
-    }, [selectedDistrict.code]);
+        fetchWards();
+    }, [selectedDistrict]); // Dependency: selectedDistrict
 
-    // --- Xử lý Lưu địa chỉ ---
-    const handleSaveAddress = async (e) => {
+    // ===================================================
+    // 3. HÀM XỬ LÝ SUBMIT VÀ ĐIỀU HƯỚNG
+    // ===================================================
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!fullName || !phoneNumber || !addressDetail || !selectedProvince.code || !selectedDistrict.code || !selectedWard.code) {
-            toast.error("Vui lòng điền đầy đủ thông tin giao hàng.");
+        // Kiểm tra validation
+        if (!fullName || !phoneNumber || !addressDetail || !selectedProvince || !selectedDistrict || !selectedWard) {
+            toast.error("Vui lòng điền đầy đủ thông tin địa chỉ.");
             return;
         }
 
         setIsLoading(true);
+
+        const addressData = {
+            fullName,
+            phoneNumber,
+            address: addressDetail,
+            city: selectedProvince.name, // Tên Tỉnh/Thành
+            district: selectedDistrict.name, // Tên Quận/Huyện
+            ward: selectedWard.name, // Tên Phường/Xã
+            isDefault,
+        };
+
         try {
-            const addressData = {
-                recipientName: fullName,
-                phoneNumber: phoneNumber,
-                street: addressDetail,
-                ward: selectedWard.name,
-                district: selectedDistrict.name,
-                city: selectedProvince.name,
-                isDefault: isDefault
-            };
-
-            await AuthController.addShippingAddress(addressData);
-
-            toast.success("Đã thêm địa chỉ mới!");
-            setTimeout(() => navigate("/"), 1500); // 👈 Chuyển về TRANG CHỦ
-
+            await AuthController.addShippingAddress(addressData); // Sử dụng hàm đã có
+            toast.success("Đã lưu địa chỉ mặc định!");
+            await checkAuthStatus(); // Tải lại thông tin user để đảm bảo data mới nhất
+            navigate("/"); // Quay về trang chủ
         } catch (error) {
-            toast.error(error.message);
+            // Lỗi đã được xử lý trong controller
+        } finally {
             setIsLoading(false);
         }
     };
 
-    // --- Bỏ qua và về trang chủ ---
     const handleSkip = () => {
-        navigate("/"); // 👈 Chuyển về TRANG CHỦ
+        navigate("/");
     };
 
+    // ===================================================
+    // 4. TRẢ VỀ UI (GIỮ NGUYÊN)
+    // ===================================================
+    
     return (
-        <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-            <ToastContainer autoClose={2000} position="top-right" />
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+            <div className="w-full max-w-lg">
+                <div className="bg-white p-8 rounded-lg shadow-xl">
+                    <h2 className="text-2xl font-bold text-center text-text-primary mb-4">
+                        Thiết lập địa chỉ giao hàng
+                    </h2>
+                    <p className="text-center text-gray-500 mb-6">
+                        Vui lòng thêm địa chỉ mặc định để tiếp tục.
+                    </p>
 
-            {/* 👈 HÌNH BÊN TRÁI (GIỐNG TRANG REGISTER) */}
-            <div className="hidden md:flex w-1/2 bg-[#f3f5ff] items-center justify-center relative">
-                <img
-                    src="/img/illustration.svg"
-                    alt="Address Illustration"
-                    className="max-w-md w-4/5"
-                    onError={(e) => (e.target.src = "/img/default-illustration.svg")}
-                />
-                <div className="absolute top-6 left-6 flex items-center space-x-2">
-                    <img src="/img/logo.svg" alt="Logo" className="h-24 w-auto" />
-                </div>
-            </div>
-
-            {/* FORM NẰM BÊN PHẢI (CHO PHÉP CUỘN) */}
-            <div className="flex flex-col justify-start items-center w-full md:w-1/2 px-8 py-10 overflow-y-auto">
-                <div className="max-w-lg w-full">
-
-                    {/* Header */}
-                    <div className="text-center mb-6">
-                        <img src="/img/logo.svg" alt="Logo" className="md:hidden h-24 w-auto mx-auto mb-2" />
-                        <h2 className="text-2xl font-semibold text-gray-800 mb-1">
-                            Địa chỉ giao hàng
-                        </h2>
-                        <p className="text-gray-600">
-                            Thêm địa chỉ để chúng tôi giao hàng nhanh hơn. (Có thể bỏ qua)
-                        </p>
-                    </div>
-
-                    <form onSubmit={handleSaveAddress} className="space-y-4">
-                        {/* Họ tên và SĐT (Nằm ngoài AddressForm) */}
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1">
-                                <label htmlFor="fullName" className="block text-sm font-medium mb-1">Họ và tên người nhận</label>
-                                <input
-                                    type="text"
-                                    id="fullName"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                    placeholder="Ví dụ: Nguyễn Văn A"
-                                    required
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <label htmlFor="phoneNumber" className="block text-sm font-medium mb-1">Số điện thoại</label>
-                                <input
-                                    type="tel"
-                                    id="phoneNumber"
-                                    value={phoneNumber}
-                                    onChange={(e) => setPhoneNumber(e.target.value)}
-                                    placeholder="Ví dụ: 0912345678"
-                                    required
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
+                    <form onSubmit={handleSubmit}>
+                        {/* Input Họ tên */}
+                        <div className="mb-4">
+                            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Họ và tên</label>
+                            <input
+                                id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Nhập họ và tên"
+                                required
+                            />
                         </div>
 
-                        {/* 👈 TRUYỀN PROPS VÀO ADDRESSFORM.JSX */}
+                        {/* Input SĐT */}
+                        <div className="mb-4">
+                            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">Số điện thoại</label>
+                            <input
+                                id="phoneNumber" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Nhập số điện thoại"
+                                required
+                            />
+                        </div>
+
+                        {/* Component AddressForm (Đã có sẵn logic render Selects) */}
                         <AddressForm
                             provinces={provinces}
-                            districts={districts}
-                            wards={wards}
-
                             selectedProvince={selectedProvince}
                             onProvinceChange={(code, name) => setSelectedProvince({ code, name })}
 
+                            districts={districts}
                             selectedDistrict={selectedDistrict}
                             onDistrictChange={(code, name) => setSelectedDistrict({ code, name })}
 
+                            wards={wards}
                             selectedWard={selectedWard}
                             onWardChange={(code, name) => setSelectedWard({ code, name })}
 
@@ -219,7 +201,7 @@ const RegisterAddress = () => {
                         <div className="mt-8 flex flex-col gap-3 pt-4">
                             <button
                                 type="submit"
-                                disabled={isLoading}
+                                disabled={isLoading || !selectedProvince || !selectedDistrict || !selectedWard} // Thêm điều kiện disable khi chưa chọn đủ
                                 className="w-full bg-blue-600 text-white rounded-md py-3 font-medium hover:bg-blue-700 transition disabled:bg-blue-300"
                             >
                                 {isLoading ? "Đang lưu..." : "Lưu địa chỉ"}
@@ -235,6 +217,7 @@ const RegisterAddress = () => {
                     </form>
                 </div>
             </div>
+            <ToastContainer />
         </div>
     );
 };
