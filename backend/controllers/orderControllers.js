@@ -349,7 +349,7 @@ exports.updateOrderStatus = async (req, res) => {
     if (status && !allowed.includes(status)) {
       return res.status(400).json({ success:false, message:'Trạng thái không hợp lệ' });
     }
-
+    
     const updateDoc = {};
     if (typeof isPaid === 'boolean') updateDoc.isPaid = isPaid;
     if (status) {

@@ -21,7 +21,10 @@ const httpsOptions = {
     key: fs.readFileSync(path.join(__dirname, 'key.pem')),
     cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
 };
-
+// Parsers
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 // --- CẤU HÌNH MIDDLEWARE ---
 
 // CORS (QUAN TRỌNG: Phải cho phép cả 2)
@@ -32,10 +35,7 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
 }));
 
-// Parsers
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+
 
 // Phục vụ file tĩnh (Fix lỗi 404 cho ảnh)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -45,7 +45,7 @@ connectDB();
 
 // --- CÁC ROUTE CHÍNH ---
 // Đảm bảo tên biến route chính của fen là 'siteRoutes' và nó chứa các route con như /api/auth, /api/users
-app.use('/api', siteRoutes); 
+app.use('/api', siteRoutes);
 
 // --- ERROR HANDLERS ---
 // ... (phần error handlers giữ nguyên như trong hướng dẫn trước) ...

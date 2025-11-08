@@ -47,7 +47,25 @@ const userSchema = new mongoose.Schema({
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
 });
+// === VIRTUAL CHO HẠNG THÀNH VIÊN (MỚI) ===
+// Tự động tính hạng dựa trên điểm, không cần lưu vào DB
+// (Có thể tùy chỉnh các mốc điểm này)
+userSchema.virtual('membershipTier').get(function () {
+    if (this.loyaltyPoints >= 5000) { // Ví dụ: 5000 điểm
+        return 'Kim Cương';
+    }
+    if (this.loyaltyPoints >= 2000) { // Ví dụ: 2000 điểm
+        return 'Vàng';
+    }
+    if (this.loyaltyPoints >= 500) { // Ví dụ: 500 điểm
+        return 'Bạc';
+    }
+    return 'Đồng'; // Mặc định
+});
 
+// Đảm bảo virtuals được bật khi chuyển sang JSON (file của bạn đã có sẵn)
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
 // ... (Các virtuals, methods, pre-save hooks của fen giữ nguyên) ...
 
 module.exports = mongoose.model('User', userSchema);

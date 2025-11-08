@@ -38,71 +38,103 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
 
 exports.updateUserProfile = async (req, res) => {
     try {
-        // (Giả sử route PUT /users/me của fen VẪN DÙNG 'protect')
-        const userId = req.user && req.user.id;
-        if (!userId) {
-            // Dòng này bây giờ là dự phòng, vì 'protect' đã check
-            return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
+        const user = await User.findById(req.user.id); // req.user.id từ middleware 'protect'
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
         }
 
-        const { name, phoneNumber, dateOfBirth, avatar } = req.body;
-        const updates = { name, phoneNumber, dateOfBirth, avatar };
-        Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key]);
+        // 1. Cập nhật các trường text thông thường từ req.body
+        // (FormData sẽ gửi các trường này trong req.body)
+        user.name = req.body.name || user.name;
+        user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
+        user.dateOfBirth = req.body.dateOfBirth || user.dateOfBirth;
 
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            updates,
-            { new: true, runValidators: true }
-        );
-
-        if (!updatedUser) {
-            return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+        // 2. Cập nhật avatar NẾU có file mới được tải lên
+        // (Multer sẽ đưa file vào req.file)
+        if (req.file) {
+            // req.file.path là đường dẫn URL mà Cloudinary trả về
+            user.avatar = req.file.path;
         }
-        res.status(200).json({ success: true, user: updatedUser });
+
+        // 3. Lưu lại user
+        const updatedUser = await user.save();
+
+        // 4. Trả về thông tin user mới (đã bao gồm virtuals nếu bạn set)
+        res.status(200).json({
+            success: true,
+            message: 'Cập nhật hồ sơ thành công',
+            user: updatedUser
+        });
+
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error("Lỗi cập nhật hồ sơ:", error);
+        res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
 
 // Cập nhật thông tin cá nhân
 exports.updateUserProfile = async (req, res) => {
     try {
-        // Lấy userId từ middleware xác thực (bắt buộc)
-        // const userId = req.user && req.user.id;
-        // if (!userId) {
-        //     return res.status(401).json({ message: 'Yêu cầu đăng nhập.' });
-        // }
-
-        const { name, phoneNumber, address } = req.body;
-
-        // Chỉ cho phép cập nhật các trường thông tin cá nhân không nhạy cảm
+        // 1. Chuẩn bị các trường sẽ được cập nhật
         const updates = {};
-        if (typeof name !== 'undefined') updates.name = name;
-        if (typeof phoneNumber !== 'undefined') updates.phoneNumber = phoneNumber;
-        if (typeof address !== 'undefined') updates.address = address;
 
-        if (Object.keys(updates).length === 0) {
-            return res.status(400).json({ message: 'Không có dữ liệu để cập nhật.' });
+        // === SỬA LẠI: Dùng 'name' (theo model) ===
+        // (Lỗi 'fullName' của lần trước là do mình nhầm, nó là của addressSchema)
+        if (req.body.name) {
+            updates.name = req.body.name; // 👈 Dùng 'name'
+        }
+        // ======================================
+        
+        if (req.body.phoneNumber) {
+            updates.phoneNumber = req.body.phoneNumber;
+        }
+        if (req.body.dateOfBirth) {
+            updates.dateOfBirth = req.body.dateOfBirth;
+        }
+        
+        // 2. Cập nhật avatar NẾU có file mới
+        if (req.file) {
+            updates.avatar = req.file.path; // Link từ Cloudinary
         }
 
-        const updatedUser = await User.findOneAndUpdate(
-            { userId },
-            { $set: updates },
-            { new: true }
+        // 3. Kiểm tra xem có gì để cập nhật không
+        if (Object.keys(updates).length === 0) {
+            // Nếu user bấm "Lưu" mà không đổi gì (kể cả file), ta trả về user hiện tại
+            const user = await User.findById(req.user.id);
+            return res.status(200).json({
+                success: true,
+                message: 'Không có thông tin nào được thay đổi',
+                user: user
+            });
+        }
+
+        // 4. Dùng findByIdAndUpdate để tránh lỗi validation toàn document
+        // { new: true } -> trả về document *sau khi* đã update
+        // { runValidators: true } -> BẬT validation, nhưng *chỉ* cho các trường trong 'updates'
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id,
+            { $set: updates }, // Chỉ cập nhật các trường trong 'updates'
+            { new: true, runValidators: true, context: 'query' }
         );
 
         if (!updatedUser) {
-            return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+            return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
         }
 
-        // Ẩn mật khẩu trước khi trả về
-        const { password, _id, __v, ...safeUser } = updatedUser.toObject();
-        return res.status(200).json({ message: 'Cập nhật thông tin thành công!', user: safeUser });
+        // 5. Trả về user đã cập nhật thành công
+        res.status(200).json({
+            success: true,
+            message: 'Cập nhật hồ sơ thành công',
+            user: updatedUser 
+        });
+
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        // Log lỗi chi tiết ra terminal backend
+        console.error("Lỗi bên trong updateUserProfile:", error); 
+        res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
-
 // Đổi mật khẩu
 exports.changeMyPassword = asyncHandler(async (req, res) => {
     const { currentPassword, newPassword, confirmPassword } = req.body;
