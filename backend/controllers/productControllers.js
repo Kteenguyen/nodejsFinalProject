@@ -6,19 +6,19 @@ const { v4: uuidv4 } = require('uuid');
 // RUBIK #10, #14, #15, #16 — có hỗ trợ search "không dấu" (mặc định) & full-text (tùy chọn)
 exports.getProducts = async (req, res) => {
   try {
-    const page  = Math.max(parseInt(req.query.page) || 1, 1);
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 12, 60);
 
     // Giữ tương thích ngược: ?sort=name_asc|name_desc|price_asc|price_desc|newest|oldest
     let { sort, sortBy = 'newest', sortOrder = 'asc' } = req.query || {};
     if (sort) {
       const map = {
-        name_asc:  ['name','asc'],
-        name_desc: ['name','desc'],
-        price_asc: ['price','asc'],
-        price_desc:['price','desc'],
-        newest:    ['newest','desc'],
-        oldest:    ['oldest','asc'],
+        name_asc: ['name', 'asc'],
+        name_desc: ['name', 'desc'],
+        price_asc: ['price', 'asc'],
+        price_desc: ['price', 'desc'],
+        newest: ['newest', 'desc'],
+        oldest: ['oldest', 'asc'],
       };
       if (map[sort]) [sortBy, sortOrder] = map[sort];
     }
@@ -57,9 +57,9 @@ exports.getProducts = async (req, res) => {
         const kw = String(keyword).trim()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         match.$or = [
-          { productNameNorm:        { $regex: kw, $options: 'i' } },
+          { productNameNorm: { $regex: kw, $options: 'i' } },
           { productDescriptionNorm: { $regex: kw, $options: 'i' } },
-          { brandNorm:              { $regex: kw, $options: 'i' } },
+          { brandNorm: { $regex: kw, $options: 'i' } },
         ];
       }
     }
@@ -73,8 +73,8 @@ exports.getProducts = async (req, res) => {
 
     // Sắp xếp mặc định (khi KHÔNG ở chế độ text)
     const sortStage = (() => {
-      if (sortBy === 'name')  return { productName: (sortOrder === 'desc' ? -1 : 1) };
-      if (sortBy === 'price') return { minPrice:    (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'name') return { productName: (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'price') return { minPrice: (sortOrder === 'desc' ? -1 : 1) };
       if (sortBy === 'oldest') return { createdAt: 1 };
       return { createdAt: -1 }; // newest
     })();
@@ -91,12 +91,14 @@ exports.getProducts = async (req, res) => {
           items: [
             { $skip: (page - 1) * limit },
             { $limit: limit },
-            { $project: {
+            {
+              $project: {
                 productId: 1, productName: 1, brand: 1, category: 1,
                 images: { $slice: ["$images", 1] },
                 minPrice: 1, createdAt: 1, variants: 1, status: 1,
                 ...(useText ? { score: 1 } : {})
-            } }
+              }
+            }
           ],
           total: [{ $count: "count" }]
         }
@@ -157,90 +159,104 @@ exports.getProductDetails = async (req, res) => {
   }
 };
 
-// #17: Nhận các dòng giỏ và enrich để UI hiển thị
+/**
+ * Lấy thông tin chi tiết (giá, tồn kho) của nhiều variant
+ * Được gọi bởi CartController.enrichCart
+ * POST /api/products/batch
+ * Body: { variantIds: ["v1_id", "v2_id", ...] }
+ */
 exports.batchProductLines = async (req, res) => {
   try {
-    const lines = Array.isArray(req.body.lines) ? req.body.lines : []; // [{productId, productMongoId, variantId, qty}]
-    if (!lines.length) return res.json([]);
+    const { variantIds } = req.body;
 
-    const ids = [...new Set(lines.map(l => l.productMongoId || l._id || l.productId))];
-
-    const or = [];
-    const mongoIds = ids.filter(id => mongoose.isValidObjectId(id));
-    if (mongoIds.length) or.push({ _id: { $in: mongoIds } });
-    const customIds = ids.filter(id => !mongoose.isValidObjectId(id));
-    if (customIds.length) or.push({ productId: { $in: customIds } });
-
-    const products = await Product.find(or.length ? { $or: or } : {}).lean();
-
-    const out = [];
-    for (const line of lines) {
-      const p = products.find(x =>
-        String(x._id) === String(line.productMongoId || line._id) ||
-        x.productId === line.productId
-      );
-      if (!p) continue;
-      const v = (p.variants || []).find(_v => String(_v.variantId) === String(line.variantId));
-      if (!v) continue;
-      out.push({
-        productId: p.productId, productMongoId: p._id,
-        variantId: v.variantId, sku: v.variantId,
-        name: p.productName, brand: p.brand,
-        attrs: { name: v.name },
-        image: (p.images && p.images[0]) || '',
-        price: v.price, qty: Number(line.qty || 1)
-      });
+    if (!Array.isArray(variantIds) || variantIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Yêu cầu variantIds là một mảng.' });
     }
-    return res.json(out);
-  } catch (e) {
-    return res.status(500).json({ success:false, message:'Lỗi server', error: e.message });
+
+    // 1. Tìm TẤT CẢ các sản phẩm chứa bất kỳ variantId nào được yêu cầu
+    // Dùng $in để tìm trong mảng 'variants'
+    const products = await Product.find({
+      'variants.variantId': { $in: variantIds }
+    });
+
+    // 2. Lọc ra chỉ những variant cụ thể mà client cần
+    const foundVariants = [];
+    products.forEach(product => {
+      product.variants.forEach(variant => {
+        // Nếu variant này nằm trong danh sách client yêu cầu
+        if (variantIds.includes(variant.variantId)) {
+
+          // "Làm giàu" (enrich) thông tin variant với thông tin cha
+          foundVariants.push({
+            // Thông tin từ cha
+            productId: product.productId, // String ID ("monitor04")
+            _id: product._id, // Mongo ID
+            productName: product.productName,
+            image: product.images[0] || null,
+
+            // Thông tin từ variant (quan trọng nhất)
+            variantId: variant.variantId,
+            name: variant.name,
+            price: variant.price,
+            stock: variant.stock
+          });
+        }
+      });
+    });
+
+    // 3. Trả về mảng các variant đã được "làm giàu"
+    // (response.data sẽ là một mảng, khớp với CartController.jsx đã sửa ở bước trước)
+    res.status(200).json(foundVariants);
+
+  } catch (error) {
+    console.error("Lỗi batchProductLines:", error);
+    res.status(500).json({ success: false, message: 'Lỗi server khi lấy thông tin sản phẩm' });
   }
 };
 
-
 // Lấy sản phẩm mới
 exports.getNewProducts = async (req, res) => {
-    try {
-        const limit = parseInt(req.query.limit) || 8;
-        const products = await Product.find({ isNewProduct: true })
-            .sort({ createdAt: -1 })
-            .limit(limit);
+  try {
+    const limit = parseInt(req.query.limit) || 8;
+    const products = await Product.find({ isNewProduct: true })
+      .sort({ createdAt: -1 })
+      .limit(limit);
 
-        return res.json({
-            success: true,
-            products
-        });
-    } catch (error) {
-        console.error("getNewProducts error:", error);
-        return res.status(500).json({ success: false, message: 'Lỗi server' });
-    }
+    return res.json({
+      success: true,
+      products
+    });
+  } catch (error) {
+    console.error("getNewProducts error:", error);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
 };
 
 // Lấy sản phẩm bán chạy
 exports.getBestSellers = async (req, res) => {
-    try {
-        const limit = parseInt(req.query.limit) || 8;
-        const products = await Product.find({ isBestSeller: true })
-            .limit(limit);
+  try {
+    const limit = parseInt(req.query.limit) || 8;
+    const products = await Product.find({ isBestSeller: true })
+      .limit(limit);
 
-        return res.json({
-            success: true,
-            products
-        });
-    } catch (error) {
-        console.error("getBestSellers error:", error);
-        return res.status(500).json({ success: false, message: 'Lỗi server' });
-    }
+    return res.json({
+      success: true,
+      products
+    });
+  } catch (error) {
+    console.error("getBestSellers error:", error);
+    return res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
 };
 // Lấy sản phẩm theo danh mục
 exports.getProductsByCategory = async (req, res) => {
-    try {
-        const { categoryId } = req.params;
-        const products = await Product.find({ 'category.categoryId': categoryId }).limit(8);
-        res.json({ success: true, products });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
+  try {
+    const { categoryId } = req.params;
+    const products = await Product.find({ 'category.categoryId': categoryId }).limit(8);
+    res.json({ success: true, products });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 // =============================================================
@@ -251,215 +267,215 @@ exports.getProductsByCategory = async (req, res) => {
  * [GUEST] Thêm bình luận (không cần đăng nhập)
  */
 exports.addGuestComment = async (req, res) => {
-    try {
-        const { comment, guestName } = req.body;
-        const product = req.product; // Từ middleware resolveProduct
+  try {
+    const { comment, guestName } = req.body;
+    const product = req.product; // Từ middleware resolveProduct
 
-        if (!comment || !guestName) {
-            return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên và nội dung bình luận.' });
-        }
-
-        const newComment = new Comment({
-            productId: product._id,
-            comment: comment,
-            guestName: guestName, // Lưu tên của khách
-            // Không có accountId và rating ở đây
-        });
-
-        await newComment.save();
-        
-        // Gửi sự kiện WebSocket
-        const io = req.app.get('socketio');
-        if (io) {
-            io.to(product._id.toString()).emit('new_comment', newComment);
-        }
-
-        return res.status(201).json({
-            success: true,
-            message: 'Bình luận của bạn đã được gửi!',
-            comment: newComment
-        });
-
-    } catch (error) {
-        return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    if (!comment || !guestName) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên và nội dung bình luận.' });
     }
+
+    const newComment = new Comment({
+      productId: product._id,
+      comment: comment,
+      guestName: guestName, // Lưu tên của khách
+      // Không có accountId và rating ở đây
+    });
+
+    await newComment.save();
+
+    // Gửi sự kiện WebSocket
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(product._id.toString()).emit('new_comment', newComment);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Bình luận của bạn đã được gửi!',
+      comment: newComment
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
 };
 
 /**
  * [USER] Thêm đánh giá sao (yêu cầu đăng nhập)
  */
 exports.addUserRating = async (req, res) => {
-    try {
-        const { rating, comment } = req.body;
-        const product = req.product; // Từ middleware resolveProduct
-        const user = req.user;       // Từ middleware auth
+  try {
+    const { rating, comment } = req.body;
+    const product = req.product; // Từ middleware resolveProduct
+    const user = req.user;       // Từ middleware auth
 
-        if (!rating) {
-            return res.status(400).json({ success: false, message: 'Vui lòng cung cấp số sao đánh giá.' });
-        }
-        
-        // Cho phép người dùng cập nhật đánh giá nếu đã tồn tại
-        let userRating = await Comment.findOne({ productId: product._id, accountId: user.id });
-
-        if (userRating) {
-            // Cập nhật
-            userRating.rating = Number(rating);
-            if (comment) userRating.comment = comment; // Cập nhật cả comment nếu có
-        } else {
-            // Tạo mới
-             userRating = new Comment({
-                productId: product._id,
-                accountId: user.id,
-                rating: Number(rating),
-                comment: comment // Có thể có hoặc không
-            });
-        }
-        
-        await userRating.save();
-        
-        // Gửi sự kiện WebSocket
-        const io = req.app.get('socketio');
-        if (io) {
-            io.to(product._id.toString()).emit('new_rating', userRating);
-        }
-
-        return res.status(201).json({
-            success: true,
-            message: 'Cảm ơn bạn đã đánh giá sản phẩm!',
-            rating: userRating
-        });
-
-    } catch (error) {
-        return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    if (!rating) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp số sao đánh giá.' });
     }
+
+    // Cho phép người dùng cập nhật đánh giá nếu đã tồn tại
+    let userRating = await Comment.findOne({ productId: product._id, accountId: user.id });
+
+    if (userRating) {
+      // Cập nhật
+      userRating.rating = Number(rating);
+      if (comment) userRating.comment = comment; // Cập nhật cả comment nếu có
+    } else {
+      // Tạo mới
+      userRating = new Comment({
+        productId: product._id,
+        accountId: user.id,
+        rating: Number(rating),
+        comment: comment // Có thể có hoặc không
+      });
+    }
+
+    await userRating.save();
+
+    // Gửi sự kiện WebSocket
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(product._id.toString()).emit('new_rating', userRating);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: 'Cảm ơn bạn đã đánh giá sản phẩm!',
+      rating: userRating
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
 };
 
 /**
  * [ADMIN] Thêm một sản phẩm mới
  */
 exports.createProduct = async (req, res) => {
-    try {
-        // 1. Lấy mảng 'variants' và các thông tin khác từ body
-        const {
-            productId,
-            productName,
-            brand,
-            productDescription,
-            category,
-            images,
-            variants // Mảng các biến thể
-        } = req.body;
+  try {
+    // 1. Lấy mảng 'variants' và các thông tin khác từ body
+    const {
+      productId,
+      productName,
+      brand,
+      productDescription,
+      category,
+      images,
+      variants // Mảng các biến thể
+    } = req.body;
 
-        // 2. Validation cơ bản và validation cho mảng variants
-        if (!productId || !productName || !category || !variants) {
-            return res.status(400).json({ success: false, message: 'Các trường productId, productName, category, và variants là bắt buộc.' });
-        }
-        if (!Array.isArray(variants) || variants.length === 0) {
-            return res.status(400).json({ success: false, message: 'Sản phẩm phải có ít nhất một biến thể.' });
-        }
-
-        const existingProduct = await Product.findOne({ productId });
-        if (existingProduct) {
-            return res.status(400).json({ success: false, message: 'Mã sản phẩm (productId) đã tồn tại.' });
-        }
-
-        // 3. Xử lý và validate từng biến thể trong mảng
-        const processedVariants = variants.map(v => {
-            if (!v.name || typeof v.price === 'undefined' || typeof v.stock === 'undefined') {
-                throw new Error('Mỗi biến thể phải có name, price, và stock.');
-            }
-            return {
-                ...v,
-                variantId: v.variantId || uuidv4() // Tự động tạo variantId nếu chưa có
-            };
-        });
-
-        const newProduct = new Product({
-            productId,
-            productName,
-            brand,
-            productDescription,
-            category,
-            images,
-            variants: processedVariants // 4. Lưu mảng variants đã xử lý
-        });
-
-        const savedProduct = await newProduct.save();
-        return res.status(201).json({ success: true, product: savedProduct });
-
-    } catch (error) {
-        return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    // 2. Validation cơ bản và validation cho mảng variants
+    if (!productId || !productName || !category || !variants) {
+      return res.status(400).json({ success: false, message: 'Các trường productId, productName, category, và variants là bắt buộc.' });
     }
+    if (!Array.isArray(variants) || variants.length === 0) {
+      return res.status(400).json({ success: false, message: 'Sản phẩm phải có ít nhất một biến thể.' });
+    }
+
+    const existingProduct = await Product.findOne({ productId });
+    if (existingProduct) {
+      return res.status(400).json({ success: false, message: 'Mã sản phẩm (productId) đã tồn tại.' });
+    }
+
+    // 3. Xử lý và validate từng biến thể trong mảng
+    const processedVariants = variants.map(v => {
+      if (!v.name || typeof v.price === 'undefined' || typeof v.stock === 'undefined') {
+        throw new Error('Mỗi biến thể phải có name, price, và stock.');
+      }
+      return {
+        ...v,
+        variantId: v.variantId || uuidv4() // Tự động tạo variantId nếu chưa có
+      };
+    });
+
+    const newProduct = new Product({
+      productId,
+      productName,
+      brand,
+      productDescription,
+      category,
+      images,
+      variants: processedVariants // 4. Lưu mảng variants đã xử lý
+    });
+
+    const savedProduct = await newProduct.save();
+    return res.status(201).json({ success: true, product: savedProduct });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
 };
 
 /**
  * [ADMIN] Cập nhật thông tin một sản phẩm
  */
 exports.updateProduct = async (req, res) => {
-    try {
-        const product = req.product; // Lấy sản phẩm từ middleware resolveProduct
+  try {
+    const product = req.product; // Lấy sản phẩm từ middleware resolveProduct
 
-        // 1. Lấy tất cả các trường có thể cập nhật, bao gồm cả mảng 'variants'
-        const {
-            productName,
-            brand,
-            productDescription,
-            category,
-            images,
-            status,
-            isNewProduct,
-            isBestSeller,
-            variants
-        } = req.body;
+    // 1. Lấy tất cả các trường có thể cập nhật, bao gồm cả mảng 'variants'
+    const {
+      productName,
+      brand,
+      productDescription,
+      category,
+      images,
+      status,
+      isNewProduct,
+      isBestSeller,
+      variants
+    } = req.body;
 
-        // 2. Cập nhật các trường thông tin chung
-        if (productName) product.productName = productName;
-        if (brand) product.brand = brand;
-        if (productDescription) product.productDescription = productDescription;
-        if (category) product.category = category;
-        if (images) product.images = images;
-        if (status) product.status = status;
-        if (typeof isNewProduct !== 'undefined') product.isNewProduct = isNewProduct;
-        if (typeof isBestSeller !== 'undefined') product.isBestSeller = isBestSeller;
+    // 2. Cập nhật các trường thông tin chung
+    if (productName) product.productName = productName;
+    if (brand) product.brand = brand;
+    if (productDescription) product.productDescription = productDescription;
+    if (category) product.category = category;
+    if (images) product.images = images;
+    if (status) product.status = status;
+    if (typeof isNewProduct !== 'undefined') product.isNewProduct = isNewProduct;
+    if (typeof isBestSeller !== 'undefined') product.isBestSeller = isBestSeller;
 
-        // 3. Cập nhật toàn bộ mảng variants nếu được cung cấp
-        if (Array.isArray(variants)) {
-            if (variants.length === 0) {
-                return res.status(400).json({ success: false, message: 'Sản phẩm phải có ít nhất một biến thể.' });
-            }
-            // Xử lý và validate từng biến thể trong mảng mới
-            const processedVariants = variants.map(v => {
-                if (!v.name || typeof v.price === 'undefined' || typeof v.stock === 'undefined') {
-                    throw new Error('Mỗi biến thể phải có name, price, và stock.');
-                }
-                return {
-                    ...v,
-                    variantId: v.variantId || uuidv4()
-                };
-            });
-            product.variants = processedVariants; // Ghi đè toàn bộ mảng variants cũ
+    // 3. Cập nhật toàn bộ mảng variants nếu được cung cấp
+    if (Array.isArray(variants)) {
+      if (variants.length === 0) {
+        return res.status(400).json({ success: false, message: 'Sản phẩm phải có ít nhất một biến thể.' });
+      }
+      // Xử lý và validate từng biến thể trong mảng mới
+      const processedVariants = variants.map(v => {
+        if (!v.name || typeof v.price === 'undefined' || typeof v.stock === 'undefined') {
+          throw new Error('Mỗi biến thể phải có name, price, và stock.');
         }
-
-        const updatedProduct = await product.save();
-        return res.status(200).json({ success: true, product: updatedProduct });
-
-    } catch (error) {
-        return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+        return {
+          ...v,
+          variantId: v.variantId || uuidv4()
+        };
+      });
+      product.variants = processedVariants; // Ghi đè toàn bộ mảng variants cũ
     }
+
+    const updatedProduct = await product.save();
+    return res.status(200).json({ success: true, product: updatedProduct });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
 };
 
 /**
  * [ADMIN] Xóa một sản phẩm
  */
 exports.deleteProduct = async (req, res) => {
-    try {
-        const product = req.product; // Lấy sản phẩm từ middleware resolveProduct
+  try {
+    const product = req.product; // Lấy sản phẩm từ middleware resolveProduct
 
-        await Product.deleteOne({ _id: product._id });
+    await Product.deleteOne({ _id: product._id });
 
-        return res.status(200).json({ success: true, message: 'Sản phẩm đã được xóa thành công.' });
+    return res.status(200).json({ success: true, message: 'Sản phẩm đã được xóa thành công.' });
 
-    } catch (error) {
-        return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
-    }
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  }
 };

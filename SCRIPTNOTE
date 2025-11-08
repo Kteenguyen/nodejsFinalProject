@@ -61,5 +61,3 @@ Tài khoản test
 - User: ktee2k333
 - Email: keytynguyen2003@gmail.com
 - Password: 123456
-lý do không hiện file ảnh tĩnh: https không cho load http
-cách khắc phục: đưa ảnh lên host trả về https hoặc dùng dịch vụ lưu trữ ảnh như cloudinary, imgur...
