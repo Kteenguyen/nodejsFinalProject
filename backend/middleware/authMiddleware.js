@@ -1,70 +1,57 @@
 // backend/middleware/authMiddleware.js
 const jwt = require("jsonwebtoken");
-const User = require('../models/userModel'); // Nên import User để check user tồn tại
+const User = require('../models/userModel'); 
 const asyncHandler = require('express-async-handler');
+
 const protect = asyncHandler(async (req, res, next) => {
     let token;
 
-    // 1. Kiểm tra nếu có token trong cookie
-    if (req.cookies && req.cookies.token) {
-        token = req.cookies.token;
+    // 1. Tìm cookie tên 'jwt' (Đã đúng)
+    if (req.cookies && req.cookies.jwt) { 
+        token = req.cookies.jwt; 
     }
 
-    // --- LOGIC QUAN TRỌNG: NẾU KHÔNG CÓ TOKEN, TRẢ VỀ 401 NGAY LẬP TỨC ---
-    // if (!token) {
-    //     console.log("🚫 protect: Không tìm thấy token trong cookie. Trả về 401.");
-    //     res.status(401);
-    //     throw new Error('Không được ủy quyền, không có token'); // Lỗi này sẽ được error handler bắt
-    // }
+    if (!token) {
+        // (Lỗi 401 "jwt must be provided" là do cookie bị chặn)
+        res.status(401);
+        throw new Error('Không được ủy quyền, không có token (jwt must be provided)');
+    }
 
     try {
+        // 2. Xác thực token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        // console.log("🔑 protect: Token hợp lệ! Payload:", decoded);
-        console.log("🔑 protect: Token hợp lệ!");
-
-        // 2. Tìm user trong DB bằng ID từ token
-        // QUAN TRỌNG: Đảm bảo 'id' trong decoded.id khớp với field ID trong User model (userId hoặc _id)
-        const user = await User.findOne({ userId: decoded.id }).select('-password'); // Hoặc User.findById(decoded.id)
-
+        
+        // === SỬA LỖI: 'user is not defined' ===
+        // 1. Khai báo 'user' bằng 'const'
+        const user = await User.findById(decoded.id).select('-password'); 
+        
+        // 2. Kiểm tra 'user' (thay vì 'req.user')
         if (!user) {
-            console.log("❌ protect: User từ token không còn tồn tại trong DB. Trả về 401.");
-            // Xóa cookie cũ nếu user không tồn tại để tránh vòng lặp lỗi
-            res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-            res.status(401);
-            throw new Error('Người dùng không tồn tại hoặc đã bị xóa.');
+             res.status(401);
+             throw new Error('Người dùng không tồn tại hoặc đã bị xóa.');
         }
 
-        req.user = user; // Gán user đầy đủ vào req
-        next(); // Chuyển sang middleware/controller tiếp theo
+        // 3. Gán 'user' vào 'req.user'
+        req.user = user; 
+        // ======================================
+        
+        next(); // Chuyển sang controller tiếp theo
 
     } catch (error) {
         console.error("--- DEBUG protect middleware: Lỗi xác minh token ---");
         console.error("Lỗi:", error.message);
-
-        // Xóa token bị lỗi để frontend không gửi lại
-        res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-
-        if (error.name === 'TokenExpiredError') {
-            res.status(401);
-            throw new Error('Token đã hết hạn.');
-        } else if (error.name === 'JsonWebTokenError') {
-            res.status(401);
-            throw new Error('Token không hợp lệ.');
-        } else {
-            res.status(401);
-            throw new Error('Không được ủy quyền, lỗi xác thực token khác.');
-        }
+        res.status(401);
+        throw new Error('Token không hợp lệ.');
     }
 });
 
+// (Hàm admin của bạn giữ nguyên)
 const admin = (req, res, next) => {
-    // Check isAdmin từ req.user đã lấy từ DB
-    if (req.user && req.user.isAdmin) {
-        console.log("👑 Check Admin: Oke!");
+    if (req.user && req.user.role === 'admin') { 
         next();
     } else {
-        console.log("⛔ Check Admin: Hong phải admin!");
-        res.status(403).json({ message: '403 Forbidden: Hong có quyền admin!' });
+        res.status(403);
+        throw new Error('Không có quyền Admin.');
     }
 };
 

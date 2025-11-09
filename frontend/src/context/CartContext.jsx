@@ -37,13 +37,13 @@ export const CartProvider = ({ children }) => {
     // Lắng nghe thay đổi của AuthState -> Đồng bộ/Tải giỏ hàng
     useEffect(() => {
         // Chờ AuthContext load xong
-        if (authLoading) return; 
+        if (authLoading) return;
 
         setLoading(true);
         if (isAuthenticated) {
             // === USER ĐÃ ĐĂNG NHẬP ===
             const localCart = JSON.parse(localStorage.getItem('cart') || '[]');
-            
+
             if (localCart.length > 0) {
                 // Nếu có giỏ hàng local (khách), gửi lên DB để gộp
                 syncLocalToDB(localCart);
@@ -89,17 +89,23 @@ export const CartProvider = ({ children }) => {
     const fetchDBCart = async () => {
         try {
             const response = await api.get('/cart');
-            setCartItems(response.data.cart);
+
+            // Thêm kiểm tra response (vì 401 sẽ trả về response.data = undefined)
+            if (response.data && response.data.cart) {
+                setCartItems(response.data.cart);
+            } else {
+                // Nếu API trả về 401 (response.data là undefined)
+                setCartItems([]); // 👈 Sửa thành mảng rỗng
+            }
         } catch (error) {
             console.error("Lỗi tải giỏ hàng từ DB:", error);
-            setCartItems([]);
+            setCartItems([]); // 👈 Sửa thành mảng rỗng
         } finally {
             setLoading(false);
         }
     };
-
     // === CÁC HÀM THAO TÁC GIỎ HÀNG (ĐÃ CẬP NHẬT) ===
-    
+
     // Hàm này (từ ProductCard) sẽ thông minh hơn:
     // 1. Đã đăng nhập -> Gọi API
     // 2. Là khách -> Dùng localStorage
@@ -152,12 +158,12 @@ export const CartProvider = ({ children }) => {
             localStorage.setItem('cart', JSON.stringify(newCart));
         }
     };
-    
+
     const updateQuantity = async (variantId, newQuantity) => {
         const oldCart = cartItems;
-        
+
         // Cập nhật UI trước
-        const newCart = oldCart.map(item => 
+        const newCart = oldCart.map(item =>
             item.variantId === variantId ? { ...item, quantity: newQuantity } : item
         ).filter(item => item.quantity > 0); // Lọc bỏ nếu số lượng = 0
         setCartItems(newCart);
@@ -188,8 +194,8 @@ export const CartProvider = ({ children }) => {
         removeItem,
         updateQuantity,
         loadingCart: loading, // Export state loading
-        itemCount: cartItems.reduce((total, item) => total + item.quantity, 0),
-        totalPrice: cartItems.reduce((total, item) => total + (item.price * item.quantity), 0)
+        itemCount: (cartItems || []).reduce((total, item) => total + item.quantity, 0),
+        totalPrice: (cartItems || []).reduce((total, item) => total + (item.price * item.quantity), 0)
     };
 
     return (

@@ -376,7 +376,7 @@ exports.setDefaultShippingAddress = async (req, res) => {
 /**
  * [ADMIN] Lấy danh sách tất cả người dùng với phân trang
  */
-exports.getAllUsers = async (req, res) => {
+exports.getUsers = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = "" } = req.query;
         const query = search

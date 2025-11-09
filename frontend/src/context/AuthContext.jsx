@@ -24,7 +24,7 @@ const checkAuthStatus = useCallback(async () => {
         } catch (error) {
             // 🛑 Khối này chỉ chạy khi có lỗi mạng thực sự (Server down, Network offline, v.v.)
             // Không còn phải xử lý riêng 401 nữa.
-            console.error("AuthContext: Error checking authentication status (Serious Error):", error);
+            // console.error("AuthContext: Error checking authentication status (Serious Error):", error);
 
             setUser(null);
             setIsAuthenticated(false);

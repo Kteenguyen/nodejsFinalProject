@@ -1,120 +1,143 @@
-// frontend/src/controllers/userController.js
-import api from "../services/api"; // Cho các API liên quan đến User (Backend của mình)
-// === FIX 1: SỬA ĐƯỜNG DẪN (BỎ 1 CHỮ 'services') ===
+// frontend/src/controllers/userController.jsx
+import api from "../services/api";
 import provinceApi from '../services/provinceApi';
 import { toast } from 'react-toastify';
 
-// Hàm helper xử lý lỗi API (chung cho cả backend và GHN)
+// === HÀM XỬ LÝ LỖI (Đã có toast.error) ===
+// Hàm helper xử lý lỗi API (chung cho cả backend và Tỉnh/Thành)
 const handleApiError = (error, customMessage = "Đã xảy ra lỗi") => {
     const message = error.response?.data?.message || error.message || customMessage;
+    // Toast lỗi sẽ hiển thị từ đây
     toast.error(message);
     throw new Error(message);
 };
 
-// (File này chỉ chứa logic Quản lý User và API Tỉnh/Thành)
 export const UserController = {
-    // =============================================================
-    // === CÁC HÀM QUẢN LÝ USER ===
-    // =============================================================
 
-    // === FIX 2: BỔ SUNG HÀM 'fetchUsers' (CHO ADMIN DASHBOARD) ===
-    fetchUsers: async ({ page, limit, search }) => {
+    // =============================================================
+    // === CÁC HÀM QUẢN LÝ ADMIN (Giữ nguyên logic của bạn) ===
+    // =============================================================
+    getUsers: async ({ page, limit, search }) => {
         try {
-            // Fen cần đảm bảo có API này ở backend
-            const response = await api.get('/admin/users', {
+            const response = await api.get('/users', {
                 params: { page, limit, search }
             });
-            return response.data; // Giả sử trả về { users: [], totalPages: 1 }
-        } catch (error) {
-            handleApiError(error, "Lỗi tải danh sách người dùng!");
-        }
-    },
-
-    // === FIX 3: BỔ SUNG HÀM 'fetchUserDetail' (CHO ADMIN DASHBOARD) ===
-    fetchUserDetail: async (userId) => {
-        try {
-            // Fen cần đảm bảo có API này ở backend
-            const response = await api.get(`/admin/users/${userId}`);
-            return response.data; // Giả sử trả về { user: {...} }
-        } catch (error) {
-            handleApiError(error, "Lỗi tải chi tiết người dùng!");
-        }
-    },
-
-    // Cập nhật thông tin (name, phone, dob, avatar)
-    updateProfile: async (profileData) => {
-        try {
-            const response = await api.put('/users/me', profileData);
-            toast.success("Cập nhật thông tin thành công!");
-            return response.data.user; // Trả về user đã cập nhật
-        } catch (error) {
-            handleApiError(error, "Lỗi cập nhật hồ sơ!");
-        }
-    },
-
-    // Đổi mật khẩu
-    changePassword: async (passwordData) => {
-        try {
-            const response = await api.put('/users/change-password', passwordData);
-            toast.success("Đổi mật khẩu thành công!");
             return response.data;
         } catch (error) {
-            handleApiError(error, "Lỗi đổi mật khẩu!");
+            handleApiError(error, "Lỗi tải danh sách người dùng.");
         }
     },
 
-    // Lấy địa chỉ
-    getAddresses: async () => {
+    getUserById: async (userId) => {
+        try {
+            const response = await api.get(`/users/${userId}`);
+            return response.data.user;
+        } catch (error) {
+            handleApiError(error, "Lỗi tải thông tin người dùng.");
+        }
+    },
+
+    updateUserByAdmin: async (userId, userData) => {
+        try {
+            const response = await api.put(`/users/${userId}`, userData);
+            return response.data.user;
+        } catch (error) {
+            handleApiError(error, "Lỗi cập nhật người dùng.");
+        }
+    },
+
+    deleteUser: async (userId) => {
+        try {
+            const response = await api.delete(`/users/${userId}`);
+            return response.data;
+        } catch (error) {
+            handleApiError(error, "Lỗi xóa người dùng.");
+        }
+    },
+
+    // =============================================================
+    // === CÁC HÀM TRANG PROFILE (Đã đúng) ===
+    // =============================================================
+
+    updateProfile: async (formData) => { // formData là đối tượng FormData
+        try {
+            // Gửi FormData (cho file upload)
+            const response = await api.put('/users/me', formData);
+
+            if (response.data?.success) {
+                // Component (ProfileInfo.jsx) sẽ gọi toast.success()
+                return response.data.user;
+            } else {
+                throw new Error(response.data?.message || "Cập nhật thất bại");
+            }
+        } catch (error) {
+            handleApiError(error, "Lỗi khi cập nhật hồ sơ.");
+        }
+    },
+
+    changeMyPassword: async (passwordData) => {
+        try {
+            const response = await api.put('/users/change-password', passwordData);
+            if (response.data?.success) {
+                // Component (ChangePassword.jsx) sẽ gọi toast.success()
+                return response.data;
+            } else {
+                throw new Error(response.data?.message || "Đổi mật khẩu thất bại");
+            }
+        } catch (error) {
+            handleApiError(error, "Lỗi khi đổi mật khẩu.");
+        }
+    },
+
+    // =============================================================
+    // === CÁC HÀM QUẢN LÝ ĐỊA CHỈ (Đã đúng) ===
+    // =============================================================
+
+    getMyAddresses: async () => {
         try {
             const response = await api.get('/users/addresses');
-            return response.data.addresses;
+            return response.data;
         } catch (error) {
-            handleApiError(error, "Lỗi tải địa chỉ!");
+            handleApiError(error, "Lỗi tải danh sách địa chỉ.");
         }
     },
 
-    // Thêm địa chỉ
     addAddress: async (addressData) => {
         try {
             const response = await api.post('/users/addresses', addressData);
-            toast.success("Thêm địa chỉ mới thành công!");
-            return response.data.addresses; // Trả về danh sách địa chỉ mới
+            // Component (ManageAddresses.jsx) sẽ gọi toast.success()
+            return response.data;
         } catch (error) {
-            handleApiError(error, "Lỗi thêm địa chỉ!");
+            handleApiError(error, "Lỗi thêm địa chỉ.");
         }
     },
 
-    // Cập nhật địa chỉ
-    updateAddress: async (addressId, addressData) => {
+    updateShippingAddress: async (addressId, addressData) => {
         try {
             const response = await api.put(`/users/addresses/${addressId}`, addressData);
-            toast.success("Cập nhật địa chỉ thành công!");
-            return response.data.addresses;
+            // Component (ManageAddresses.jsx) sẽ gọi toast.success()
+            return response.data;
         } catch (error) {
-            handleApiError(error, "Lỗi cập nhật địa chỉ!");
+            handleApiError(error, "Lỗi cập nhật địa chỉ.");
         }
     },
 
-    // Xóa địa chỉ
     deleteAddress: async (addressId) => {
         try {
             const response = await api.delete(`/users/addresses/${addressId}`);
-            toast.success("Xóa địa chỉ thành công!");
-            return response.data.addresses;
+            // Component (ManageAddresses.jsx) sẽ gọi toast.success()
+            return response.data;
         } catch (error) {
-            handleApiError(error, "Lỗi xóa địa chỉ!");
+            handleApiError(error, "Lỗi xóa địa chỉ.");
         }
     },
 
     // =============================================================
-    // === CÁC HÀM API TỈNH/THÀNH (ĐÃ SỬA CHO API MỚI) ===
+    // === API TỈNH/THÀNH (Đã đúng) ===
     // =============================================================
-
     getProvinces: async () => {
         try {
-            // API mới không cần endpoint /province
             const response = await provinceApi.get('p/');
-            // API mới trả về [ { code, name, ... } ], nên không cần response.data?.data
             return response.data || [];
         } catch (error) {
             handleApiError(error, "Lỗi tải danh sách Tỉnh/Thành phố.");
@@ -122,14 +145,12 @@ export const UserController = {
         }
     },
 
-    getDistricts: async (provinceCode) => { // Dùng CODE thay vì ID
+    getDistricts: async (provinceCode) => {
         if (!provinceCode) return [];
         try {
-            // API mới dùng /p/:code?depth=2
             const response = await provinceApi.get(`p/${provinceCode}`, {
                 params: { depth: 2 }
             });
-            // API mới trả về { districts: [ { code, name, ... } ] }
             return response.data?.districts || [];
         } catch (error) {
             handleApiError(error, "Lỗi tải danh sách Quận/Huyện.");
@@ -137,14 +158,12 @@ export const UserController = {
         }
     },
 
-    getWards: async (districtCode) => { // Dùng CODE thay vì ID
+    getWards: async (districtCode) => {
         if (!districtCode) return [];
         try {
-            // API mới dùng /d/:code?depth=2
             const response = await provinceApi.get(`d/${districtCode}`, {
                 params: { depth: 2 }
             });
-            // API mới trả về { wards: [ { code, name, ... } ] }
             return response.data?.wards || [];
         } catch (error) {
             handleApiError(error, "Lỗi tải danh sách Phường/Xã.");

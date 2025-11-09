@@ -1,7 +1,7 @@
 // frontend/src/index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './styles/index.css'; 
+import './styles/index.css';
 import App from './routes/AppRoutes';
 import { BrowserRouter } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -17,15 +17,15 @@ import 'react-toastify/dist/ReactToastify.css';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   // <React.StrictMode>
-    <BrowserRouter>
-      <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
-        <AuthProvider>
-          <CartProvider> 
-            <App />
-            <ToastContainer autoClose={3000} pauseOnHover={false} />
-          </CartProvider>
-        </AuthProvider>
-      </GoogleOAuthProvider>
-    </BrowserRouter>
+  <BrowserRouter>
+    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
+      <AuthProvider>
+        <CartProvider>
+          <App />
+          <ToastContainer autoClose={3000} pauseOnHover={false} />
+        </CartProvider>
+      </AuthProvider>
+    </GoogleOAuthProvider>
+  </BrowserRouter>
   // </React.StrictMode>
 );

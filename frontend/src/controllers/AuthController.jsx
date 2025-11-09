@@ -82,11 +82,7 @@ export const AuthController = {
                 return { isAuthenticated: false, user: null };
             }
 
-            // Log các lỗi khác (5xx Server Error, 404 Not Found, hoặc lỗi mạng thực sự)
-            console.error("Check auth failed (Serious Error):", error.response?.data || error.message);
 
-            // Đối với các lỗi nghiêm trọng, vẫn trả về false
-            // ✅ **QUAN TRỌNG: KHÔNG DÙNG `throw new Error(...)` Ở ĐÂY NỮA**
             return { isAuthenticated: false, user: null };
         }
     },    // =========================================================

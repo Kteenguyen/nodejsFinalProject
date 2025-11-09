@@ -2,7 +2,9 @@
 const express = require('express');
 const router = express.Router();
 const {
+    getUsers,
     getUserProfile,
+    getUserByAdmin,
     updateUserProfile,
     changeMyPassword,
     getMyAddresses,
@@ -14,7 +16,9 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../config/cloudinary');// Tất cả các route dưới đây đều yêu cầu đăng nhập
 router.use(protect);
-
+router.route('/')
+    .get(getUsers); // GET /api/users?page=1&limit=10&search=...
+    
 // === Hồ sơ cá nhân ===
 router.route('/me')
     .get(getUserProfile) // GET /api/users/me
