@@ -1,231 +1,314 @@
 // frontend/src/pages/Admin/Users.jsx
 
-// === SỬA LỖI 1: GỘP IMPORT ===
-import React, { useState, useEffect, useCallback } from 'react'; 
-import { Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-// =============================
+// === IMPORT (Đã sửa lỗi lặp, bổ sung icon và motion) ===
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    Search, UserX, PackageCheck, Truck, ArchiveRestore,
+    Home, ChevronRight
+} from "lucide-react";
+import { motion } from 'framer-motion'; // 👈 Đã import
+import { toast } from 'react-toastify';
+// ===================================
 
-import { UserController } from "../../controllers/userController";
-import UserDetail from "../../pages/UserDetail"; // (Đảm bảo đường dẫn này đúng)
+import { UserController } from "../../controllers/userController"; // 👈 Đã import
+import Pagination from '../../components/common/Pagination';
+import Breadcrumb from '../../components/common/Breadcrumb';
+import UserDetail from '../../components/common/UserDetail'; // 👈 Đã sửa đường dẫn
+
+// === CÁC HÀM HELPER (Giữ nguyên) ===
+const calculateAge = (dobString) => {
+    if (!dobString) return 'N/A';
+    try {
+        const birthDate = new Date(dobString);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    } catch (e) { return 'N/A'; }
+};
+
+const formatOrderStatusBadges = (stats) => {
+    if (!stats || (stats.delivered === 0 && stats.processing === 0 && stats.returned === 0)) {
+        return <span className="text-text-secondary text-xs">Chưa có đơn</span>;
+    }
+    return (
+        <div className="flex flex-col gap-1.5">
+            {stats.delivered > 0 && (
+                <span className="flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                    <PackageCheck size={14} className="mr-1.5 flex-shrink-0" />
+                    Đã giao: <strong className="ml-1">{stats.delivered}</strong>
+                </span>
+            )}
+            {stats.processing > 0 && (
+                <span className="flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                    <Truck size={14} className="mr-1.5 flex-shrink-0" />
+                    Đang xử lý: <strong className="ml-1">{stats.processing}</strong>
+                </span>
+            )}
+            {stats.returned > 0 && (
+                <span className="flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                    <ArchiveRestore size={14} className="mr-1.5 flex-shrink-0" />
+                    Đã hoàn/Hủy: <strong className="ml-1">{stats.returned}</strong>
+                </span>
+            )}
+        </div>
+    );
+};
+// ===================================
 
 const Users = () => {
-    const [users, setUsers] = useState([]); // Khởi tạo là mảng rỗng   
+    // === LOGIC STATE (Đã sửa lỗi thiếu state) ===
+    const [users, setUsers] = useState([]);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [limit, setLimit] = useState(5); 
-
-    // === SỬA LỖI 2: BỔ SUNG STATE THIẾU ===
+    const [limit, setLimit] = useState(5);
     const [search, setSearch] = useState('');
-    const [modalUser, setModalUser] = useState(null); 
-    // ===================================
+    const [modalUser, setModalUser] = useState(null);
+    // ================================
 
-    // === SỬA LỖI 3: CẤU TRÚC LẠI useEffect/useCallback (Sửa lỗi ReferenceError) ===
-    // 1. Định nghĩa hàm getUsersData bằng useCallback
+    // === LOGIC FETCH DATA (Đã sửa lỗi useEffect) ===
     const getUsersData = useCallback(async () => {
         setLoading(true);
         try {
-            // Lỗi 401 (Lỗi 1) sẽ xảy ra ở đây, nhưng hàm catch sẽ xử lý
             const data = await UserController.getUsers({ page, limit, search });
-            
+
             if (data && data.users) {
-                setUsers(data.users);
+                // (Mock data cho UI mới)
+                const usersWithMockData = data.users.map((user, index) => ({
+                    ...user,
+                    dateOfBirth: user.dateOfBirth || `19${80 + index % 20}-10-20`,
+                    totalOrders: user.totalOrders || (index * 3 + 5),
+                    orderStats: user.orderStats || {
+                        delivered: (index * 2 + 1),
+                        processing: (index % 3),
+                        returned: (index % 4 === 0 ? 1 : 0)
+                    }
+                }));
+                setUsers(usersWithMockData);
                 setTotalPages(data.totalPages || 1);
             } else {
-                setUsers([]); // Nếu API lỗi (401), set mảng rỗng
+                setUsers([]);
             }
         } catch (error) {
             console.error("Lỗi khi tải users:", error);
-            setUsers([]); // Nếu API crash, set mảng rỗng
+            setUsers([]);
         }
         setLoading(false);
-    }, [page, limit, search]); // 👈 Thêm dependencies
+    }, [page, limit, search]);
 
-    // 2. Gọi hàm đó bên trong useEffect
     useEffect(() => {
         getUsersData();
-    }, [getUsersData]); // 👈 Gọi theo dependencies
+    }, [getUsersData]);
     // =================================
 
     // Hàm xử lý Search
     const handleSearch = (e) => {
         e.preventDefault();
-        setPage(1); // Reset về trang 1 khi tìm kiếm
-        // Không cần gọi getUsersData() ở đây, vì 'useEffect' sẽ tự chạy khi 'search' thay đổi (nếu bạn muốn)
-        // Hoặc bạn gọi trực tiếp:
-        getUsersData(); 
+        setPage(1);
+        getUsersData();
     };
 
-    // Hàm format ngày (Giữ nguyên của bạn)
-    const formatDateTime = (isoDate) => {
-        if (!isoDate) return 'N/A';
-        const date = new Date(isoDate);
-        return date.toLocaleDateString('vi-VN', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
+    // Hàm xử lý Cấm (Ban)
+    const handleBanUser = (e, user) => {
+        e.stopPropagation();
+        toast.error(`Chức năng cấm [${user.name}] chưa được cài đặt!`);
     };
 
-    // Hàm format vai trò (Giữ nguyên của bạn)
-    const formatRole = (role) => {
-        if (role === 'admin') return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">Quản trị viên</span>;
-        if (role === 'staff') return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Nhân viên</span>;
-        return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">Khách hàng</span>;
+    // Hàm callback khi Admin lưu trong Modal
+    const handleAdminSave = (updatedUser) => {
+        setUsers(prevUsers =>
+            prevUsers.map(u => u._id === updatedUser._id ? updatedUser : u)
+        );
     };
-    
-    // (Phần JSX giữ nguyên từ file gốc của bạn)
+
+    // Cấu hình Breadcrumb
+    const breadcrumbs = [
+        { label: 'Quản lý Người dùng' }
+    ];
+
+    // Cấu hình cho animation "nổi" lên
+    const motionVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+    };
+
+    // === PHẦN GIAO DIỆN (ĐÃ NÂNG CẤP) ===
     return (
-        <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
-            <h1 className="text-2xl font-semibold text-gray-800 mb-4">Quản lý Người dùng</h1>
+        <div className="p-4 md:p-6 bg-background min-h-screen">
 
-            {/* Thanh Search */}
+            {/* 1. Breadcrumb (Thay thế H1) */}
+            <Breadcrumb crumbs={breadcrumbs} />
+
+            {/* 2. Thanh Search */}
             <form onSubmit={handleSearch} className="mb-4 flex gap-2">
                 <div className="relative flex-grow">
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Tìm theo tên, email, SĐT..."
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                        placeholder="Tìm theo tên, email..."
+                        className="input-field pl-10"
                     />
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
                 </div>
-                <button type="submit" className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover">
+                <motion.button
+                    type="submit"
+                    className="btn-accent-profile"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                >
                     Tìm kiếm
-                </button>
+                </motion.button>
             </form>
 
-            {/* Bảng dữ liệu */}
-            <div className="bg-white shadow rounded-lg overflow-x-auto">
+            {/* 3. Giao diện Bảng (TABLE) - Dành cho Desktop (md trở lên) */}
+            <motion.div
+                variants={motionVariants}
+                initial="hidden"
+                animate="visible"
+                className="hidden md:block bg-surface shadow-md rounded-lg overflow-x-auto"
+            >
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người dùng</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email/SĐT</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vai trò</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày tạo</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Người dùng</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tuổi</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tổng đơn</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tình trạng đơn hàng</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Hành động</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-surface divide-y divide-gray-200">
                         {loading ? (
-                            <tr><td colSpan="5" className="text-center py-4 text-gray-500">Đang tải...</td></tr>
+                            <tr><td colSpan="5" className="text-center py-4 text-text-secondary">Đang tải...</td></tr>
                         ) : (
                             users.map(user => (
-                                <tr key={user._id} className="hover:bg-gray-50">
+                                <tr
+                                    key={user._id}
+                                    className="hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => setModalUser(user)} // 👈 Click vào hàng
+                                >
+                                    {/* Cột User */}
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <img className="h-10 w-10 rounded-full object-cover" src={user.avatar || 'https://via.placeholder.com/100'} alt={user.name} />
+                                            <img className="h-10 w-10 rounded-full object-cover" src={user.avatar || '/img/male_user.png'} alt={user.name} />
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                                                <div className="text-sm text-gray-500">{user.userName}</div>
+                                                <div className="text-sm font-medium text-text-primary">{user.name}</div>
+                                                <div className="text-sm text-text-secondary">{user.email}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900">{user.email}</div>
-                                        <div className="text-sm text-gray-500">{user.phoneNumber || 'Chưa cập nhật'}</div>
+                                    {/* Cột Tuổi */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                                        {calculateAge(user.dateOfBirth)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{formatRole(user.role)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDateTime(user.createdAt)}</td>
+                                    {/* Cột Tổng đơn */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">
+                                        {user.totalOrders}
+                                    </td>
+                                    {/* Cột Tình trạng */}
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <button 
-                                            onClick={() => setModalUser(user)}
-                                            className="text-accent hover:text-accent-hover font-medium"
+                                        {formatOrderStatusBadges(user.orderStats)}
+                                    </td>
+                                    {/* Cột Hành động */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <motion.button
+                                            onClick={(e) => handleBanUser(e, user)}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-red-600 hover:bg-red-100 transition-colors"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
                                         >
-                                            Xem chi tiết
-                                        </button>
+                                            <UserX size={14} />
+                                            Cấm
+                                        </motion.button>
                                     </td>
                                 </tr>
                             ))
                         )}
                     </tbody>
                 </table>
-            </div>
+            </motion.div>
 
-            {/* Phân trang (Pagination) */}
-            <div className="mt-4 flex justify-between items-center">
-                <span className="text-sm text-gray-700">
-                    Trang {page} trên {totalPages}
-                </span>
-                <div className="flex items-center space-x-1">
-                    <button
-                        disabled={page === 1}
-                        onClick={() => setPage(1)}
-                        className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
-                        aria-label="Trang đầu"
-                    >
-                        <ChevronsLeft size={18} />
-                    </button>
-                    <button
-                        disabled={page === 1}
-                        onClick={() => setPage(page - 1)}
-                        className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
-                        aria-label="Trang trước"
-                    >
-                        <ChevronLeft size={18} />
-                    </button>
-                    
-                    <div className="flex items-center space-x-1">
-                        {(() => {
-                            const pageButtons = [];
-                            let startPage = Math.max(1, page - 2);
-                            let endPage = Math.min(totalPages, page + 2);
+            {/* 4. Giao diện Thẻ (CARD) - Dành cho Mobile (dưới md) */}
+            <motion.div
+                variants={motionVariants}
+                initial="hidden"
+                animate="visible"
+                className="md:hidden space-y-4"
+            >
+                {loading ? (
+                    <div className="text-center py-4 text-text-secondary">Đang tải...</div>
+                ) : (
+                    users.map(user => (
+                        <div
+                            key={user._id}
+                            className="bg-surface rounded-lg shadow-md p-4 cursor-pointer"
+                            onClick={() => setModalUser(user)}
+                        >
+                            {/* Hàng 1: User Info */}
+                            <div className="flex items-center mb-4 pb-4 border-b border-gray-200">
+                                <img className="h-10 w-10 rounded-full object-cover" src={user.avatar || '/img/male_user.png'} alt={user.name} />
+                                <div className="ml-4">
+                                    <div className="text-sm font-medium text-text-primary">{user.name}</div>
+                                    <div className="text-sm text-text-secondary">{user.email}</div>
+                                </div>
+                            </div>
 
-                            if (page - 2 <= 1) {
-                                endPage = Math.min(totalPages, 5);
-                            }
-                            if (page + 2 >= totalPages) {
-                                startPage = Math.max(1, totalPages - 4);
-                            }
+                            {/* Hàng 2: Data (Tuổi, Tổng đơn) */}
+                            <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                                <div>
+                                    <div className="text-xs text-text-secondary uppercase">Tuổi</div>
+                                    <div className="text-text-primary font-medium">{calculateAge(user.dateOfBirth)}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-text-secondary uppercase">Tổng đơn</div>
+                                    <div className="text-text-primary font-medium">{user.totalOrders}</div>
+                                </div>
+                            </div>
 
-                            if (startPage > 1) {
-                                pageButtons.push(<span key="start-dots" className="px-2 py-1 text-gray-500">...</span>);
-                            }
+                            {/* Hàng 3: Tình trạng (3 Badges) */}
+                            <div className="mb-4">
+                                <div className="text-xs text-text-secondary uppercase mb-2">Tình trạng đơn hàng</div>
+                                {formatOrderStatusBadges(user.orderStats)}
+                            </div>
 
-                            for (let i = startPage; i <= endPage; i++) {
-                                pageButtons.push(
-                                    <button
-                                        key={i}
-                                        onClick={() => setPage(i)}
-                                        className={`p-2 w-10 h-10 flex justify-center items-center rounded-lg transition
-                                            ${i === page 
-                                                ? 'bg-accent text-white font-bold' 
-                                                : 'hover:bg-gray-100 text-gray-700'
-                                            }`}
-                                    >
-                                        {i}
-                                    </button>
-                                );
-                            }
+                            {/* Hàng 4: Hành động */}
+                            <div>
+                                <motion.button
+                                    onClick={(e) => handleBanUser(e, user)}
+                                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    <UserX size={14} />
+                                    Cấm người dùng
+                                </motion.button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </motion.div>
 
-                            if (endPage < totalPages) {
-                                pageButtons.push(<span key="end-dots" className="px-2 py-1 text-gray-500">...</span>);
-                            }
-                            return pageButtons;
-                        })()}
-                    </div>
+            {/* 5. Phân trang */}
+            {!loading && totalPages > 1 && (
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                />
+            )}
 
-                    <button
-                        disabled={page === totalPages}
-                        onClick={() => setPage(page + 1)}
-                        className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
-                        aria-label="Trang sau"
-                    >
-                        <ChevronRight size={18} />
-                    </button>
-                    <button
-                        disabled={page === totalPages}
-                        onClick={() => setPage(totalPages)}
-                        className="p-2 w-10 h-10 flex justify-center items-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
-                        aria-label="Trang cuối"
-                    >
-                        <ChevronsRight size={18} />
-                    </button>
-                </div>
-            </div>
-
-            <UserDetail user={modalUser} onClose={() => setModalUser(null)} />
+            {/* 6. Modal Detail (Đã truyền đúng props) */}
+            <UserDetail
+                user={modalUser}
+                onClose={() => setModalUser(null)}
+                onSave={handleAdminSave} // 👈 Truyền hàm callback
+                context="admin" // 👈 Báo cho component biết đây là Admin
+            />
         </div>
     );
 };

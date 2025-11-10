@@ -5,11 +5,10 @@ import './styles/index.css';
 import App from './routes/AppRoutes';
 import { BrowserRouter } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-
+import 'react-datepicker/dist/react-datepicker.css'; // 👈 THÊM DÒNG NÀY
 // --- IMPORT CÁC CONTEXT ---
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext'; // 👈 ĐÂY LÀ ĐƯỜNG DẪN MỚI (Trở lại như cũ)
-
 // Toastify
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

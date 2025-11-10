@@ -1,10 +1,8 @@
 // frontend/src/components/Profile/ChangePassword.jsx
 import React, { useState } from 'react';
 import { UserController } from '../../controllers/userController';
-// === THÊM MỚI ===
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
-// =================
 
 const ChangePassword = () => {
     const [formData, setFormData] = useState({
@@ -12,7 +10,7 @@ const ChangePassword = () => {
         newPassword: '',
         confirmPassword: ''
     });
-    const [isLoading, setIsLoading] = useState(false); // Thêm state loading
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,68 +19,66 @@ const ChangePassword = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (formData.newPassword !== formData.confirmPassword) {
-            toast.error("Mật khẩu mới không khớp!"); // 👈 DÙNG TOAST
+            toast.error("Mật khẩu mới không khớp!");
             return;
         }
 
-        setIsLoading(true); // Bắt đầu loading
+        setIsLoading(true);
         try {
-            // (Giả sử bạn có hàm changePassword trong UserController)
-            const response = await UserController.changeMyPassword(formData); // Dùng hàm từ file của bạn
-
-            toast.success(response.message || "Đổi mật khẩu thành công!"); // 👈 DÙNG TOAST
+            const response = await UserController.changeMyPassword(formData);
+            toast.success(response.message || "Đổi mật khẩu thành công!");
             setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
         } catch (error) {
+            // (userController.jsx đã tự động gọi toast.error)
             console.error("Lỗi đổi mật khẩu:", error);
-            toast.error(error.message || "Đổi mật khẩu thất bại."); // 👈 DÙNG TOAST
-        } finally {
-            setIsLoading(false); // Dừng loading
         }
+        setIsLoading(false);
     };
 
     return (
-        <div>
-            <h2 className="text-2xl font-semibold mb-4 text-text-primary">Đổi mật khẩu</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        // === BỌC NỀN TRẮNG (GIỐNG USERDETAIL) ===
+        <div className="bg-surface rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-medium text-text-primary mb-4">Đổi mật khẩu</h2>
+            <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
                 <div>
-                    <label htmlFor="currentPassword" className="block text-sm font-medium text-text-secondary">Mật khẩu hiện tại</label>
+                    {/* (Giả sử bạn đã thêm 'label-field' vào index.css) */}
+                    <label className="label-field">Mật khẩu hiện tại</label>
                     <input
                         type="password" id="currentPassword" name="currentPassword"
                         value={formData.currentPassword} onChange={handleChange}
-                        required className="input-field" // 👈 Dùng class CSS chung
+                        required className="input-field" 
                     />
                 </div>
                 <div>
-                    <label htmlFor="newPassword" className="block text-sm font-medium text-text-secondary">Mật khẩu mới</label>
+                    <label className="label-field">Mật khẩu mới</label>
                     <input
                         type="password" id="newPassword" name="newPassword"
                         value={formData.newPassword} onChange={handleChange}
-                        required className="input-field" // 👈 Dùng class CSS chung
+                        required className="input-field" 
                     />
                 </div>
                 <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-text-secondary">Xác nhận mật khẩu mới</label>
+                    <label className="label-field">Xác nhận mật khẩu mới</label>
                     <input
                         type="password" id="confirmPassword" name="confirmPassword"
                         value={formData.confirmPassword} onChange={handleChange}
-                        required className="input-field" // 👈 Dùng class CSS chung
+                        required className="input-field" 
                     />
                 </div>
                 <div>
-                    {/* === THÊM MOTION === */}
                     <motion.button
                         type="submit"
-                        className="btn-accent-profile" // 👈 Dùng class CSS chung
-                        disabled={isLoading} // Khóa nút khi đang gửi
+                        className="btn-accent-profile" 
+                        disabled={isLoading}
                         whileHover={{ scale: isLoading ? 1 : 1.05 }}
                         whileTap={{ scale: isLoading ? 1 : 0.95 }}
                     >
                         {isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
                     </motion.button>
-                    {/* =================== */}
                 </div>
             </form>
         </div>
+        // ======================================
     );
 };
 export default ChangePassword;
