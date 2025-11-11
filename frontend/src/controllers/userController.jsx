@@ -27,7 +27,6 @@ export const UserController = {
             handleApiError(error, "Lỗi tải danh sách người dùng.");
         }
     },
-
     getUserById: async (userId) => {
         try {
             const response = await api.get(`/users/${userId}`);
@@ -36,16 +35,15 @@ export const UserController = {
             handleApiError(error, "Lỗi tải thông tin người dùng.");
         }
     },
-
-    updateUserByAdmin: async (userId, userData) => {
+    adminUpdateUser: async (userId, userData) => {
         try {
+            // (Gửi data dạng JSON, không phải FormData)
             const response = await api.put(`/users/${userId}`, userData);
-            return response.data.user;
+            return response.data; // Trả về { success: true, user: updatedUser }
         } catch (error) {
             handleApiError(error, "Lỗi cập nhật người dùng.");
         }
     },
-
     deleteUser: async (userId) => {
         try {
             const response = await api.delete(`/users/${userId}`);
@@ -54,7 +52,15 @@ export const UserController = {
             handleApiError(error, "Lỗi xóa người dùng.");
         }
     },
-
+    banUser: async (userId) => {
+        try {
+            // (userId ở đây là Mongo _id)
+            const response = await api.put(`/users/${userId}/ban`);
+            return response.data; // Trả về { success: true, message: "...", isBanned: true/false }
+        } catch (error) {
+            handleApiError(error, "Lỗi khi cấm người dùng.");
+        }
+    },
     // =============================================================
     // === CÁC HÀM TRANG PROFILE (Đã đúng) ===
     // =============================================================
@@ -62,7 +68,14 @@ export const UserController = {
     updateProfile: async (formData) => { // formData là đối tượng FormData
         try {
             // Gửi FormData (cho file upload)
-            const response = await api.put('/users/me', formData);
+            const response = await api.put(
+                '/users/me',
+                formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+            );
 
             if (response.data?.success) {
                 // Component (ProfileInfo.jsx) sẽ gọi toast.success()

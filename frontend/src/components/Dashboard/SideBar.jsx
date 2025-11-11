@@ -1,17 +1,11 @@
-// frontend/src/components/SideBar.jsx
+// frontend/src/components/Dashboard/SideBar.jsx
 import {
-    LayoutDashboard,
-    Users,
-    ShoppingCart,
-    Settings,
-    Menu,
-    ChevronLeft,
-    LogOut
+    LayoutDashboard, Users, ShoppingCart, Settings,
+    Menu, ChevronLeft, LogOut
 } from "lucide-react";
-
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { useAuth } from "../../context/AuthContext"; // 👈 BƯỚC 1: IMPORT useAuth
+import { useAuth } from "../../context/AuthContext"; // 👈 (Đảm bảo đường dẫn này đúng)
 
 const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
@@ -23,7 +17,7 @@ const menuItems = [
 const SideBar = ({ onToggle }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { logout } = useAuth(); // 👈 BƯỚC 2: LẤY HÀM LOGOUT TỪ CONTEXT
+    const { logout } = useAuth();
 
     const [active, setActive] = useState(location.pathname);
     const [collapsed, setCollapsed] = useState(false);
@@ -38,50 +32,63 @@ const SideBar = ({ onToggle }) => {
         setActive(location.pathname);
     }, [location.pathname]);
 
-    // 👇 BƯỚC 3: SỬA LẠI HÀM LOGOUT
+    // === (HÀM LOGOUT ĐÃ SỬA) ===
     const handleLogout = async () => {
+        console.log("SideBar: Đang gọi logout...");
         try {
-            await logout(); // Gọi hàm logout từ AuthContext (nó sẽ gọi API và clear state)
+            await logout(); // (Hàm logout từ AuthContext sẽ gọi API và xóa cookie)
             console.log("SideBar: Đã gọi logout thành công.");
-            navigate('/login'); // Chuyển hướng về trang đăng nhập
-        } catch (error) {
-            console.error("SideBar: Lỗi khi đăng xuất:", error);
-            // Dù lỗi, vẫn ép chuyển hướng
             navigate('/login');
+        } catch (error) {
+            console.error("SideBar: Lỗi khi logout:", error);
         }
     };
 
     return (
-        <aside className={`flex flex-col h-screen bg-white shadow-lg
-             transition-all duration-300 ease-in-out
-             ${collapsed ? "w-20" : "w-64"}`}
+        // === SỬA LAYOUT: DÙNG 'fixed' ===
+        <aside
+            className={`
+                fixed top-0 left-0 h-screen bg-white shadow-lg
+                flex flex-col
+                transition-all duration-300 ease-in-out
+                ${collapsed ? "w-20" : "w-72"}
+                z-40 
+            `}
         >
-            {/* ... (Phần Logo và Nút Toggle giữ nguyên như file của fen) ... */}
-            
-            {/* Nút Toggle (ví dụ) */}
-            <div className={`flex items-center border-b
+            {/* ============================== */}
+
+            {/* Khối Logo và Nút Toggle */}
+            <div className={`
+                flex items-center 
                 ${collapsed ? "justify-center" : "justify-between"}
-                 px-4 py-4 h-[65px]`}>
+                p-4 h-[65px] border-b
+            `}>
                 {!collapsed && (
-                    <span className="font-semibold text-lg text-blue-600">Admin</span>
+                    <h1
+                        onClick={() => navigate('/')}
+                        className="text-xl font-bold text-text-primary cursor-pointer"
+                    >
+                        FenShop
+                    </h1>
                 )}
-                <button onClick={toggleSidebar} className="text-gray-600 hover:text-blue-600">
-                    {collapsed ? <Menu size={24} /> : <ChevronLeft size={24} />}
+                <button
+                    onClick={toggleSidebar}
+                    className="p-2 rounded-lg hover:bg-gray-100"
+                >
+                    {collapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
                 </button>
             </div>
 
-            {/* Menu */}
-            <nav className="flex-1 px-4 py-4 space-y-2">
+            {/* Khối Menu (Giữ nguyên logic của bạn) */}
+            <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
                 {menuItems.map((item) => {
                     const isActive = active.startsWith(item.path);
                     return (
                         <button
                             key={item.label}
-                            onClick={() => {
-                                setActive(item.path);
-                                navigate(item.path);
-                            }}
-                            className={`flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
+                            onClick={() => navigate(item.path)}
+                            className={`
+                                flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
                                 ${isActive ? "bg-blue-100 text-blue-600"
                                     : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
                                 ${collapsed ? "justify-center" : ""}
@@ -94,10 +101,10 @@ const SideBar = ({ onToggle }) => {
                 })}
             </nav>
 
-            {/* Khối Logout (Nút bấm đã gọi hàm handleLogout đã sửa) */}
+            {/* Khối Logout (Giữ nguyên logic của bạn) */}
             <div className={`w-full transition-all duration-300 mt-auto
                  ${collapsed ? "flex justify-center" : "px-4"}
-                 py-4`}>
+                 py-4 border-t`}>
                 <button
                     onClick={handleLogout}
                     className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
@@ -112,5 +119,4 @@ const SideBar = ({ onToggle }) => {
         </aside>
     );
 };
-
 export default SideBar;

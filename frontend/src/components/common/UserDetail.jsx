@@ -1,21 +1,20 @@
 // frontend/src/components/common/UserDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, UserX, PackageCheck, Truck, ArchiveRestore, ClipboardList } from 'lucide-react';
+// (Import đầy đủ icon)
+import { X, Save, UserX, PackageCheck, Truck, ArchiveRestore, ClipboardList, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { UserController } from '../../controllers/userController'; 
-import { useAuth } from '../../context/AuthContext'; 
+import { UserController } from '../../controllers/userController';
+import { useAuth } from '../../context/AuthContext';
+import Flatpickr from 'react-flatpickr';
+// (CSS của Flatpickr đã import ở index.js)
 
-// === IMPORT LỊCH MỚI ===
-import DatePicker from 'react-datepicker';
-// (CSS đã được import ở index.js)
-// =========================
-
-// === 1. HÀM HELPER BỊ THIẾU (SỬA LỖI TẠI ĐÂY) ===
+// === CÁC HÀM HELPER (calculateAge, formatVND, formatDate, formatOrderStatusBadges) ===
 const calculateAge = (dobString) => {
     if (!dobString) return 'N/A';
     try {
-        const birthDate = new Date(dobString.replace(/-/g, '/')); // (replace để tránh lỗi timezone)
+        const birthDate = new Date(dobString.replace(/-/g, '/'));
+        if (isNaN(birthDate.getTime())) return 'N/A';
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
         const m = today.getMonth() - birthDate.getMonth();
@@ -25,9 +24,19 @@ const calculateAge = (dobString) => {
         return age;
     } catch (e) { return 'N/A'; }
 };
-
+const formatVND = (amount) => {
+    if (typeof amount !== 'number') return '0 ₫';
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+        const [y, m, d] = dateString.split('-');
+        return `${d}/${m}/${y}`;
+    } catch (e) { return 'N/A'; }
+};
 const formatOrderStatusBadges = (stats) => {
-     if (!stats || (stats.delivered === 0 && stats.processing === 0 && stats.returned === 0)) {
+    if (!stats || (stats.delivered === 0 && stats.processing === 0 && stats.returned === 0)) {
         return <span className="text-text-secondary text-xs">Chưa có đơn</span>;
     }
     return (
@@ -55,97 +64,173 @@ const formatOrderStatusBadges = (stats) => {
 };
 // ===================================
 
-const UserDetail = ({ user, onClose, onSave, context }) => {
-    
-    // === PHÂN QUYỀN SỬA ===
-    const isReadOnlyPersonal = context === 'admin';
-    const isReadOnlySystem = context === 'user';
-    // ========================
-    
-    // State để lưu trữ form
-    const [formData, setFormData] = useState(user || {});
+const UserDetail = ({ user, onClose, onSave, context, onNext, onPrev }) => {
 
-    // useEffect (Đã sửa lỗi crash 'slice')
+    // (Phân quyền: Admin sửa tất cả, User sửa cột 1)
+    const isReadOnlyPersonal = false;
+    const isReadOnlySystem = context === 'user';
+
+    // (State, setUser, useEffect parse ngày an toàn...)
+    const [formData, setFormData] = useState(user || {});
+    const { setUser } = useAuth();
     useEffect(() => {
         if (user) {
-            const safeId = user._id || user.userId || 'defaultId'; 
+            const safeId = user._id || user.userId || 'defaultId';
+
+            const parseDateOfBirth = (dob) => {
+                if (!dob) return '';
+                const yyyyMmDdRegex = /^\d{4}-\d{2}-\d{2}$/;
+                if (typeof dob === 'string' && yyyyMmDdRegex.test(dob)) {
+                    return dob;
+                }
+                try {
+                    const dateObj = new Date(dob);
+                    if (isNaN(dateObj.getTime())) {
+                        return '';
+                    }
+                    return dateObj.toISOString().split('T')[0];
+                } catch (e) {
+                    return '';
+                }
+            };
+
             setFormData({
                 ...user,
-                dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : '',
-                loyaltyPoints: user.loyaltyPoints || 0, 
-                orderStats: user.orderStats || { 
-                    delivered: (safeId.slice(-1).charCodeAt(0) % 3 + 1), 
-                    processing: (safeId.slice(-2).charCodeAt(0) % 2), 
-                    returned: 0 
-                } 
+                dateOfBirth: parseDateOfBirth(user.dateOfBirth),
+                loyaltyPoints: user.loyaltyPoints || 0,
+                orderStats: user.orderStats || {
+                    delivered: (safeId.slice(-1).charCodeAt(0) % 3 + 1),
+                    processing: (safeId.slice(-2).charCodeAt(0) % 2),
+                    returned: (safeId.slice(-3).charCodeAt(0) % 2),
+                    // totalSpent: (safeId.slice(-2).charCodeAt(0) % 500) * 10000 + 150000,
+                    // firstOrderDate: `2024-0${safeId.slice(-1).charCodeAt(0) % 9 + 1}-10`, 
+                    // lastOrderDate: `2025-10-${safeId.slice(-1).charCodeAt(0) % 20 + 10}`
+                }
             });
         }
     }, [user]);
+    // ===================================
 
     if (!user) return null;
 
-    // === CÁC HÀM XỬ LÝ ===
+    // === CÁC HÀM XỬ LÝ (handleChange, handleDateChange) ===
     const handleChange = (e) => {
         const { name, value, type } = e.target;
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: type === 'number' ? Number(value) : value 
-        }));
-    };
-    
-    // Hàm xử lý riêng cho DatePicker
-    const handleDateChange = (date) => {
         setFormData(prev => ({
             ...prev,
-            dateOfBirth: date ? date.toISOString().split('T')[0] : '' // Lưu lại dạng YYYY-MM-DD
+            [name]: type === 'number' ? Number(value) : value
         }));
     };
 
+    const handleDateChange = (dateArray) => {
+        const date = dateArray[0];
+        setFormData(prev => ({
+            ...prev,
+            dateOfBirth: date ? date.toISOString().split('T')[0] : ''
+        }));
+    };
+
+    // === (Hàm Save - GỌI API TRỰC TIẾP) ===
     const handleSave = async (e) => {
         e.preventDefault();
+
         try {
-            if (context === 'admin') {
-                toast.info(`(UI) Admin đã cập nhật ${formData.name}`);
-            } else if (context === 'user') {
-                toast.success("Cập nhật hồ sơ thành công!");
+            if (context === 'user') {
+                // === CONTEXT NGƯỜI DÙNG (/profile) ===
+                const formDataInstance = new FormData();
+                Object.keys(formData).forEach(key => {
+                    if (key !== 'avatar' && formData[key] !== null && formData[key] !== undefined) {
+                        formDataInstance.append(key, formData[key]);
+                    }
+                });
+
+                const response = await UserController.updateProfile(formDataInstance);
+
+                if (response.success && response.user) {
+                    toast.success("Cập nhật hồ sơ thành công!");
+                    setUser(response.user); // 👈 Cập nhật context
+                    if (onSave) onSave(response.user);
+                }
+
+            } else if (context === 'admin') {
+                // === CONTEXT ADMIN (/admin/users) ===
+                const response = await UserController.adminUpdateUser(user._id, formData);
+
+                if (response.success && response.user) {
+                    toast.success(`Đã cập nhật ${response.user.name}`);
+                    if (onSave) onSave(response.user); // Báo cho Users.jsx cập nhật list
+                    if (onClose) onClose(); // Tự động đóng Modal
+                }
             }
-            if (onSave) onSave(formData); 
-            if (onClose) onClose(); 
+
         } catch (error) {
-            toast.error("Lỗi khi cập nhật.");
+            console.error("Lỗi khi lưu UserDetail:", error);
+            // (toast.error đã được controller xử lý)
         }
     };
-    
-    const handleAdminBan = (e) => {
+    // ==============================
+
+    // === (Hàm Ban - GỌI API TRỰC TIẾP) ===
+    const handleAdminBan = async (e) => {
         e.stopPropagation();
-        toast.error(`Chức năng cấm [${user.name}] chưa được cài đặt!`);
-        if (onClose) onClose(); 
+
+        const confirmBan = window.confirm(
+            `Bạn có chắc muốn ${formData.isBanned ? 'GỠ CẤM' : 'CẤM'} người dùng [${formData.name}]?`
+        );
+        if (!confirmBan) return;
+
+        try {
+            const data = await UserController.banUser(formData._id);
+            toast.success(data.message); // 👈 TOAST
+
+            if (onSave) {
+                // Báo cho Users.jsx cập nhật list VÀ data trong modal
+                onSave({ ...formData, isBanned: data.isBanned });
+            }
+            if (onClose) onClose(); // Tự động đóng
+
+        } catch (error) {
+            console.error("Lỗi khi cấm user:", error);
+            // (toast.error đã được controller xử lý)
+        }
     };
-    
-    const handleViewOrders = () => {
-         toast.info("Chức năng 'Danh sách đơn hàng' chưa phát triển.");
-    };
+    // ==============================
+
+    const handleViewOrders = () => { /* ... (Code 'view order' của bạn) ... */ };
     // ===================================
 
-    // == Cấu hình Animation cho Modal ==
-    const backdropVariants = { hidden: { opacity: 0 }, visible: { opacity: 1 } };
-    const modalVariants = {
-        hidden: { opacity: 0, scale: 0.9 },
-        visible: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 25 } },
-        exit: { opacity: 0, scale: 0.9, transition: { duration: 0.2 } }
+    // === (Animation "Nảy ra") ===
+    const backdropVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0.3 } },
+        exit: { opacity: 0, transition: { duration: 0.2 } }
     };
+
+    const modalVariants = {
+        hidden: { opacity: 0, scale: 0.9, y: 50 },
+        visible: {
+            opacity: 1, scale: 1, y: 0,
+            transition: { type: "spring", stiffness: 400, damping: 30 }
+        },
+        exit: {
+            opacity: 0, scale: 0.9, y: 50,
+            transition: { duration: 0.2 }
+        }
+    };
+    // ===================================
 
     // == Nội dung Form (Layout 3 cột) ==
     const FormContent = () => (
         <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-            
-            {/* === CỘT 1: THÔNG TIN CÁ NHÂN (USER SỬA) === */}
+
+            {/* === CỘT 1: THÔNG TIN CÁ NHÂN (Admin/User sửa) === */}
             <fieldset className="md:col-span-1 space-y-4">
                 <legend className="text-lg font-medium text-text-primary mb-2">Thông tin cá nhân</legend>
-                
+
+                {/* (Input Họ tên) */}
                 <div>
                     <label className="label-field">Họ tên</label>
-                    <input 
+                    <input
                         type="text" name="name"
                         value={formData.name || ''}
                         onChange={handleChange}
@@ -153,9 +238,10 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
                         readOnly={isReadOnlyPersonal}
                     />
                 </div>
+                {/* (Input Email) */}
                 <div>
                     <label className="label-field">Email</label>
-                    <input 
+                    <input
                         type="email" name="email"
                         value={formData.email || ''}
                         onChange={handleChange}
@@ -163,9 +249,10 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
                         readOnly={isReadOnlyPersonal}
                     />
                 </div>
+                {/* (Input SĐT) */}
                 <div>
                     <label className="label-field">Số điện thoại</label>
-                    <input 
+                    <input
                         type="tel" name="phoneNumber"
                         value={formData.phoneNumber || ''}
                         onChange={handleChange}
@@ -173,60 +260,65 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
                         readOnly={isReadOnlyPersonal}
                     />
                 </div>
-                
-                {/* === NÂNG CẤP LỊCH === */}
+
+                {/* (Flatpickr cho Ngày sinh) */}
                 <div>
                     <label className="label-field">Ngày sinh</label>
-                    <DatePicker
-                        selected={formData.dateOfBirth ? new Date(formData.dateOfBirth.replace(/-/g, '/')) : null}
-                        onChange={handleDateChange}
-                        className={isReadOnlyPersonal ? "input-field-disabled" : "input-field"}
-                        readOnly={isReadOnlyPersonal}
-                        dateFormat="dd/MM/yyyy"
-                        placeholderText="Chọn ngày sinh"
-                        showYearDropdown
-                        scrollableYearDropdown
-                        yearDropdownItemNumber={100}
-                        dropdownMode="select"
-                    />
+                    <div className="relative">
+                        <Flatpickr
+                            value={formData.dateOfBirth}
+                            onChange={handleDateChange}
+                            options={{
+                                altInput: true,
+                                altFormat: "d/m/Y",
+                                dateFormat: "Y-m-d",
+                                placeholder: "Chọn ngày sinh",
+                                disableMobile: true,
+                                animate: true
+                            }}
+                            className={isReadOnlyPersonal ? "input-field-disabled w-full pl-10" : "input-field w-full pl-10"}
+                            disabled={isReadOnlyPersonal}
+                        />
+                        <Calendar
+                            size={18}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none"
+                        />
+                    </div>
                 </div>
-                {/* ===================== */}
 
-                 <div>
-                    <label className="label-field">Tuổi (Tự tính)</label>
-                    <input 
-                        type="text" 
-                        value={calculateAge(formData.dateOfBirth)} // 👈 LỖI XẢY RA Ở ĐÂY
-                        className="input-field-disabled"
-                        readOnly
-                    />
-                </div>
+                {/* (Tuổi - Admin thấy) */}
+                {context === 'admin' && (
+                    <div>
+                        <label className="label-field">Tuổi (Tự tính)</label>
+                        <input
+                            type="text"
+                            value={calculateAge(formData.dateOfBirth)}
+                            className="input-field-disabled"
+                            readOnly
+                        />
+                    </div>
+                )}
             </fieldset>
 
-            {/* === CỘT 2: THÔNG TIN HỆ THỐNG (ADMIN SỬA) === */}
+            {/* === CỘT 2: QUÀ CỦA BẠN / HỆ THỐNG === */}
             <fieldset className="md:col-span-1 space-y-4">
-                <legend className="text-lg font-medium text-text-primary mb-2">Thông tin hệ thống</legend>
+                <legend className="text-lg font-medium text-text-primary mb-2">
+                    {context === 'user' ? "Quà của bạn" : "Thông tin hệ thống"}
+                </legend>
 
-                {/* === CẬP NHẬT ĐIỂM TÍCH LŨY === */}
+                {/* (Phân quyền Điểm) */}
                 <div>
                     <label className="label-field">Điểm tích lũy</label>
-                    {context === 'admin' ? (
-                        <input 
-                            type="number" name="loyaltyPoints"
-                            value={formData.loyaltyPoints || 0}
-                            onChange={handleChange}
-                            className="input-field" 
-                            readOnly={false}
-                        />
-                    ) : (
-                        <div className="mt-1 block w-full px-3 py-2 bg-gray-100 rounded-md text-text-primary font-medium">
-                            {formData.loyaltyPoints || 0}
-                        </div>
-                    )}
+                    <input
+                        type="number" name="loyaltyPoints"
+                        value={formData.loyaltyPoints || 0}
+                        onChange={handleChange}
+                        className={isReadOnlySystem ? "input-field-disabled" : "input-field"}
+                        readOnly={isReadOnlySystem}
+                    />
                 </div>
-                {/* ============================== */}
-                
-                {/* === CẬP NHẬT ROLE (ẨN CHO USER) === */}
+
+                {/* (Phân quyền Role - Chỉ Admin thấy) */}
                 {context === 'admin' && (
                     <div>
                         <label className="label-field">Vai trò (Role)</label>
@@ -235,7 +327,7 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
                             value={formData.role || 'user'}
                             onChange={handleChange}
                             className="input-field"
-                            disabled={false}
+                            disabled={isReadOnlySystem}
                         >
                             <option value="user">User</option>
                             <option value="staff">Staff</option>
@@ -243,21 +335,20 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
                         </select>
                     </div>
                 )}
-                {/* ============================== */}
-
             </fieldset>
 
-            {/* === CỘT 3: THÔNG TIN ĐƠN HÀNG (CHỈ XEM) === */}
+            {/* === CỘT 3: THÔNG TIN ĐƠN HÀNG (DEMO) === */}
             <fieldset className="md:col-span-1 space-y-4">
-                 <legend className="text-lg font-medium text-text-primary mb-2">Thông tin đơn hàng</legend>
+                <legend className="text-lg font-medium text-text-primary mb-2">Thông tin đơn hàng</legend>
 
-                 <div>
-                    <label className="label-field">Tình trạng đơn hàng (Chỉ xem)</label>
+                <div>
+                    <label className="label-field">Tình trạng (Demo)</label>
                     {formatOrderStatusBadges(formData.orderStats)}
                 </div>
 
+
                 <div>
-                    <label className="label-field">Danh sách đơn hàng (Chỉ xem)</label>
+                    <label className="label-field">Lịch sử đơn hàng</label>
                     <button
                         type="button"
                         onClick={handleViewOrders}
@@ -272,47 +363,55 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
         </form>
     );
 
-    // === NÚT BẤM (Giữ nguyên) ===
+    // === NÚT BẤM (Tách biệt Trái/Phải) ===
     const ActionButtons = () => (
-        <div className="mt-6 flex flex-col md:flex-row gap-3">
-            <motion.button
-                type="button" 
-                onClick={handleSave}
-                className="btn-accent-profile w-full md:w-auto" 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-            >
-                <Save size={18} className="mr-2" />
-                Lưu thay đổi
-            </motion.button>
+        <div className="mt-6 flex flex-col md:flex-row md:justify-between gap-3">
 
-            {context === 'admin' && (
+            {/* Nhóm bên trái (Nút Đóng) */}
+            <div>
+                {onClose && (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="btn-secondary-profile w-full md:w-auto"
+                    >
+                        Đóng
+                    </button>
+                )}
+            </div>
+
+            {/* Nhóm bên phải (Cấm, Lưu) */}
+            <div className="flex flex-col-reverse md:flex-row gap-3">
                 <motion.button
                     type="button"
-                    onClick={handleAdminBan}
-                    className="flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                    onClick={handleSave}
+                    className="btn-accent-profile w-full md:w-auto"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                 >
-                    <UserX size={18} />
-                    Cấm người dùng
+                    <Save size={18} className="mr-2" />
+                    Lưu thay đổi
                 </motion.button>
-            )}
-            
-            {onClose && (
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="btn-secondary-profile w-full md:w-auto md:ml-auto" 
-                >
-                    Đóng
-                </button>
-            )}
+
+                {context === 'admin' && (
+                    <motion.button
+                        type="button"
+                        onClick={handleAdminBan}
+                        className="flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <UserX size={18} />
+                        {formData.isBanned ? "Gỡ cấm" : "Cấm người dùng"}
+                    </motion.button>
+                )}
+            </div>
         </div>
     );
+    // =====================================
 
-    // === RENDER (Giữ nguyên) ===
-    // Nếu là 'user', render trực tiếp (cho trang Profile)
+    // === RENDER (Đã chính xác) ===
+    // (Render Div cho 'user')
     if (context === 'user') {
         return (
             <div className="bg-surface rounded-lg shadow-md p-6">
@@ -322,7 +421,7 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
         );
     }
 
-    // Nếu là 'admin', render Modal
+    // (Render Modal (Cửa sổ nổi) cho 'admin')
     return (
         <AnimatePresence>
             {user && (
@@ -332,15 +431,38 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
                     initial="hidden"
                     animate="visible"
                     exit="hidden"
-                    onClick={onClose} 
+                    onClick={onClose}
                 >
+
+                    {/* === MODAL NỘI DUNG (THÊM 'key' ĐỂ CÓ HIỆU ỨNG CHUYỂN) === */}
                     <motion.div
-                        className="bg-surface rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto" // (max-w-5xl cho 3 cột)
+                        key={user._id} // 👈 QUAN TRỌNG: Giúp F-Motion biết user đã đổi
+                        className="bg-surface rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative" // 👈 Thêm 'relative'
                         variants={modalVariants}
+                        initial="hidden"
+                        animate="visible"
                         exit="exit"
-                        onClick={(e) => e.stopPropagation()} 
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                        {/* === NÚT CHUYỂN TRÁI (PREV) === */}
+                        {context === 'admin' && onPrev && (
+                            <motion.button
+                                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-black/20 rounded-full text-white hover:bg-black/50 transition-colors"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPrev(); // 👈 Gọi hàm của Cha
+                                }}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                aria-label="Người dùng trước"
+                            >
+                                <ChevronLeft size={32} />
+                            </motion.button>
+                        )}
+                        {/* ================================== */}
+
+                        {/* (Header) */}
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-surface z-0">
                             <h2 className="text-lg font-semibold text-text-primary">
                                 Chi tiết Người dùng (Admin)
                             </h2>
@@ -348,12 +470,32 @@ const UserDetail = ({ user, onClose, onSave, context }) => {
                                 <X size={24} />
                             </button>
                         </div>
-                        
+
+                        {/* (Content) */}
                         <div className="p-6">
                             <FormContent />
                             <ActionButtons />
                         </div>
+
+                        {/* === NÚT CHUYỂN PHẢI (NEXT) === */}
+                        {context === 'admin' && onNext && (
+                            <motion.button
+                                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-black/20 rounded-full text-white hover:bg-black/50 transition-colors"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onNext(); // 👈 Gọi hàm của Cha
+                                }}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                aria-label="Người dùng kế tiếp"
+                            >
+                                <ChevronRight size={32} />
+                            </motion.button>
+                        )}
+                        {/* =================================== */}
                     </motion.div>
+                    {/* ============================= */}
+
                 </motion.div>
             )}
         </AnimatePresence>

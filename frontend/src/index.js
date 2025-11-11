@@ -9,6 +9,9 @@ import 'react-datepicker/dist/react-datepicker.css'; // 👈 THÊM DÒNG NÀY
 // --- IMPORT CÁC CONTEXT ---
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext'; // 👈 ĐÂY LÀ ĐƯỜNG DẪN MỚI (Trở lại như cũ)
+//MÀu lịch Flatpickr
+import 'flatpickr/dist/themes/material_green.css'; // (Mình sẽ dùng theme này lấy cái lịch)
+import 'flatpickr/dist/themes/light.css';  // (Theme sáng màu - chúng ta sẽ đè màu này)
 // Toastify
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';

@@ -9,18 +9,19 @@ export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-const checkAuthStatus = useCallback(async () => {
+    const checkAuthStatus = useCallback(async () => {
         setIsLoadingAuth(true);
         try {
             // **Bước này sẽ TRẢ VỀ { isAuthenticated: false, ... } thay vì ném lỗi cho 401**
-            const result = await AuthController.checkAuth(); 
+            const result = await AuthController.checkAuth();
 
             if (result.isAuthenticated && result.user) {
                 setUser(result.user);
                 setIsAuthenticated(true);
             } else {
                 setUser(null);
-                setIsAuthenticated(false);            }
+                setIsAuthenticated(false);
+            }
         } catch (error) {
             // 🛑 Khối này chỉ chạy khi có lỗi mạng thực sự (Server down, Network offline, v.v.)
             // Không còn phải xử lý riêng 401 nữa.

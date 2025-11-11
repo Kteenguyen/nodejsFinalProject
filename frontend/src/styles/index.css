@@ -133,3 +133,34 @@
 .animate-pulse-badge {
   animation: pulse-badge 1.5s infinite ease-in-out;
 }
+/* =========================================== */
+/* === TÙY CHỈNH MÀU LỊCH (FLATPICKR) === */
+/* =========================================== */
+
+/* Màu nền của ngày được chọn */
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+    /* (Dùng biến --color-accent đã có sẵn trong file index.css của bạn) */
+    background: rgb(var(--color-accent));
+    border-color: rgb(var(--color-accent));
+    color: #fff; /* (Chữ màu trắng) */
+}
+
+/* Màu viền của ngày hôm nay */
+.flatpickr-day.today {
+    border-color: rgb(var(--color-accent));
+    color: rgb(var(--color-accent)); /* (Đổi màu chữ) */
+}
+
+/* Màu hover (khi rê chuột) */
+.flatpickr-day:hover,
+.flatpickr-day:focus {
+    background: rgba(var(--color-accent), 0.1); /* (Màu accent mờ) */
+    border-color: transparent;
+}
+
+/* Sửa lỗi màu chữ khi "hôm nay" và "được chọn" là một */
+.flatpickr-day.today.selected {
+    color: #fff;
+}
