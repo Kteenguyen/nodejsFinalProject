@@ -1,38 +1,22 @@
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
-const asyncHandler = require('express-async-handler'); // Nên dùng để bắt lỗi async
+const asyncHandler = require('express-async-handler'); // dùng để bắt lỗi async
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken'); 
+const crypto = require('crypto');
+// =============================================================
+// HÀM DÀNH CHO USER
+// =============================================================
+
 //Lấy thông tin cá nhân của người dùng đang đăng nhập
 exports.getUserProfile = asyncHandler(async (req, res) => {
-    // 1. Lấy token từ cookie (tên cookie phải khớp với lúc fen login)
-    const token = req.cookies.jwt; // (Hoặc 'token', 'access_token',...)
-
-    if (token) {
-        try {
-            // 2. Xác thực token
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-            // 3. Tìm user (giống hệt logic 'protect' cũ)
-            const user = await User.findById(decoded.id).select('-password');
-
-            if (user) {
-                // 4a. CÓ TOKEN HỢP LỆ: Trả về user
-                res.status(200).json({ success: true, user: user });
-            } else {
-                // 4b. Token hợp lệ nhưng user không tồn tại
-                res.status(200).json({ success: false, user: null, message: 'User not found' });
-            }
-        } catch (error) {
-            // 4c. Token KHÔNG HỢP LỆ (hết hạn, sai,...)
-            console.error("getUserProfile Error: Invalid token", error.message);
-            // Vẫn trả 200 OK để console không bị đỏ
-            res.status(200).json({ success: false, user: null, message: 'Invalid token' });
-        }
+    // (req.user đến từ middleware 'protect')
+    const user = await User.findById(req.user._id).select('-password');
+    if (user) {
+        res.status(200).json({ success: true, user: user });
     } else {
-        // 4d. KHÔNG CÓ TOKEN (Khách vãng lai)
-        // Vẫn trả 200 OK để console không bị đỏ
-        res.status(200).json({ success: false, user: null, message: 'No token' });
+        res.status(404).json({ success: false, message: 'User not found' });
     }
 });
 
@@ -72,105 +56,42 @@ exports.updateUserProfile = async (req, res) => {
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
-
-// Cập nhật thông tin cá nhân
-exports.updateUserProfile = async (req, res) => {
+exports.updateUserByAdmin = async (req, res) => {
     try {
-        // 1. Chuẩn bị các trường sẽ được cập nhật
-        const updates = {};
+        // === SỬA LỖI: Lấy đúng các trường từ frontend ===
+        const { name, email, phoneNumber, dateOfBirth, role, loyaltyPoints } = req.body;
 
-        // === SỬA LẠI: Dùng 'name' (theo model) ===
-        // (Lỗi 'fullName' của lần trước là do mình nhầm, nó là của addressSchema)
-        if (req.body.name) {
-            updates.name = req.body.name; // 👈 Dùng 'name'
-        }
-        // ======================================
-        
-        if (req.body.phoneNumber) {
-            updates.phoneNumber = req.body.phoneNumber;
-        }
-        if (req.body.dateOfBirth) {
-            updates.dateOfBirth = req.body.dateOfBirth;
-        }
-        
-        // 2. Cập nhật avatar NẾU có file mới
-        if (req.file) {
-            updates.avatar = req.file.path; // Link từ Cloudinary
-        }
+        // === SỬA LỖI: DÙNG findById ===
+        // Lỗi cũ: User.findOne({ userId: req.params.userId })
+        const user = await User.findById(req.params.id);
+        // ============================
 
-        // 3. Kiểm tra xem có gì để cập nhật không
-        if (Object.keys(updates).length === 0) {
-            // Nếu user bấm "Lưu" mà không đổi gì (kể cả file), ta trả về user hiện tại
-            const user = await User.findById(req.user.id);
-            return res.status(200).json({
-                success: true,
-                message: 'Không có thông tin nào được thay đổi',
-                user: user
-            });
-        }
-
-        // 4. Dùng findByIdAndUpdate để tránh lỗi validation toàn document
-        // { new: true } -> trả về document *sau khi* đã update
-        // { runValidators: true } -> BẬT validation, nhưng *chỉ* cho các trường trong 'updates'
-        const updatedUser = await User.findByIdAndUpdate(
-            req.user.id,
-            { $set: updates }, // Chỉ cập nhật các trường trong 'updates'
-            { new: true, runValidators: true, context: 'query' }
-        );
-
-        if (!updatedUser) {
+        if (!user) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
         }
 
-        // 5. Trả về user đã cập nhật thành công
-        res.status(200).json({
-            success: true,
-            message: 'Cập nhật hồ sơ thành công',
-            user: updatedUser 
-        });
+        // Cập nhật các trường
+        user.name = name || user.name;
+        user.email = email || user.email;
+        user.phoneNumber = phoneNumber || user.phoneNumber;
+        user.dateOfBirth = dateOfBirth || user.dateOfBirth;
+        user.role = role || user.role;
+
+        // (isAdmin không nên bị sửa lung tung, chỉ sửa 'role')
+        if (typeof loyaltyPoints !== 'undefined') {
+            user.loyaltyPoints = loyaltyPoints;
+        }
+
+        const updatedUser = await user.save();
+
+        const userResponse = updatedUser.toObject();
+        delete userResponse.password;
+        res.status(200).json({ success: true, user: userResponse });
 
     } catch (error) {
-        // Log lỗi chi tiết ra terminal backend
-        console.error("Lỗi bên trong updateUserProfile:", error); 
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
-};
-// Đổi mật khẩu
-exports.changeMyPassword = asyncHandler(async (req, res) => {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        res.status(400);
-        throw new Error('Vui lòng nhập đầy đủ thông tin.');
-    }
-
-    if (newPassword !== confirmPassword) {
-        res.status(400);
-        throw new Error('Mật khẩu mới không khớp.');
-    }
-
-    // Lấy user (với password)
-    const user = await User.findById(req.user.id).select('+password');
-    if (!user) {
-        res.status(404);
-        throw new Error('Không tìm thấy người dùng.');
-    }
-
-    // Kiểm tra mật khẩu cũ
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-        res.status(400);
-        throw new Error('Mật khẩu hiện tại không đúng.');
-    }
-
-    // Cập nhật mật khẩu mới
-    user.password = newPassword;
-    await user.save(); // pre-save hook trong userModel sẽ tự động hash
-
-    res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công.' });
-});
-
-//Quên mật khẩu - Bước 1: Yêu cầu reset
+};//Quên mật khẩu - Bước 1: Yêu cầu reset
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
@@ -368,7 +289,6 @@ exports.setDefaultShippingAddress = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 // =============================================================
 // HÀM DÀNH CHO ADMIN
 // =============================================================
@@ -456,13 +376,13 @@ exports.getUsers = async (req, res) => {
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
-
-/**
- * [ADMIN] Lấy chi tiết một người dùng
- */
-exports.getUserByIdForAdmin = async (req, res) => {
+exports.getUserById = async (req, res) => {
     try {
-        const user = await User.findOne({ userId: req.params.userId }).select('-password');
+        // === SỬA LỖI 2: DÙNG findById (Mongo ID) ===
+        // Lỗi cũ: User.findOne({ userId: req.params.userId })
+        const user = await User.findById(req.params.id).select('-password');
+        // ======================================
+
         if (!user) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
         }
@@ -471,37 +391,99 @@ exports.getUserByIdForAdmin = async (req, res) => {
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
+/**
+ * [ADMIN] Cập nhật thông tin người dùng
+ */
+exports.updateUserByAdmin = async (req, res) => {
+    try {
+        const { name, email, phoneNumber, dateOfBirth, role, loyaltyPoints } = req.body; 
+        
+        // 2. Sửa logic: Dùng findById(req.params.id)
+        const user = await User.findById(req.params.id); 
+        // ============================
 
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+        }
+        
+        // (Cập nhật các trường...)
+        user.name = name || user.name;
+        user.email = email || user.email;
+        user.phoneNumber = phoneNumber || user.phoneNumber;
+        user.dateOfBirth = dateOfBirth || user.dateOfBirth;
+        user.role = role || user.role;
+        if (typeof loyaltyPoints !== 'undefined') {
+            user.loyaltyPoints = loyaltyPoints;
+        }
+
+        const updatedUser = await user.save();
+        // ... (trả về response)
+        
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    }
+};
 /**
  * [ADMIN] Cập nhật thông tin người dùng (ví dụ: cấp quyền admin)
  */
 exports.updateUserByAdmin = async (req, res) => {
     try {
-        const { name, role, isAdmin } = req.body;
-        const user = await User.findOne({ userId: req.params.userId });
+        // === SỬA LỖI 3: Lấy đúng các trường từ frontend (UserDetail.jsx) ===
+        const { name, email, phoneNumber, dateOfBirth, role, loyaltyPoints } = req.body;
+
+        // === SỬA LỖI 2: DÙNG findById (Mongo ID) ===
+        // Lỗi cũ: User.findOne({ userId: req.params.userId })
+        const user = await User.findById(req.params.id);
+        // ======================================
 
         if (!user) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
         }
 
-        // Cập nhật các trường được phép
+        // Cập nhật các trường
         user.name = name || user.name;
+        user.email = email || user.email;
+        user.phoneNumber = phoneNumber || user.phoneNumber;
+        user.dateOfBirth = dateOfBirth || user.dateOfBirth;
         user.role = role || user.role;
 
-        // Cập nhật isAdmin một cách an toàn
-        if (typeof isAdmin !== 'undefined') {
-            user.isAdmin = isAdmin;
+        if (typeof loyaltyPoints !== 'undefined') {
+            user.loyaltyPoints = loyaltyPoints;
         }
 
         const updatedUser = await user.save();
 
-        // Trả về user đã cập nhật (không có mật khẩu)
         const userResponse = updatedUser.toObject();
         delete userResponse.password;
-
         res.status(200).json({ success: true, user: userResponse });
 
     } catch (error) {
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
 };
+exports.banUser = asyncHandler(async (req, res) => {
+    // 1. Tìm user bằng Mongo ID
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('Không tìm thấy người dùng.');
+    }
+
+    // 2. Không cho Admin tự cấm chính mình
+    if (user._id.equals(req.user._id)) {
+        res.status(400);
+        throw new Error('Bạn không thể tự cấm chính mình.');
+    }
+    
+    // 3. Đảo ngược trạng thái cấm (toggle)
+    user.isBanned = !user.isBanned; 
+    
+    await user.save();
+
+    res.status(200).json({
+        success: true,
+        message: user.isBanned ? `Đã cấm người dùng ${user.name}` : `Đã gỡ cấm cho ${user.name}`,
+        isBanned: user.isBanned // 👈 Trả về trạng thái mới
+    });
+});

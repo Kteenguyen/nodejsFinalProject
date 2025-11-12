@@ -36,7 +36,10 @@ const userSchema = new mongoose.Schema({
     },
     passwordResetToken: String,
     passwordResetExpires: Date,
-
+    isBanned: {
+        type: Boolean,
+        default: false,
+    },
     // === 2. SỬA LẠI 'shippingAddresses' (QUAN TRỌNG) ===
     shippingAddresses: {
         type: [addressSchema], // Đổi thành một MẢNG các địa chỉ

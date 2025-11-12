@@ -3,22 +3,23 @@ const express = require('express');
 const router = express.Router();
 const {
     getUsers,
+    getUserById,
     getUserProfile,
-    getUserByAdmin,
+    updateUserByAdmin,
     updateUserProfile,
     changeMyPassword,
     getMyAddresses,
     addAddress,
     updateShippingAddress,
-    deleteAddress
-    // ... (Thêm các hàm admin của fen nếu muốn)
+    deleteAddress,
+    banUser
 } = require('../controllers/userControllers'); // 👈 Sửa tên file (có S)
-const { protect } = require('../middleware/authMiddleware');
+const { protect, admin } = require('../middleware/authMiddleware');
 const upload = require('../config/cloudinary');// Tất cả các route dưới đây đều yêu cầu đăng nhập
 router.use(protect);
 router.route('/')
     .get(getUsers); // GET /api/users?page=1&limit=10&search=...
-    
+
 // === Hồ sơ cá nhân ===
 router.route('/me')
     .get(getUserProfile) // GET /api/users/me
@@ -34,7 +35,10 @@ router.route('/addresses')
 router.route('/addresses/:addressId')
     .put(updateShippingAddress) // PUT /api/users/addresses/:addressId
     .delete(deleteAddress); // DELETE /api/users/addresses/:addressId
-
-// (Các route admin của fen)
-
+router.route('/:id')
+    .get(protect, admin, getUserById) // 👈 (GET /api/users/:id)
+    .put(protect, admin, updateUserByAdmin); // 👈 (PUT /api/users/:id)
+router.route('/:id/ban')
+    .put(protect, admin, banUser); // PUT /api/users/:id/ban
+// =============================
 module.exports = router;
