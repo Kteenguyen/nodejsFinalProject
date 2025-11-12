@@ -1,3 +1,4 @@
+// backend/controllers/productControllers.js
 const Product = require('../models/productModel');
 const Comment = require('../models/commentModel');
 const mongoose = require('mongoose');
@@ -44,16 +45,14 @@ exports.getProducts = async (req, res) => {
         : { $regex: brand, $options: 'i' };
     }
 
-    // ====== SEARCH (#14) ======
+    // ====== SEARCH ======
     const hasKeyword = String(keyword).trim().length > 0;
     const useText = hasKeyword && (String(searchMode).toLowerCase() === 'text');
 
     if (hasKeyword) {
       if (useText) {
-        // Yêu cầu đã tạo text index trong model: productName, productDescription, brand
         match.$text = { $search: String(keyword).trim() };
       } else {
-        // Tìm KHÔNG DẤU / không phân biệt hoa thường (cần 3 field *Norm trong model)
         const kw = String(keyword).trim()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         match.$or = [
@@ -64,14 +63,12 @@ exports.getProducts = async (req, res) => {
       }
     }
 
-    // Price filter dựa trên biến thể
     if (minPrice || maxPrice) {
       match['variants.price'] = {};
       if (minPrice) match['variants.price'].$gte = Number(minPrice);
       if (maxPrice) match['variants.price'].$lte = Number(maxPrice);
     }
 
-    // Sắp xếp mặc định (khi KHÔNG ở chế độ text)
     const sortStage = (() => {
       if (sortBy === 'name') return { productName: (sortOrder === 'desc' ? -1 : 1) };
       if (sortBy === 'price') return { minPrice: (sortOrder === 'desc' ? -1 : 1) };
@@ -79,12 +76,10 @@ exports.getProducts = async (req, res) => {
       return { createdAt: -1 }; // newest
     })();
 
-    // ====== PIPELINE ======
     const pipeline = [
       { $match: match },
       ...(useText ? [{ $addFields: { score: { $meta: 'textScore' } } }] : []),
       { $addFields: { minPrice: { $min: "$variants.price" } } },
-      // Nếu searchMode=text: ưu tiên độ liên quan (score DESC), tie-breaker theo minPrice ASC
       { $sort: useText ? { score: { $meta: 'textScore' }, minPrice: 1 } : sortStage },
       {
         $facet: {
@@ -93,9 +88,19 @@ exports.getProducts = async (req, res) => {
             { $limit: limit },
             {
               $project: {
-                productId: 1, productName: 1, brand: 1, category: 1,
+                productId: 1,
+                productName: 1,
+                // === ALIAS cho FE: đồng bộ tên field
+                name: "$productName",
+                brand: 1,
+                category: 1,
                 images: { $slice: ["$images", 1] },
-                minPrice: 1, createdAt: 1, variants: 1, status: 1,
+                minPrice: 1,
+                // === ALIAS cho FE: lowestPrice
+                lowestPrice: "$minPrice",
+                createdAt: 1,
+                variants: 1,
+                status: 1,
                 ...(useText ? { score: 1 } : {})
               }
             }
@@ -123,24 +128,20 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// Hiển thị chi tiết một sản phẩm (RUBIK #11)
+// Hiển thị chi tiết một sản phẩm (giữ nguyên, bổ sung alias lowestPrice)
 exports.getProductDetails = async (req, res) => {
   try {
-    // Dùng document do middleware resolveProductMiddleware đã gán
     const product = req.product;
     if (!product) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
     }
 
-    // Lấy comments (không bắt buộc populate để tránh lệch kiểu accountId)
     const comments = await Comment.find({ productId: product._id }).lean();
 
-    // Tính điểm trung bình
     const avg = comments.length
       ? comments.reduce((s, c) => s + (Number(c.rating) || 0), 0) / comments.length
       : 0;
 
-    // Lấy minPrice từ variants (nếu có)
     const minPrice = Array.isArray(product.variants) && product.variants.length
       ? Math.min(...product.variants.map(v => Number(v.price) || Infinity))
       : 0;
@@ -150,6 +151,7 @@ exports.getProductDetails = async (req, res) => {
       product: {
         ...product.toObject(),
         minPrice,
+        lowestPrice: minPrice, // alias cho FE
         comments,
         averageRating: Number(avg.toFixed(2))
       }

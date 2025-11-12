@@ -29,11 +29,12 @@ app.use(cookieParser());
 
 // CORS (QUAN TRỌNG: Phải cho phép cả 2)
 app.use(cors({
-    origin: ["http://localhost:3000", "https://localhost:3000"], // Cho phép cả HTTP (dự phòng) và HTTPS
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+  origin: ["http://localhost:3000","https://localhost:3000"],
+  credentials: true,
+  methods: ["GET","POST","PUT","PATCH","DELETE"],
+  allowedHeaders: ["Content-Type","Authorization"]
 }));
+
 
 
 

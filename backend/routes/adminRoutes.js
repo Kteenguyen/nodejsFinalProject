@@ -16,5 +16,4 @@ router.get('/stats/simple', dashboardController.getSimpleStats);
 // GET /api/admin/stats/advanced - Lấy số liệu cho Advanced Dashboard
 router.get('/stats/advanced', dashboardController.getAdvancedStats);
 
-
 module.exports = router;

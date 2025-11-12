@@ -16,6 +16,7 @@ import ProductsPage from '../pages/ProductsPage';
 import ProductDetail from '../pages/ProductDetail';
 import CartPage from '../pages/Cart';
 import CategoryProducts from '../components/Home/CategoryProducts';
+import RequireAdmin from "./RequireAdmin";
 
 function App() {
   const location = useLocation();
