@@ -1,16 +1,25 @@
 // backend/controllers/productControllers.js
-const Product = require('../models/productModel');
-const Comment = require('../models/commentModel');
-const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
+const Product = require('../models/productModel');
 
-// RUBIK #10, #14, #15, #16 — có hỗ trợ search "không dấu" (mặc định) & full-text (tùy chọn)
+// Trợ giúp: tìm theo productId (slug) hoặc _id Mongo
+async function findBySlugOrId(slug) {
+  let p = await Product.findOne({ productId: slug });
+  if (!p && /^[0-9a-fA-F]{24}$/.test(slug)) p = await Product.findById(slug);
+  return p;
+}
+
+/**
+ * GET /api/products
+ * - Tìm kiếm, lọc, phân trang, sắp xếp
+ * - Trả alias name, lowestPrice để FE dùng nhất quán
+ */
 exports.getProducts = async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 12, 60);
 
-    // Giữ tương thích ngược: ?sort=name_asc|name_desc|price_asc|price_desc|newest|oldest
+    // backward-compat sort
     let { sort, sortBy = 'newest', sortOrder = 'asc' } = req.query || {};
     if (sort) {
       const map = {
@@ -30,14 +39,19 @@ exports.getProducts = async (req, res) => {
       keyword = '',
       minPrice,
       maxPrice,
-      // NEW: chế độ search — 'norm' (mặc định, không dấu) | 'text' (Mongo text index)
-      searchMode = 'norm'
+      searchMode = 'norm',     // norm|text
+      minRating,               // ⭐️ thêm rating tối thiểu (1..5)
+      inStock,                 // optional: true => chỉ còn hàng
+      isNew,                   // optional: true => isNewProduct
+      bestSeller               // optional: true => isBestSeller
     } = req.query;
 
     const match = { status: 'available' };
     if (categoryId) match['category.categoryId'] = categoryId;
+    if (isNew === 'true') match.isNewProduct = true;
+    if (bestSeller === 'true') match.isBestSeller = true;
 
-    // Multi-brand: brand=Asus,MSI
+    // multi-brand: brand=Asus,MSI
     if (brand) {
       const arr = String(brand).split(',').map(s => s.trim()).filter(Boolean);
       match.brand = arr.length > 1
@@ -45,10 +59,9 @@ exports.getProducts = async (req, res) => {
         : { $regex: brand, $options: 'i' };
     }
 
-    // ====== SEARCH ======
+    // ===== Search theo keyword =====
     const hasKeyword = String(keyword).trim().length > 0;
     const useText = hasKeyword && (String(searchMode).toLowerCase() === 'text');
-
     if (hasKeyword) {
       if (useText) {
         match.$text = { $search: String(keyword).trim() };
@@ -63,24 +76,50 @@ exports.getProducts = async (req, res) => {
       }
     }
 
+    // Lọc theo giá (biến thể)
     if (minPrice || maxPrice) {
       match['variants.price'] = {};
       if (minPrice) match['variants.price'].$gte = Number(minPrice);
       if (maxPrice) match['variants.price'].$lte = Number(maxPrice);
     }
 
+    // sort mặc định
     const sortStage = (() => {
-      if (sortBy === 'name') return { productName: (sortOrder === 'desc' ? -1 : 1) };
-      if (sortBy === 'price') return { minPrice: (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'name')   return { productName: (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'price')  return { minPrice: (sortOrder === 'desc' ? -1 : 1) };
       if (sortBy === 'oldest') return { createdAt: 1 };
       return { createdAt: -1 }; // newest
     })();
 
+    // ===== Pipeline =====
     const pipeline = [
       { $match: match },
       ...(useText ? [{ $addFields: { score: { $meta: 'textScore' } } }] : []),
-      { $addFields: { minPrice: { $min: "$variants.price" } } },
+
+      // Tính minPrice (từ variants), avgStars (từ ratings), totalStock (để lọc còn hàng)
+      {
+        $addFields: {
+          minPrice: { $min: '$variants.price' },
+          avgStars: {
+            $cond: [
+              { $gt: [{ $size: { $ifNull: ['$ratings', []] } }, 0] },
+              { $avg: '$ratings.stars' },
+              0
+            ]
+          },
+          totalStock: { $sum: '$variants.stock' }
+        }
+      },
+
+      // Lọc theo rating (nếu có)
+      ...(Number(minRating) > 0 ? [{ $match: { avgStars: { $gte: Number(minRating) } } }] : []),
+
+      // Lọc còn hàng (optional)
+      ...(inStock === 'true' ? [{ $match: { totalStock: { $gt: 0 } } }] : []),
+
+      // Sắp xếp
       { $sort: useText ? { score: { $meta: 'textScore' }, minPrice: 1 } : sortStage },
+
       {
         $facet: {
           items: [
@@ -90,59 +129,53 @@ exports.getProducts = async (req, res) => {
               $project: {
                 productId: 1,
                 productName: 1,
-                // === ALIAS cho FE: đồng bộ tên field
-                name: "$productName",
+                name: '$productName',
                 brand: 1,
                 category: 1,
-                images: { $slice: ["$images", 1] },
+                images: { $slice: ['$images', 1] },
                 minPrice: 1,
-                // === ALIAS cho FE: lowestPrice
-                lowestPrice: "$minPrice",
+                lowestPrice: '$minPrice',
+                averageRating: { $round: ['$avgStars', 2] },
+                ratingsCount: { $size: { $ifNull: ['$ratings', []] } },
+                isNewProduct: 1,
+                isBestSeller: 1,
                 createdAt: 1,
-                variants: 1,
-                status: 1,
-                ...(useText ? { score: 1 } : {})
-              }
-            }
+                totalStock: 1
+              },
+            },
           ],
-          total: [{ $count: "count" }]
-        }
-      }
+          meta: [{ $count: 'total' }],
+        },
+      },
     ];
 
-    const [result] = await Product.aggregate(pipeline);
-    const total = result?.total?.[0]?.count || 0;
+    const agg = await Product.aggregate(pipeline);
+    const items = (agg[0]?.items || []);
+    const total = agg[0]?.meta?.[0]?.total || 0;
     const totalPages = Math.max(Math.ceil(total / limit), 1);
 
     return res.status(200).json({
       success: true,
-      products: result.items,
+      products: items,
       totalProducts: total,
       currentPage: page,
       totalPages,
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
     });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: err.message });
   }
 };
 
-// Hiển thị chi tiết một sản phẩm (giữ nguyên, bổ sung alias lowestPrice)
+/** Chi tiết */
 exports.getProductDetails = async (req, res) => {
   try {
-    const product = req.product;
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
-    }
+    const { slug } = req.params;
+    const product = await findBySlugOrId(slug);
+    if (!product) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
 
-    const comments = await Comment.find({ productId: product._id }).lean();
-
-    const avg = comments.length
-      ? comments.reduce((s, c) => s + (Number(c.rating) || 0), 0) / comments.length
-      : 0;
-
-    const minPrice = Array.isArray(product.variants) && product.variants.length
+    const minPrice = product.variants?.length
       ? Math.min(...product.variants.map(v => Number(v.price) || Infinity))
       : 0;
 
@@ -150,287 +183,159 @@ exports.getProductDetails = async (req, res) => {
       success: true,
       product: {
         ...product.toObject(),
-        minPrice,
-        lowestPrice: minPrice, // alias cho FE
-        comments,
-        averageRating: Number(avg.toFixed(2))
-      }
+        lowestPrice: minPrice,
+      },
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Lỗi server', error: err.message });
   }
 };
 
-/**
- * Lấy thông tin chi tiết (giá, tồn kho) của nhiều variant
- * Được gọi bởi CartController.enrichCart
- * POST /api/products/batch
- * Body: { variantIds: ["v1_id", "v2_id", ...] }
- */
+// Lấy danh sách brand (phục vụ FilterBar)
+exports.getBrandsList = async (_req, res) => {
+  try {
+    const brands = await Product.distinct('brand', { brand: { $nin: [null, ''] } });
+    // loại null/undefined, trim & unique mềm
+    const list = [...new Set(brands.map(b => String(b).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+    res.json({ success: true, brands: list });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
+  }
+};
+
+// Lấy danh sách category (id + name) từ field category
+exports.getCategoriesList = async (_req, res) => {
+  try {
+    const rows = await Product.aggregate([
+      { $match: { 'category.categoryId': { $exists: true, $ne: '' } } },
+      { $group: { _id: '$category.categoryId', name: { $first: '$category.name' } } },
+      { $project: { _id: 0, id: '$_id', name: { $ifNull: ['$name', ''] } } },
+      { $sort: { name: 1 } }
+    ]);
+    res.json({ success: true, categories: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
+  }
+};
+
+/** batch enrich cho giỏ hàng */
 exports.batchProductLines = async (req, res) => {
   try {
     const { variantIds } = req.body;
-
     if (!Array.isArray(variantIds) || variantIds.length === 0) {
-      return res.status(400).json({ success: false, message: 'Yêu cầu variantIds là một mảng.' });
+      return res.status(400).json({ success: false, message: 'variantIds phải là mảng.' });
     }
 
-    // 1. Tìm TẤT CẢ các sản phẩm chứa bất kỳ variantId nào được yêu cầu
-    // Dùng $in để tìm trong mảng 'variants'
-    const products = await Product.find({
-      'variants.variantId': { $in: variantIds }
-    });
-
-    // 2. Lọc ra chỉ những variant cụ thể mà client cần
-    const foundVariants = [];
-    products.forEach(product => {
-      product.variants.forEach(variant => {
-        // Nếu variant này nằm trong danh sách client yêu cầu
-        if (variantIds.includes(variant.variantId)) {
-
-          // "Làm giàu" (enrich) thông tin variant với thông tin cha
-          foundVariants.push({
-            // Thông tin từ cha
-            productId: product.productId, // String ID ("monitor04")
-            _id: product._id, // Mongo ID
-            productName: product.productName,
-            image: product.images[0] || null,
-
-            // Thông tin từ variant (quan trọng nhất)
-            variantId: variant.variantId,
-            name: variant.name,
-            price: variant.price,
-            stock: variant.stock
+    const products = await Product.find({ 'variants.variantId': { $in: variantIds } });
+    const found = [];
+    products.forEach((p) => {
+      p.variants.forEach((v) => {
+        if (variantIds.includes(v.variantId)) {
+          found.push({
+            productId: p.productId,
+            _id: p._id,
+            productName: p.productName,
+            image: p.images?.[0] || null,
+            variantId: v.variantId,
+            name: v.name,
+            variantName: v.name,
+            price: v.price,
+            stock: v.stock,
           });
         }
       });
     });
 
-    // 3. Trả về mảng các variant đã được "làm giàu"
-    // (response.data sẽ là một mảng, khớp với CartController.jsx đã sửa ở bước trước)
-    res.status(200).json(foundVariants);
-
+    return res.status(200).json(found);
   } catch (error) {
-    console.error("Lỗi batchProductLines:", error);
-    res.status(500).json({ success: false, message: 'Lỗi server khi lấy thông tin sản phẩm' });
+    return res.status(500).json({ success: false, message: 'Lỗi server khi enrich biến thể' });
   }
 };
 
-// Lấy sản phẩm mới
-exports.getNewProducts = async (req, res) => {
+/** Collections */
+exports.getBestSellers = async (_req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 8;
-    const products = await Product.find({ isNewProduct: true })
-      .sort({ createdAt: -1 })
-      .limit(limit);
-
-    return res.json({
-      success: true,
-      products
-    });
-  } catch (error) {
-    console.error("getNewProducts error:", error);
-    return res.status(500).json({ success: false, message: 'Lỗi server' });
+    const items = await Product.aggregate([
+      { $match: { isBestSeller: true, status: 'available' } },
+      { $addFields: { minPrice: { $min: '$variants.price' } } },
+      { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice' } },
+      { $limit: 20 },
+    ]);
+    res.json({ success: true, products: items });
+  } catch {
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
-// Lấy sản phẩm bán chạy
-exports.getBestSellers = async (req, res) => {
+exports.getNewProducts = async (_req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 8;
-    const products = await Product.find({ isBestSeller: true })
-      .limit(limit);
-
-    return res.json({
-      success: true,
-      products
-    });
-  } catch (error) {
-    console.error("getBestSellers error:", error);
-    return res.status(500).json({ success: false, message: 'Lỗi server' });
+    const items = await Product.aggregate([
+      { $match: { isNewProduct: true, status: 'available' } },
+      { $addFields: { minPrice: { $min: '$variants.price' } } },
+      { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice' } },
+      { $limit: 20 },
+    ]);
+    res.json({ success: true, products: items });
+  } catch {
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
-// Lấy sản phẩm theo danh mục
+
 exports.getProductsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
-    const products = await Product.find({ 'category.categoryId': categoryId }).limit(8);
-    res.json({ success: true, products });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    const items = await Product.aggregate([
+      { $match: { 'category.categoryId': categoryId, status: 'available' } },
+      { $addFields: { minPrice: { $min: '$variants.price' } } },
+      { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice' } },
+    ]);
+    res.json({ success: true, products: items });
+  } catch {
+    res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
 
-// =============================================================
-// CẬP NHẬT: TÁCH BIỆT BÌNH LUẬN VÀ ĐÁNH GIÁ
-// =============================================================
-
-/**
- * [GUEST] Thêm bình luận (không cần đăng nhập)
- */
-exports.addGuestComment = async (req, res) => {
-  try {
-    const { comment, guestName } = req.body;
-    const product = req.product; // Từ middleware resolveProduct
-
-    if (!comment || !guestName) {
-      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên và nội dung bình luận.' });
-    }
-
-    const newComment = new Comment({
-      productId: product._id,
-      comment: comment,
-      guestName: guestName, // Lưu tên của khách
-      // Không có accountId và rating ở đây
-    });
-
-    await newComment.save();
-
-    // Gửi sự kiện WebSocket
-    const io = req.app.get('socketio');
-    if (io) {
-      io.to(product._id.toString()).emit('new_comment', newComment);
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: 'Bình luận của bạn đã được gửi!',
-      comment: newComment
-    });
-
-  } catch (error) {
-    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
-  }
-};
-
-/**
- * [USER] Thêm đánh giá sao (yêu cầu đăng nhập)
- */
-exports.addUserRating = async (req, res) => {
-  try {
-    const { rating, comment } = req.body;
-    const product = req.product; // Từ middleware resolveProduct
-    const user = req.user;       // Từ middleware auth
-
-    if (!rating) {
-      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp số sao đánh giá.' });
-    }
-
-    // Cho phép người dùng cập nhật đánh giá nếu đã tồn tại
-    let userRating = await Comment.findOne({ productId: product._id, accountId: user.id });
-
-    if (userRating) {
-      // Cập nhật
-      userRating.rating = Number(rating);
-      if (comment) userRating.comment = comment; // Cập nhật cả comment nếu có
-    } else {
-      // Tạo mới
-      userRating = new Comment({
-        productId: product._id,
-        accountId: user.id,
-        rating: Number(rating),
-        comment: comment // Có thể có hoặc không
-      });
-    }
-
-    await userRating.save();
-
-    // Gửi sự kiện WebSocket
-    const io = req.app.get('socketio');
-    if (io) {
-      io.to(product._id.toString()).emit('new_rating', userRating);
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: 'Cảm ơn bạn đã đánh giá sản phẩm!',
-      rating: userRating
-    });
-
-  } catch (error) {
-    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
-  }
-};
-
-/**
- * [ADMIN] Thêm một sản phẩm mới
- */
+/** ADMIN */
 exports.createProduct = async (req, res) => {
   try {
-    // 1. Lấy mảng 'variants' và các thông tin khác từ body
     const {
-      productId,
-      productName,
-      brand,
-      productDescription,
-      category,
-      images,
-      variants // Mảng các biến thể
+      productId, productName, brand, productDescription, category, images = [],
+      status = 'available', isNewProduct = false, isBestSeller = false, variants = [],
     } = req.body;
 
-    // 2. Validation cơ bản và validation cho mảng variants
-    if (!productId || !productName || !category || !variants) {
-      return res.status(400).json({ success: false, message: 'Các trường productId, productName, category, và variants là bắt buộc.' });
-    }
-    if (!Array.isArray(variants) || variants.length === 0) {
-      return res.status(400).json({ success: false, message: 'Sản phẩm phải có ít nhất một biến thể.' });
+    if (!productId || !productName || !category?.categoryId || !variants?.length) {
+      return res.status(400).json({ success: false, message: 'Thiếu dữ liệu bắt buộc/biến thể.' });
     }
 
-    const existingProduct = await Product.findOne({ productId });
-    if (existingProduct) {
-      return res.status(400).json({ success: false, message: 'Mã sản phẩm (productId) đã tồn tại.' });
-    }
+    const processedVariants = variants.map(v => ({
+      variantId: v.variantId || uuidv4(),
+      name: v.name,
+      price: v.price,
+      stock: v.stock ?? 0,
+    }));
 
-    // 3. Xử lý và validate từng biến thể trong mảng
-    const processedVariants = variants.map(v => {
-      if (!v.name || typeof v.price === 'undefined' || typeof v.stock === 'undefined') {
-        throw new Error('Mỗi biến thể phải có name, price, và stock.');
-      }
-      return {
-        ...v,
-        variantId: v.variantId || uuidv4() // Tự động tạo variantId nếu chưa có
-      };
+    const created = await Product.create({
+      productId, productName, brand, productDescription, category, images,
+      status, isNewProduct, isBestSeller, variants: processedVariants,
     });
 
-    const newProduct = new Product({
-      productId,
-      productName,
-      brand,
-      productDescription,
-      category,
-      images,
-      variants: processedVariants // 4. Lưu mảng variants đã xử lý
-    });
-
-    const savedProduct = await newProduct.save();
-    return res.status(201).json({ success: true, product: savedProduct });
-
-  } catch (error) {
-    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    res.status(201).json({ success: true, product: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };
 
-/**
- * [ADMIN] Cập nhật thông tin một sản phẩm
- */
 exports.updateProduct = async (req, res) => {
   try {
-    const product = req.product; // Lấy sản phẩm từ middleware resolveProduct
+    const { slug } = req.params;
+    const product = await findBySlugOrId(slug);
+    if (!product) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
 
-    // 1. Lấy tất cả các trường có thể cập nhật, bao gồm cả mảng 'variants'
     const {
-      productName,
-      brand,
-      productDescription,
-      category,
-      images,
-      status,
-      isNewProduct,
-      isBestSeller,
-      variants
+      productName, brand, productDescription, category,
+      images, status, isNewProduct, isBestSeller, variants,
     } = req.body;
 
-    // 2. Cập nhật các trường thông tin chung
     if (productName) product.productName = productName;
     if (brand) product.brand = brand;
     if (productDescription) product.productDescription = productDescription;
@@ -440,44 +345,88 @@ exports.updateProduct = async (req, res) => {
     if (typeof isNewProduct !== 'undefined') product.isNewProduct = isNewProduct;
     if (typeof isBestSeller !== 'undefined') product.isBestSeller = isBestSeller;
 
-    // 3. Cập nhật toàn bộ mảng variants nếu được cung cấp
     if (Array.isArray(variants)) {
       if (variants.length === 0) {
-        return res.status(400).json({ success: false, message: 'Sản phẩm phải có ít nhất một biến thể.' });
+        return res.status(400).json({ success: false, message: 'Phải có ít nhất 1 biến thể.' });
       }
-      // Xử lý và validate từng biến thể trong mảng mới
-      const processedVariants = variants.map(v => {
-        if (!v.name || typeof v.price === 'undefined' || typeof v.stock === 'undefined') {
-          throw new Error('Mỗi biến thể phải có name, price, và stock.');
-        }
-        return {
-          ...v,
-          variantId: v.variantId || uuidv4()
-        };
-      });
-      product.variants = processedVariants; // Ghi đè toàn bộ mảng variants cũ
+      product.variants = variants.map(v => ({
+        variantId: v.variantId || uuidv4(),
+        name: v.name,
+        price: v.price,
+        stock: v.stock ?? 0,
+      }));
     }
 
-    const updatedProduct = await product.save();
-    return res.status(200).json({ success: true, product: updatedProduct });
-
-  } catch (error) {
-    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    const updated = await product.save();
+    return res.status(200).json({ success: true, product: updated });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };
 
-/**
- * [ADMIN] Xóa một sản phẩm
- */
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = req.product; // Lấy sản phẩm từ middleware resolveProduct
+    const { slug } = req.params;
+    const product = await findBySlugOrId(slug);
+    if (!product) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
 
     await Product.deleteOne({ _id: product._id });
+    return res.status(200).json({ success: true, message: 'Đã xoá sản phẩm.' });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
+  }
+};
 
-    return res.status(200).json({ success: true, message: 'Sản phẩm đã được xóa thành công.' });
+/** ========== COMMENTS (public) ========== */
+exports.addComment = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { comment, name } = req.body;
 
-  } catch (error) {
-    return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ success: false, message: 'Field "comment" là bắt buộc.' });
+    }
+
+    const product = await findBySlugOrId(slug);
+    if (!product) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm.' });
+
+    product.comments.push({ name: (name || 'Guest').trim(), comment: comment.trim() });
+    await product.save();
+
+    return res.json({ success: true, comments: product.comments });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
+  }
+};
+
+/** ========== RATINGS (login) ========== */
+exports.rateProduct = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const stars = Number(req.body?.stars ?? req.body?.rating);
+
+    if (!Number.isFinite(stars) || stars < 1 || stars > 5) {
+      return res.status(400).json({ success: false, message: 'Rating phải từ 1-5.' });
+    }
+
+    const product = await findBySlugOrId(slug);
+    if (!product) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm.' });
+
+    const uid = req.user._id.toString();
+    const idx = product.ratings.findIndex(r => r.user.toString() === uid);
+
+    if (idx >= 0) {
+      product.ratings[idx].stars = stars;
+      product.ratings[idx].createdAt = new Date();
+    } else {
+      product.ratings.push({ user: req.user._id, stars });
+    }
+
+    product.recomputeRating();
+    await product.save();
+
+    return res.json({ success: true, avgRating: product.avgRating, ratingsCount: product.ratingsCount });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };

@@ -5,6 +5,11 @@ const Comment = require('../models/commentModel');
 const User    = require('../models/userModel');  
 const sendEmail = require('../utils/sendEmail'); // util của bạn
 
+// Helpers cho khoảng thời gian
+function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function startOfMonth(d) { const x = new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x; }
+
 // Sinh orderId: OD-YYYYMMDD-XXXX
 async function genOrderId() {
   const ymd = new Date().toISOString().slice(0,10).replace(/-/g,'');
@@ -269,54 +274,93 @@ exports.createOrder = async (req, res) => {
 
 
 // #29: Admin list (phân trang + filter)
+// #29: Admin list (phân trang + filter + sort newest-first)
 exports.listOrders = async (req, res) => {
   try {
-    const page  = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(parseInt(req.query.limit) || 12, 100);
-    const { status, email, from, to } = req.query;
+    const page  = Math.max(parseInt(req.query.page)  || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100); // mặc định 20
+    const { date = 'all', start, end, status } = req.query;       // today|yesterday|thisWeek|thisMonth|range|all
 
-    const match = {};
-    if (status) match.status = status; // 'Pending' | 'Confirmed' | ...
-    if (email)  match['guestInfo.email'] = new RegExp(`^${email}$`, 'i');
-    if (from || to) {
-      match.createdAt = {};
-      if (from) match.createdAt.$gte = new Date(from);
-      if (to)   match.createdAt.$lte = new Date(to);
+    const now = new Date();
+    let from = null, to = null;
+
+    switch (date) {
+      case 'today': {
+        from = startOfDay(now); to = addDays(from, 1); break;
+      }
+      case 'yesterday': {
+        to = startOfDay(now); from = addDays(to, -1); break;
+      }
+      case 'thisWeek': {
+        // Mon..Sun
+        const day = (now.getDay() + 6) % 7;
+        from = startOfDay(addDays(now, -day));
+        to = addDays(from, 7);
+        break;
+      }
+      case 'thisMonth': {
+        from = startOfMonth(now);
+        const nextMonth = new Date(from); nextMonth.setMonth(from.getMonth() + 1);
+        to = nextMonth;
+        break;
+      }
+      case 'range': {
+        if (!start || !end) {
+          return res.status(400).json({ success: false, message: 'Thiếu start hoặc end (YYYY-MM-DD)' });
+        }
+        from = startOfDay(new Date(start));
+        to   = addDays(startOfDay(new Date(end)), 1); // end-inclusive
+        break;
+      }
+      case 'all':
+      default:
+        break; // không set from/to
     }
 
-    const [agg] = await Order.aggregate([
-      { $match: match },
-      { $sort: { createdAt: -1 } },
-      {
-        $facet: {
-          items: [
-            { $skip: (page - 1) * limit },
-            { $limit: limit },
-            { $project: {
-              orderId:1, createdAt:1, status:1, isPaid:1,
-              totalPrice:1, paymentMethod:1,
-              'guestInfo.name':1, 'guestInfo.email':1
-            } }
-          ],
-          total: [{ $count: 'count' }]
-        }
-      }
+    const match = {};
+    if (from && to) match.createdAt = { $gte: from, $lt: to };
+    if (status)    match.status = status; // 'Pending'|'Confirmed'|'Shipping'|'Delivered'|'Cancelled'
+
+    const [orders, total] = await Promise.all([
+      Order.find(match)
+        .sort({ createdAt: -1 })                       // mới nhất trước
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .select(
+          'orderId createdAt status isPaid totalPrice subTotal shippingPrice paymentMethod items accountId guestInfo.name guestInfo.email'
+        )
+        .lean(),
+      Order.countDocuments(match),
     ]);
 
-    const total = agg?.total?.[0]?.count || 0;
-    const totalPages = Math.max(Math.ceil(total / limit), 1);
+    // Chuẩn hoá dữ liệu trả ra cho FE Admin
+    const list = orders.map(o => ({
+      orderId: o.orderId,
+      createdAt: o.createdAt,
+      status: o.status,
+      isPaid: !!o.isPaid,
+      paymentMethod: o.paymentMethod,
+      subTotal: o.subTotal ?? 0,
+      shippingPrice: o.shippingPrice ?? 0,
+      totalPrice: o.totalPrice ?? 0,
+      itemsCount: (o.items || []).reduce((n, i) => n + Number(i.quantity || 0), 0),
+      customerName: o.guestInfo?.name || undefined,
+      customerEmail: o.guestInfo?.email || undefined,
+      accountId: o.accountId || undefined,
+    }));
 
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
     return res.json({
-      success:true,
-      orders: agg.items,
-      totalOrders: total,
+      success: true,
+      orders: list,
       currentPage: page,
       totalPages,
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1
+      totalOrders: total,
+      pageSize: limit,
+      filters: { date, start, end, status },
     });
   } catch (e) {
-    return res.status(500).json({ success:false, message:'Lỗi server', error: e.message });
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };
 

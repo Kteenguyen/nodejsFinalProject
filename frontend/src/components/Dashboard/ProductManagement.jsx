@@ -1,6 +1,6 @@
-// frontend/src/components/Dashboard/ProductManagement.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { getProductsAdmin } from "../../services/productApi";
+// src/components/Dashboard/ProductManagement.jsx
+import React, { useEffect, useState } from "react";
+import { getProductsAdmin } from "../../services/productApi"; // FE+BE khớp tên
 
 const fmtVND = (n) =>
   (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN") + " đ";
@@ -21,12 +21,9 @@ export default function ProductManagement() {
         const arr = Array.isArray(j?.products) ? j.products : [];
         const mapped = arr.map((p) => ({
           id: p.productId || p._id,
-          // tên: ưu tiên alias `name` rồi tới `productName`
           name: p.name || p.productName || "(Không tên)",
           brand: p.brand || "—",
-          // giá: ưu tiên alias `lowestPrice`, nếu không có dùng `minPrice`
           lowestPrice: p.lowestPrice ?? p.minPrice ?? 0,
-          // ảnh: lấy ảnh đầu tiên, fallback
           image:
             (Array.isArray(p.images) && p.images[0]) ||
             p.image ||
@@ -34,10 +31,7 @@ export default function ProductManagement() {
         }));
         setRows(mapped);
       })
-      .catch((e) => {
-        console.error(e);
-        setRows([]);
-      })
+      .catch(() => setRows([]))
       .finally(() => setLoading(false));
     return () => ctrl.abort();
   }, [page, limit, search, sort]);
@@ -51,18 +45,12 @@ export default function ProductManagement() {
           className="border rounded px-3 py-2 flex-1"
           placeholder="Tìm theo tên/mã/brand…"
           value={search}
-          onChange={(e) => {
-            setPage(1);
-            setSearch(e.target.value);
-          }}
+          onChange={(e) => { setPage(1); setSearch(e.target.value); }}
         />
         <select
           className="border rounded px-3 py-2"
           value={sort}
-          onChange={(e) => {
-            setPage(1);
-            setSort(e.target.value);
-          }}
+          onChange={(e) => { setPage(1); setSort(e.target.value); }}
         >
           <option value="newest">Mới nhất</option>
           <option value="oldest">Cũ nhất</option>
@@ -86,38 +74,22 @@ export default function ProductManagement() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td className="px-4 py-4 text-gray-500" colSpan={5}>
-                  Đang tải…
-                </td>
-              </tr>
+              <tr><td className="px-4 py-4 text-gray-500" colSpan={5}>Đang tải…</td></tr>
             ) : rows.length === 0 ? (
-              <tr>
-                <td className="px-4 py-4 text-gray-500" colSpan={5}>
-                  Không có sản phẩm
+              <tr><td className="px-4 py-4 text-gray-500" colSpan={5}>Không có sản phẩm</td></tr>
+            ) : rows.map((r) => (
+              <tr key={r.id} className="border-t">
+                <td className="px-4 py-3">
+                  <img src={r.image} alt={r.name} className="w-12 h-12 object-cover rounded" />
+                </td>
+                <td className="px-4 py-3 font-medium">{r.name}</td>
+                <td className="px-4 py-3">{r.brand}</td>
+                <td className="px-4 py-3">{fmtVND(r.lowestPrice)}</td>
+                <td className="px-4 py-3">
+                  <button className="px-3 py-1.5 rounded border">Sửa</button>
                 </td>
               </tr>
-            ) : (
-              rows.map((r) => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-4 py-3">
-                    <img
-                      src={r.image}
-                      alt={r.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
-                  </td>
-                  <td className="px-4 py-3 font-medium">{r.name}</td>
-                  <td className="px-4 py-3">{r.brand}</td>
-                  <td className="px-4 py-3">{fmtVND(r.lowestPrice)}</td>
-                  <td className="px-4 py-3">
-                    <button className="px-3 py-1.5 rounded border">
-                      Sửa
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>

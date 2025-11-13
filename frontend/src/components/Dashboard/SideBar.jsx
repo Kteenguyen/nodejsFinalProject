@@ -1,17 +1,18 @@
 // frontend/src/components/Dashboard/SideBar.jsx
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
-    Menu, ChevronLeft, LogOut
+    Menu, ChevronLeft, LogOut, ClipboardList
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext"; // 👈 (Đảm bảo đường dẫn này đúng)
 
 const menuItems = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
-    { label: "Users", icon: Users, path: "/admin/users" },
-    { label: "Products", icon: ShoppingCart, path: "/admin/products" },
-    { label: "Settings", icon: Settings, path: "/admin/settings" },
+  { label: "Statistics", icon: LayoutDashboard, path: "/admin/dashboard" },
+  { label: "Orders",    icon: ClipboardList,   path: "/admin/orders" },
+  { label: "Users",     icon: Users,           path: "/admin/users" },
+  { label: "Products",  icon: ShoppingCart,    path: "/admin/products" },
+  { label: "Settings",  icon: Settings,        path: "/admin/settings" },
 ];
 
 const SideBar = ({ onToggle }) => {

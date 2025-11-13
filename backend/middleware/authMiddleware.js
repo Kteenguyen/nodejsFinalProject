@@ -16,6 +16,26 @@ function getTokenFromReq(req) {
   return null;
 }
 
+exports.protect = async (req, res, next) => {
+  try {
+    const bearer = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.split(' ')[1]
+      : null;
+
+    const token = req.cookies?.jwt || bearer;
+    if (!token) return res.status(401).json({ message: 'Không được ủy quyền, thiếu token.' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) return res.status(401).json({ message: 'Người dùng không tồn tại.' });
+
+    req.user = user;
+    next();
+  } catch (e) {
+    return res.status(401).json({ message: 'Token không hợp lệ.', error: e.message });
+  }
+};
+
 const protect = asyncHandler(async (req, res, next) => {
   const token = getTokenFromReq(req);
 

@@ -164,3 +164,69 @@
 .flatpickr-day.today.selected {
     color: #fff;
 }
+/* --- Double range slider --- */
+.range-double {
+  position: relative;
+  height: 28px; /* đủ chỗ cho thumb */
+}
+
+/* Ẩn track mặc định của 2 input, chỉ giữ thumb */
+.range-double input[type="range"] {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  width: 100%;
+  height: 28px;
+  background: transparent;        /* ẩn nền track */
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;           /* chặn pointer trên track */
+  z-index: 20;                    /* thumb nằm trên vùng màu */
+}
+
+/* Track mặc định -> trong suốt (WebKit/Firefox/IE) */
+.range-double input[type="range"]::-webkit-slider-runnable-track { background: transparent; height: 4px; }
+.range-double input[type="range"]::-moz-range-track { background: transparent; height: 4px; }
+.range-double input[type="range"]::-ms-track {
+  background: transparent; border-color: transparent; color: transparent; height: 4px;
+}
+
+/* Thumb – cho phép kéo, style tròn, to rõ ràng */
+.range-double input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;           /* re-enable pointer trên thumb */
+  width: 16px; height: 16px;
+  border-radius: 9999px;
+  background: #4f46e5;            /* indigo-600 */
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+  cursor: pointer;
+  margin-top: -6px;               /* căn giữa track 4px */
+}
+.range-double input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 16px; height: 16px;
+  border-radius: 9999px;
+  background: #4f46e5;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+
+/* Track tự vẽ: base + phần được chọn */
+.range-double .range-track {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%; transform: translateY(-50%);
+  height: 4px;
+  background: #e5e7eb;            /* gray-200 */
+  border-radius: 9999px;
+  z-index: 5;
+}
+.range-double .range-fill {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  height: 4px;
+  background: #4f46e5;            /* indigo-600 */
+  border-radius: 9999px;
+  z-index: 10;
+}

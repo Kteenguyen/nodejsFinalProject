@@ -1,140 +1,158 @@
-// frontend/src/pages/ProductsPage.jsx
+// src/pages/ProductsPage.jsx
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import SidebarFilter from "../components/products/filters/SidebarFilter";
+import { listProducts, getBrands, getCategories } from "../services/productApi";
 
-// 1. FIX LỖI: IMPORT ĐẦY ĐỦ CÁC HOOKS VÀ MODULES
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-toastify';
-import { FaBoxOpen } from 'react-icons/fa';
+function isAbort(err) {
+  return err?.name === "AbortError" || /abort/i.test(String(err?.message));
+}
 
-// 2. REFACTOR: IMPORT CONTROLLER
-import { ProductController } from '../controllers/productController'; 
+export default function ProductsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
 
-// 3. FIX LỖI: SỬA ĐƯỜNG DẪN IMPORT PRODUCTCARD
-// (Nếu ProductCard của fen nằm ở 'components/Home/ProductCard' thì dùng đường dẫn đó)
-import ProductCard from '../components/Home/ProductCard'; 
+  // dữ liệu bộ lọc (nguồn)
+  const [brands, setBrands] = useState([]);
+  const [categories, setCategories] = useState([]);
 
-const ProductsPage = () => {
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const productsPerPage = 12; // Số sản phẩm mỗi trang
+  // danh sách SP + meta
+  const [items, setItems] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, page: 1, pages: 1 });
 
-    useEffect(() => {
-        const fetchProducts = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                // 4. REFACTOR: SỬ DỤNG CONTROLLER ĐỂ GỌI API
-                const data = await ProductController.getProducts({
-                    page: currentPage,
-                    limit: productsPerPage
-                });
-                
-                setProducts(data.products || []); // Đảm bảo products là mảng
-                setTotalPages(data.totalPages || 1); // Đảm bảo totalPages là số
+  // state filter đồng bộ với URL khi mount
+  const [filter, setFilter] = useState({
+    brand: (searchParams.get("brand") || "").split(",").filter(Boolean),
+    minPrice: searchParams.get("minPrice")
+      ? Number(searchParams.get("minPrice"))
+      : undefined,
+    maxPrice: searchParams.get("maxPrice")
+      ? Number(searchParams.get("maxPrice"))
+      : undefined,
+    categoryId: (searchParams.get("categoryId") || "")
+      .split(",")
+      .filter(Boolean),
+    ratingMin: searchParams.get("ratingMin")
+      ? Number(searchParams.get("ratingMin"))
+      : undefined,
+    sortBy: searchParams.get("sortBy") || "newest",
+    sortOrder: searchParams.get("sortOrder") || "desc",
+    page: Number(searchParams.get("page") || 1),
+    limit: Number(searchParams.get("limit") || 12),
+  });
 
-            } catch (err) {
-                console.error("Lỗi khi tải sản phẩm:", err);
-                setError("Không thể tải sản phẩm. Vui lòng thử lại sau.");
-                toast.error("Lỗi khi tải sản phẩm.");
-            } finally {
-                setLoading(false);
-            }
-        };
+  // ---------- Load brands & categories một lần ----------
+  useEffect(() => {
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        const [b, c] = await Promise.all([
+          getBrands(ctrl.signal),
+          getCategories(ctrl.signal), // nếu backend chưa có, xem ghi chú bên dưới
+        ]);
+        setBrands(b?.data || b?.brands || b || []);
+        setCategories(c?.data || c?.categories || c || []);
+      } catch (e) {
+        if (!isAbort(e)) console.error("Load facets failed:", e);
+      }
+    })();
+    return () => ctrl.abort();
+  }, []);
 
-        fetchProducts();
-    }, [currentPage]); // Chạy lại khi trang thay đổi
+  // ---------- Từ filter -> query string (memo để đỡ build lại) ----------
+  const queryParams = useMemo(() => {
+    const qp = new URLSearchParams();
+    if (filter.brand?.length) qp.set("brand", filter.brand.join(","));
+    if (filter.categoryId?.length)
+      qp.set("categoryId", filter.categoryId.join(","));
+    if (filter.minPrice != null) qp.set("minPrice", filter.minPrice);
+    if (filter.maxPrice != null) qp.set("maxPrice", filter.maxPrice);
+    if (filter.ratingMin != null) qp.set("ratingMin", filter.ratingMin);
+    qp.set("sortBy", filter.sortBy);
+    qp.set("sortOrder", filter.sortOrder);
+    qp.set("page", String(filter.page));
+    qp.set("limit", String(filter.limit));
+    return qp;
+  }, [filter]);
 
-    const handlePageChange = (page) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Cuộn lên đầu trang
-    };
+  // ---------- Đồng bộ URL & fetch danh sách ----------
+  useEffect(() => {
+    // 1) Cập nhật URL
+    setSearchParams(queryParams, { replace: true });
 
-    if (loading) {
-        return <div className="text-center p-10 text-lg font-semibold">Đang tải sản phẩm...</div>;
-    }
-
-    if (error) {
-        return <div className="text-center p-10 text-red-600 font-semibold">{error}</div>;
-    }
-
-    if (products.length === 0) {
-        return (
-            <motion.div 
-                className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-            >
-                <FaBoxOpen className="text-8xl text-gray-300 mb-6" />
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">Không tìm thấy sản phẩm nào</h1>
-                <p className="text-gray-500 mb-6">Có vẻ như cửa hàng chưa có sản phẩm nào được hiển thị.</p>
-            </motion.div>
+    // 2) Gọi API (bắt AbortError để không đỏ màn hình)
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        const res = await listProducts(
+          Object.fromEntries(queryParams),
+          ctrl.signal
         );
-    }
+        setItems(res?.products || res?.data || []);
+        setMeta({
+          total: res?.totalProducts ?? res?.total ?? 0,
+          page: res?.currentPage ?? res?.page ?? 1,
+          pages: res?.totalPages ?? res?.pages ?? 1,
+        });
+      } catch (e) {
+        if (!isAbort(e)) console.error("Load products failed:", e);
+      }
+    })();
 
-    return (
-        <motion.div 
-            className="container mx-auto p-4 md:p-8"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-        >
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Tất cả sản phẩm</h1>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <AnimatePresence>
-                    {products.map((product) => (
-                        <motion.div
-                            key={product._id || product.productId} // Dùng key ổn định
-                            layout // Thêm layout prop để animate mượt khi phân trang
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.3 }}
-                        >
-                            <ProductCard product={product} />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
+    return () => ctrl.abort();
+  }, [queryParams, setSearchParams]);
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center space-x-2 mt-10">
-                    <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-400 transition"
-                    >
-                        Trước
-                    </button>
-                    {[...Array(totalPages)].map((_, index) => (
-                        <button
-                            key={index + 1}
-                            onClick={() => handlePageChange(index + 1)}
-                            className={`px-4 py-2 rounded-lg ${
-                                currentPage === index + 1
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            } transition`}
-                        >
-                            {index + 1}
-                        </button>
-                    ))}
-                    <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-400 transition"
-                    >
-                        Sau
-                    </button>
-                </div>
-            )}
-        </motion.div>
-    );
-};
+  // (nếu chưa build API min/max từ server) – cấu hình thủ công
+  const priceMin = 0;
+  const priceMax = 100_000_000;
 
-export default ProductsPage;
+  return (
+    <div className="container mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-4">
+      <SidebarFilter
+        brands={brands}
+        categories={categories}
+        value={filter}
+        onChange={(v) => setFilter((s) => ({ ...s, ...v, page: 1 }))}
+        priceMin={priceMin}
+        priceMax={priceMax}
+      />
+
+      {/* Kết quả */}
+      <section>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+          {items.map((p) => {
+            const name = p.name || p.productName || "(Không tên)";
+            const price =
+              (p.lowestPrice ?? p.minPrice ?? 0).toLocaleString("vi-VN") + " đ";
+            const img = (p.images && p.images[0]) || "/img/placeholder.png";
+            return (
+              <article key={p._id || p.productId} className="bg-white rounded shadow p-3">
+                <img src={img} alt="" className="w-full aspect-square object-cover rounded" />
+                <div className="mt-2 font-medium line-clamp-2">{name}</div>
+                <div className="text-indigo-600 font-semibold">{price}</div>
+              </article>
+            );
+          })}
+        </div>
+
+        {/* phân trang */}
+        <div className="mt-6 flex items-center gap-2">
+          <button
+            disabled={meta.page <= 1}
+            onClick={() => setFilter((s) => ({ ...s, page: s.page - 1 }))}
+            className="px-3 py-1 rounded border disabled:opacity-50"
+          >
+            Trước
+          </button>
+          <div>Trang {meta.page}/{meta.pages}</div>
+          <button
+            disabled={meta.page >= meta.pages}
+            onClick={() => setFilter((s) => ({ ...s, page: s.page + 1 }))}
+            className="px-3 py-1 rounded border disabled:opacity-50"
+          >
+            Sau
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}

@@ -14,7 +14,8 @@ import { useAuth } from "../context/AuthContext";
 import ProfilePage from '../pages/ProfilePage';
 import ProductsPage from '../pages/ProductsPage';
 import ProductDetail from '../pages/ProductDetail';
-import CartPage from '../pages/Cart';
+import ProductsSearch from "../pages/ProductsSearch";
+import CartPage from "../pages/CartPage";
 import CategoryProducts from '../components/Home/CategoryProducts';
 import RequireAdmin from "./RequireAdmin";
 
@@ -30,25 +31,25 @@ function App() {
     location.pathname === "/register-address";
 
   const LogoutRoute = () => {
-    useEffect(() => {
-      const handleLogout = async () => {
-        try {
-          // 1) Gọi API backend xoá cookie
-          await AuthController.logout();
-        } catch (err) {
-          console.error("Logout API failed:", err);
-        } finally {
-          // 2) Cập nhật AuthContext (xoá state)
-          logout();
-          // 3) Điều hướng về login
-          navigate("/login");
-        }
-      };
-      handleLogout();
-    }, [logout, navigate]);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
-    return <p>Đang đăng xuất...</p>;
-  };
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await logout(); // gọi API + clear state
+        if (!cancelled) navigate("/login", { replace: true });
+      } catch (err) {
+        console.error("Logout failed:", err);
+        if (!cancelled) navigate("/login", { replace: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [logout, navigate]); // ✅ deps hợp lệ, không cảnh báo
+
+  return <p>Đang đăng xuất...</p>;
+};
 
   // ====== NEW: wrapper lấy :id và truyền vào ProductDetail ======
   const ProductDetailRoute = () => {
@@ -70,7 +71,8 @@ function App() {
         {/* Public */}
         <Route path="/" element={<Home />} />
         <Route path="/products" element={<ProductsPage />} />
-        <Route path="/products/:id" element={<ProductDetailRoute />} />   {/* #11 */}
+        <Route path="/search" element={<ProductsSearch />} />
+        <Route path="/products/:id" element={<ProductDetail />} />  {/* #11 */}
         <Route path="/cart" element={<CartPage />} />                     {/* #17 */}
         <Route path="/category/:categoryId" element={<CategoryRoute />} />{/* #16 (ordering trong component) */}
         <Route path="/profile" element={<ProfilePage />} />
