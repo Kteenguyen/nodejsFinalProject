@@ -1,43 +1,46 @@
-//backend/routes/orderRoutes.js
+// backend/routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
 
+// Giữ đúng tên file controller bạn đang có:
+// Nếu file là controllers/orderControllers.js => dùng dòng dưới:
 const orderCtrl = require('../controllers/orderControllers');
-const discountCtrl = require('../controllers/discountControllers');
+// Nếu bạn đã đổi sang orderController.js => dùng:
+// const orderCtrl = require('../controllers/orderController');
 
-const identifyUser = require('../middleware/identifyUser'); // gán req.user nếu có token, bỏ qua nếu không
+const discountCtrl = require('../controllers/discountControllers'); // tương tự: controllers/discountControllers.js
+const identifyUser = require('../middleware/identifyUser');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 /**
- * CREATE ORDER (#21 — gửi email sau khi đặt)
- * - Cho phép guest hoặc user đăng nhập.
+ * CREATE ORDER (#21) – khách/đăng nhập đều tạo được
  */
 router.post('/', identifyUser, orderCtrl.createOrder);
 
 /**
- * ADMIN LIST (#29) — nên đặt trước route param để không bị nuốt
+ * ADMIN LIST (#29)
+ * Cung cấp 2 alias để dễ test:
+ *  - GET /api/orders            (mới thêm)
+ *  - GET /api/orders/admin/all  (giữ tương thích)
  */
+router.get('/', protect, admin, orderCtrl.listOrders);
 router.get('/admin/all', protect, admin, orderCtrl.listOrders);
 
 /**
- * USER: danh sách đơn của tôi (tùy chọn)
+ * DISCOUNT – đặt TRƯỚC route có param để khỏi bị nuốt
+ */
+router.post('/discount', protect, admin, discountCtrl.createCode);
+router.get('/discount/validate', discountCtrl.validateCode);
+
+/**
+ * USER: danh sách đơn của tôi
  */
 router.get('/my', protect, orderCtrl.listMyOrders);
 
 /**
- * ORDER DETAIL — owner hoặc admin
+ * ORDER DETAIL & UPDATE STATUS
  */
 router.get('/:orderId', protect, orderCtrl.getOrder);
-
-/**
- * UPDATE STATUS — admin
- */
 router.put('/:orderId/status', protect, admin, orderCtrl.updateOrderStatus);
-
-/**
- * DISCOUNT — tạo mã (admin), validate (public)
- */
-router.post('/discount', protect, admin, discountCtrl.createCode);
-router.get('/discount/validate', discountCtrl.validateCode);
 
 module.exports = router;

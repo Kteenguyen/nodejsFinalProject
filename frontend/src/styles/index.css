@@ -1,175 +1,224 @@
-/* frontend/src/index.css */
+/* frontend/src/styles/index.css */
+
+/* === SỬA LỖI 1: THÊM 3 DÒNG NÀY VÀO ĐẦU FILE === */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* =========================================== */
+
 
 /* 1. ĐỊNH NGHĨA BẢNG MÀU MỚI (Xanh đen, Xám, Teal, Be ngả trắng) */
 @layer base {
   :root {
     /* Bảng màu chính từ ảnh */
     --color-primary: #222831;
-    /* Xanh đen (Nền Header) */
     --color-accent: #31363F;
-    /* Xám đậm (Nút) */
     --color-accent-hover: #76ABAE;
-    /* Teal (Hover / Link) */
     --color-background: #FAF6F0;
-    /* Be ngả trắng (Nền web) */
     --color-surface: #FFFFFF;
-    /* Trắng (Nền card, menu) */
 
     /* Màu text */
     --text-primary: #222831;
-    /* Text chính (Xanh đen) trên nền sáng */
     --text-secondary: #31363F;
-    /* Text phụ (Xám đậm) trên nền sáng */
     --text-on-dark: #FAF6F0;
-    /* Text (Be) trên nền tối (primary) */
     --text-accent: #76ABAE;
-    /* Text (Teal) cho link */
   }
 
   /* 2. ÁP DỤNG MÀU NỀN VÀ MÀU CHỮ MẶC ĐỊNH CHO WEB */
   body {
     @apply bg-background text-text-primary;
+    font-family: 'Inter', sans-serif;
   }
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* 3. CẬP NHẬT CÁC CUSTOM CLASS (BUTTONS, LINKS) ĐỂ DÙNG MÀU MỚI */
+/* 3. TAILWIND @apply CHO CÁC LỚP TIỆN ÍCH */
 @layer components {
 
-  /* === NÚT VUÔNG (Đồng bộ) - CHO HEADER === */
-  /* Nút chính (Đăng nhập, Giỏ hàng) */
-  .btn-accent-header {
-    @apply flex items-center justify-center h-10 px-4 md:h-12 md:px-5;
-    @apply bg-accent text-text-on-dark rounded-md;
-    /* Nền Xám đậm, Chữ Be */
-    @apply hover:bg-accent-hover transition-colors duration-200;
-    /* === THÊM HIỆU ỨNG HOVER 3D VÀO ĐÂY === */
-    @apply transform ease-out hover:scale-110 hover:-translate-y-1 hover:shadow-2xl;
-  }
-
-  /* Nút Avatar (kích thước khác 1 chút) */
-  .btn-avatar-header {
-    @apply flex items-center justify-center h-10 px-2 md:h-12 md:px-3;
-    @apply bg-accent text-text-on-dark rounded-md;
-    /* Nền Xám đậm, Chữ Be */
-    @apply hover:bg-accent-hover transition-colors duration-200;
-    /* === THÊM HIỆU ỨNG HOVER 3D VÀO ĐÂY === */
-    @apply transform ease-out hover:scale-110 hover:-translate-y-1 hover:shadow-2xl;
-  }
-
-  /* Nút Hamburger (màu text trên nền tối, bo vuông) */
-  .btn-hamburger-header {
-    @apply md:hidden flex items-center justify-center h-10 w-10 rounded-md;
-    @apply text-text-on-dark hover:bg-black/[.15] transition-colors duration-200;
-  }
-
-
-  /* === CHO NAV LINK (Nền tối 'primary') === */
-  .nav-link-dark {
-    @apply text-text-on-dark hover:text-white font-medium transition-colors duration-200 relative;
-    /* Gạch chân màu Accent-Hover (Teal) */
-    @apply after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-0.5 after:w-0 after:bg-accent-hover after:transition-all after:duration-300;
-    @apply hover:after:w-full;
-  }
-
-  /* === CHO MENU XỔ XUỐNG (Nền 'surface' trắng) === */
-  .mobile-nav-link {
-    @apply flex items-center py-3 px-4 rounded-lg text-text-primary font-medium text-base;
-    @apply hover:bg-background hover:text-text-accent transition-colors duration-200;
-  }
-
-  .menu-item {
-    @apply flex items-center w-full px-4 py-2 text-sm text-text-primary;
-    @apply hover:bg-background hover:text-text-accent transition-colors duration-200;
-  }
-
-  .menu-item-danger {
-    @apply flex items-center w-full px-4 py-2 text-sm text-red-600;
-    @apply hover:bg-red-50 hover:text-red-700 transition-colors duration-200;
-  }
-
-  .label-field {
-    @apply block text-sm font-medium text-text-secondary mb-1;
-  }
-
-  /* === 4. THÊM CÁC CLASS CHO TRANG PROFILE (FIX LỖI JSX) === */
+  /* ---- Input Fields (Đã sửa lỗi focus ring) ---- */
   .input-field {
-    @apply mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-accent-hover focus:border-accent-hover;
+    @apply w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white;
+    @apply text-text-primary placeholder-gray-400;
+    @apply transition-all duration-200 outline-none;
+
+    @apply focus:border-accent;
+
+    &:focus {
+      --tw-ring-color: var(--color-accent-hover);
+      box-shadow: 0 0 0 2px var(--tw-ring-color);
+    }
   }
 
   .input-field-disabled {
-    @apply mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm text-gray-500;
+    @apply w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50;
+    @apply text-text-secondary cursor-not-allowed;
   }
 
+  .label-field {
+    @apply block text-sm font-medium text-text-secondary mb-1.5;
+  }
+
+  /* ---- Buttons (Đã sửa lỗi hover và focus) ---- */
   .btn-accent-profile {
-    /* Nút màu accent cho trang profile */
-    @apply px-4 py-2 bg-accent text-text-on-dark rounded-lg hover:bg-accent-hover transition-colors;
+    @apply flex items-center justify-center px-5 py-2.5 rounded-lg;
+    background-color: var(--color-accent);
+    /* Dùng CSS var */
+    @apply text-white font-medium;
+    @apply shadow-md hover:shadow-lg;
+    @apply transform transition-all duration-200 active:scale-95;
+    @apply focus:outline-none focus:ring-offset-2;
+
+    &:hover {
+      background-color: var(--color-accent-hover);
+    }
+
+    &:focus {
+      --tw-ring-color: var(--color-accent-hover);
+      box-shadow: 0 0 0 2px var(--tw-ring-color);
+    }
   }
 
   .btn-secondary-profile {
-    /* Nút Hủy (màu xám) */
-    @apply px-4 py-2 bg-gray-200 text-text-secondary rounded-lg hover:bg-gray-300 transition-colors;
-  }
-}
-
-/* Keyframe cho animation giỏ hàng (pulse) - Giữ nguyên */
-@keyframes pulse-badge {
-
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
+    @apply flex items-center justify-center px-5 py-2.5 rounded-lg;
+    @apply bg-gray-100 text-text-secondary font-medium;
+    @apply border border-gray-200;
+    @apply hover:bg-gray-200 hover:text-text-primary;
+    @apply transform transition-all duration-200 active:scale-95;
   }
 
-  50% {
-    transform: scale(1.15);
-    opacity: .9;
+  /* ---- Table (Admin) ---- */
+  .th-table {
+    @apply px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider;
   }
-}
 
-.animate-pulse-badge {
-  animation: pulse-badge 1.5s infinite ease-in-out;
-}
-/* =========================================== */
-/* === TÙY CHỈNH MÀU LỊCH (FLATPICKR) === */
-/* =========================================== */
+  /* ---- Custom Scrollbar (Đã sửa lỗi bg-accent/30) ---- */
+  .custom-scrollbar {
+    @apply overflow-y-auto;
+  }
 
-/* Màu nền của ngày được chọn */
-.flatpickr-day.selected,
-.flatpickr-day.startRange,
-.flatpickr-day.endRange {
-    /* (Dùng biến --color-accent đã có sẵn trong file index.css của bạn) */
-    background: rgb(var(--color-accent));
-    border-color: rgb(var(--color-accent));
-    color: #fff; /* (Chữ màu trắng) */
-}
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-1.5;
+  }
 
-/* Màu viền của ngày hôm nay */
-.flatpickr-day.today {
-    border-color: rgb(var(--color-accent));
-    color: rgb(var(--color-accent)); /* (Đổi màu chữ) */
-}
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
 
-/* Màu hover (khi rê chuột) */
-.flatpickr-day:hover,
-.flatpickr-day:focus {
-    background: rgba(var(--color-accent), 0.1); /* (Màu accent mờ) */
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    /* Lỗi cũ: @apply bg-accent/30 rounded-full; */
+    @apply rounded-full;
+    background-color: var(--color-accent);
+    /* Dùng CSS var */
+    opacity: 0.3;
+    /* Thêm opacity 30% */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    /* Lỗi cũ: @apply bg-accent/50; */
+    background-color: var(--color-accent);
+    /* Dùng CSS var */
+    opacity: 0.5;
+    /* Thêm opacity 50% */
+  }
+
+  /* ================================================ */
+
+
+  /* ---- Price Range Slider (Filter) ---- */
+  .range-double {
+    position: relative;
+    height: 20px;
+    display: flex;
+    align-items: center;
+  }
+
+  .range-double .range-bg {
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    position: absolute;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  .range-double .range-progress {
+    height: 4px;
+    background: #4f46e5;
+    border-radius: 2px;
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .range-double input[type="range"] {
+    position: absolute;
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    background: none;
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .range-double input[type="range"]::-webkit-slider-runnable-track {
+    background: transparent;
+    height: 4px;
+  }
+
+  .range-double input[type="range"]::-moz-range-track {
+    background: transparent;
+    height: 4px;
+  }
+
+  .range-double input[type="range"]::-ms-track {
+    background: transparent;
     border-color: transparent;
+    color: transparent;
+    height: 4px;
+  }
+
+  .range-double input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: auto;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: #4f46e5;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .08);
+    cursor: pointer;
+    margin-top: -6px;
+  }
+
+  .range-double input[type="range"]::-moz-range-thumb {
+    pointer-events: auto;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: #4f46e5;
+    border: 2px solid #fff;
+    cursor: pointer;
+  }
+
+  .range-double input[type="range"]::-ms-thumb {
+    pointer-events: auto;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: #4f46e5;
+    border: 2px solid #fff;
+    cursor: pointer;
+  }
 }
 
-/* Sửa lỗi màu chữ khi "hôm nay" và "được chọn" là một */
-.flatpickr-day.today.selected {
-    color: #fff;
-}
-/* Ép ToastContainer luôn nằm trên cùng, cao hơn cả Modal và Header */
-.Toastify__toast-container {
-  z-index: 99999999 !important; /* Dùng !important để ghi đè tất cả */
-}
+/* === SỬA LỖI TOASTIFY (Đã có từ trước) === */
+@layer utilities {
+  .Toastify__toast-container {
+    z-index: 9999999 !important;
+  }
 
-/* (Tùy chọn) Nếu bạn muốn Toast nằm đè lên Header luôn mà không cần margin */
-.Toastify__toast-container--top-right {
-  top: 1em !important;
+  .Toastify__toast-container--top-right {
+    top: 70px !important;
+  }
 }

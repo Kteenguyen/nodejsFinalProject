@@ -35,6 +35,8 @@ export async function getAdvancedStats(options = {}, signal) {
   return res.json();
 }
 
+export const adminListOrders = (params) => api.get('/api/orders', { params });
+
 /** Alias cũ */
 export const getKpis = (opts, sig) => getAdvancedStats(opts, sig);
 

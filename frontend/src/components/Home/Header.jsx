@@ -6,7 +6,7 @@ import {
     FaShoppingCart, FaSearch, FaUser, FaBars, FaTimes,
     FaHome, FaBox, FaInfoCircle, FaPhoneAlt, FaSignInAlt,
     FaUserPlus, FaSignOutAlt, FaTachometerAlt, FaAngleDown,
-    FaUserCircle, FaEnvelope
+    FaUserCircle, FaEnvelope, FaChartBar
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -161,6 +161,9 @@ const Header = () => {
                                                 <p className="text-xs text-text-secondary">{user?.role === 'admin' ? 'Quản trị viên' : 'Khách hàng'}</p>
                                             </div>
                                             {/* (Các class .menu-item đã được định nghĩa trong index.css) */}
+                                            <Link to="/admin/dashboard" onClick={() => setIsAvatarMenuOpen(false)} className="menu-item">
+                                                <FaChartBar className="mr-3 text-text-accent" /> Thống kê và biểu đồ
+                                            </Link>
                                             <Link to="/profile" onClick={() => setIsAvatarMenuOpen(false)} className="menu-item">
                                                 <FaUserCircle className="mr-3 text-text-accent" /> Thông tin cá nhân
                                             </Link>
@@ -300,7 +303,9 @@ const Header = () => {
                                         <>
                                             <Link to="/profile" className="mobile-nav-link"><FaUserCircle className="mr-3 text-text-accent" />Tài khoản</Link>
                                             {user?.role === 'admin' && (
-                                                <Link to="/admin" className="mobile-nav-link text-text-accent"><FaTachometerAlt className="mr-3" />Dashboard</Link>
+                                                <Link to="/admin/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="mobile-nav-link text-text-accent">
+                                                    <FaChartBar className="mr-3" /> Thống kê
+                                                </Link>
                                             )}
                                             <button onClick={handleLogout} className="mobile-nav-link w-full text-left text-red-500">
                                                 <FaSignOutAlt className="mr-3" />Đăng xuất

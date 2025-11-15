@@ -1,95 +1,75 @@
-// models/productModel.js
+// backend/models/productModel.js
 const mongoose = require('mongoose');
 
-// ======================
-// Helper: bỏ dấu tiếng Việt + chuẩn hóa
-// ======================
-function normalizeVi(str = '') {
-  return String(str)
-    .normalize('NFD')                 // tách dấu
-    .replace(/[\u0300-\u036f]/g, '')  // bỏ dấu
-    .toLowerCase()
-    .trim();
-}
-
-// Schema cho một biến thể sản phẩm
-const variantSchema = new mongoose.Schema({
-  variantId: { type: String, required: true },
-  name: { type: String, required: true },  // Ví dụ: "Màu Đen, 16GB RAM"
-  price: { type: Number, required: true },
-  stock: { type: Number, required: true, default: 0 } // Số lượng tồn kho
-}, { _id: false });
-
-const productSchema = new mongoose.Schema({
-  productId: { type: String, required: true, unique: true },
-  productName: { type: String, required: true },
-  brand: { type: String },
-  productDescription: { type: String },
-
-  // Thay thế các trường cũ bằng một mảng các biến thể
-  variants: [variantSchema],
-
-  images: [{ type: String }], // Mảng các URL hình ảnh
-  status: { type: String, enum: ['available', 'unavailable'], default: 'available' },
-  isNewProduct: { type: Boolean, default: false },
-  isBestSeller: { type: Boolean, default: false },
-  category: {
-    categoryId: { type: String, required: true },
-    categoryName: { type: String, required: true },
-    level: { type: Number, required: true }
+const variantSchema = new mongoose.Schema(
+  {
+    variantId: { type: String, required: true },
+    name: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 },
+    stock: { type: Number, default: 0, min: 0 },
   },
+  { _id: false }
+);
 
-  // ======================
-  // Các field "không dấu" để search #14 (không bắt buộc required)
-  // ======================
-  productNameNorm: { type: String, default: '' },
-  brandNorm: { type: String, default: '' },
-  productDescriptionNorm: { type: String, default: '' }
-}, { timestamps: true });
+const commentSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: 'Guest', trim: true },
+    comment: { type: String, required: true, trim: true },
+    createdAt: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
 
-// ======================
-// Hooks: tự cập nhật *Norm khi tạo/cập nhật
-// ======================
-productSchema.pre('save', function(next) {
-  this.productNameNorm        = normalizeVi(this.productName);
-  this.brandNorm              = normalizeVi(this.brand);
-  this.productDescriptionNorm = normalizeVi(this.productDescription);
-  next();
-});
+const ratingSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    stars: { type: Number, min: 1, max: 5, required: true },
+    createdAt: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
 
-productSchema.pre('findOneAndUpdate', function(next) {
-  const u = this.getUpdate() || {};
-  const $set = u.$set || u;
+const productSchema = new mongoose.Schema(
+  {
+    // “slug” public của bạn
+    productId: { type: String, index: true }, // ví dụ "laptop01"
+    productName: { type: String, required: true },
+    brand: { type: String, default: '' },
+    productDescription: { type: String, default: '' },
 
-  if ($set.productName !== undefined) {
-    $set.productNameNorm = normalizeVi($set.productName);
+    category: {
+      categoryId: { type: String, required: true },
+      categoryName: { type: String, default: '' },
+    },
+
+    images: [{ type: String }],
+    status: { type: String, enum: ['available', 'unavailable'], default: 'available' },
+    isNewProduct: { type: Boolean, default: false },
+    isBestSeller: { type: Boolean, default: false },
+
+    variants: { type: [variantSchema], default: [] },
+
+    // Social
+    comments: { type: [commentSchema], default: [] },
+    ratings: { type: [ratingSchema], default: [] },
+    avgRating: { type: Number, default: 0 },
+    ratingsCount: { type: Number, default: 0 },
+  },
+  { timestamps: true }
+);
+
+productSchema.methods.recomputeRating = function () {
+  if (!this.ratings?.length) {
+    this.avgRating = 0;
+    this.ratingsCount = 0;
+    return;
   }
-  if ($set.brand !== undefined) {
-    $set.brandNorm = normalizeVi($set.brand);
-  }
-  if ($set.productDescription !== undefined) {
-    $set.productDescriptionNorm = normalizeVi($set.productDescription);
-  }
+  this.ratingsCount = this.ratings.length;
+  const sum = this.ratings.reduce((s, r) => s + (r.stars || 0), 0);
+  this.avgRating = Math.round((sum / this.ratingsCount) * 10) / 10;
+};
 
-  // ghi ngược vào update
-  if (u.$set) this.setUpdate({ ...u, $set });
-  else this.setUpdate($set);
-
-  next();
-});
-
-// ======================
-// Index phục vụ search/filter/sort (14, 15, 16)
-// ======================
-// 1) Full-text (tùy chọn dùng searchMode=text)
+// text search (mục 14)
 productSchema.index({ productName: 'text', productDescription: 'text', brand: 'text' });
-// 2) Search "không dấu"
-productSchema.index({ productNameNorm: 1 });
-productSchema.index({ brandNorm: 1 });
-productSchema.index({ productDescriptionNorm: 1 });
-// 3) Filter brand/giá nhanh + sort theo minPrice (được tính ở pipeline)
-productSchema.index({ brand: 1 });
-productSchema.index({ 'variants.price': 1 });
-productSchema.index({ 'category.categoryId': 1 });
 
 module.exports = mongoose.model('Product', productSchema);

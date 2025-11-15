@@ -4,6 +4,8 @@ import { AuthController } from "../controllers/AuthController";
 
 const AuthContext = createContext();
 
+export const useAuth = () => useContext(AuthContext); // Export hook để dùng gọn hơn
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -12,7 +14,6 @@ export const AuthProvider = ({ children }) => {
     const checkAuthStatus = useCallback(async () => {
         setIsLoadingAuth(true);
         try {
-            // **Bước này sẽ TRẢ VỀ { isAuthenticated: false, ... } thay vì ném lỗi cho 401**
             const result = await AuthController.checkAuth();
 
             if (result.isAuthenticated && result.user) {
@@ -23,17 +24,14 @@ export const AuthProvider = ({ children }) => {
                 setIsAuthenticated(false);
             }
         } catch (error) {
-            // 🛑 Khối này chỉ chạy khi có lỗi mạng thực sự (Server down, Network offline, v.v.)
-            // Không còn phải xử lý riêng 401 nữa.
-            // console.error("AuthContext: Error checking authentication status (Serious Error):", error);
-
             setUser(null);
             setIsAuthenticated(false);
         } finally {
             setIsLoadingAuth(false);
         }
     }, []);
-    // ✅ Tự động kiểm tra khi app tải lần đầu
+
+    // Tự động kiểm tra khi app tải lần đầu
     useEffect(() => {
         checkAuthStatus();
     }, [checkAuthStatus]);
@@ -44,7 +42,7 @@ export const AuthProvider = ({ children }) => {
         console.log("AuthContext: Login successful. Received userInfo object:", userInfo);
     };
 
-    // 👉 Hàm logout (gọi API để backend xóa cookie)
+    // Hàm logout (gọi API để backend xóa cookie)
     const logout = async () => {
         try {
             await AuthController.logout();
@@ -61,7 +59,7 @@ export const AuthProvider = ({ children }) => {
     // Giá trị cung cấp cho các component con
     const authContextValue = {
         user,
-        setUser,
+        setUser, // 👈 SỬA LỖI: Thêm dòng này (để ProfilePage dùng được)
         isAuthenticated,
         isLoadingAuth,
         login,
@@ -71,6 +69,7 @@ export const AuthProvider = ({ children }) => {
 
     // Hiển thị loading trong khi kiểm tra auth lần đầu
     if (isLoadingAuth) {
+        // Bạn có thể thay bằng component LoadingSpinner nếu muốn
         return <div>Đang tải dữ liệu người dùng...</div>;
     }
 
@@ -80,5 +79,3 @@ export const AuthProvider = ({ children }) => {
         </AuthContext.Provider>
     );
 };
-
-export const useAuth = () => useContext(AuthContext);

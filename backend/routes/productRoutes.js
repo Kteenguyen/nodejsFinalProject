@@ -2,34 +2,69 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productControllers');
-const Product = require('../models/productModel');
-
 const { protect, admin } = require('../middleware/authMiddleware');
-const resolveId = require('../middleware/resolveProductId');
 
-const resolveProductMiddleware = resolveId({
-  param: 'productId',
-  model: Product,
-  reqKey: 'product',
-});
+async function loadProduct(req, res, next) {
+  try {
+    // chấp nhận cả :productId, :idOrSlug, :slug
+    const raw =
+      decodeURIComponent(
+        String(
+          req.params.productId || req.params.idOrSlug || req.params.slug || ""
+        ).trim()
+      );
+
+    if (!raw) {
+      return res.status(400).json({ success: false, message: 'Thiếu tham số sản phẩm' });
+    }
+
+    let product = null;
+
+    // 1) Nếu là ObjectId 24 hex → tìm theo _id
+    if (/^[0-9a-fA-F]{24}$/.test(raw)) {
+      product = await Product.findById(raw);
+    }
+
+    // 2) Thử theo productId / code đúng nguyên văn
+    if (!product) product = await Product.findOne({ productId: raw });
+    if (!product) product = await Product.findOne({ code: raw });
+
+    if (!product && raw.includes('-')) {
+      const base = raw.split('-')[0];
+      product = await Product.findOne({ productId: base });
+      if (!product) product = await Product.findOne({ code: base });
+    }
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+    }
+
+    req.product = product;
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
 
 // PUBLIC
-router.get('/', productController.getProducts); // trả về fields: productId, productName + alias name, minPrice + alias lowestPrice, images[0], brand, ...
-
+router.get('/', productController.getProducts);
+router.get('/brands', productController.getBrandsList);       // <-- thêm
+router.get('/categories', productController.getCategoriesList); // <-- thêm
 router.get('/collections/bestsellers', productController.getBestSellers);
 router.get('/collections/new', productController.getNewProducts);
 router.get('/category/:categoryId', productController.getProductsByCategory);
 router.post('/batch', productController.batchProductLines);
 
-router.get('/:productId', resolveProductMiddleware, productController.getProductDetails);
+// Chi tiết
+router.get('/:slug', productController.getProductDetails);
 
-// COMMENTS & RATINGS
-router.post('/:productId/comments', resolveProductMiddleware, productController.addGuestComment);
-router.post('/:productId/ratings', protect, resolveProductMiddleware, productController.addUserRating);
+// Comments (public) & Rating (login)
+router.post('/:slug/comments', productController.addComment);
+router.post('/:slug/ratings', protect, productController.rateProduct);
 
 // ADMIN
 router.post('/', protect, admin, productController.createProduct);
-router.put('/:productId', protect, admin, resolveProductMiddleware, productController.updateProduct);
-router.delete('/:productId', protect, admin, resolveProductMiddleware, productController.deleteProduct);
+router.put('/:slug', protect, admin, productController.updateProduct);
+router.delete('/:slug', protect, admin, productController.deleteProduct);
 
 module.exports = router;
