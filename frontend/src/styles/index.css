@@ -164,3 +164,12 @@
 .flatpickr-day.today.selected {
     color: #fff;
 }
+/* Ép ToastContainer luôn nằm trên cùng, cao hơn cả Modal và Header */
+.Toastify__toast-container {
+  z-index: 99999999 !important; /* Dùng !important để ghi đè tất cả */
+}
+
+/* (Tùy chọn) Nếu bạn muốn Toast nằm đè lên Header luôn mà không cần margin */
+.Toastify__toast-container--top-right {
+  top: 1em !important;
+}

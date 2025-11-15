@@ -1,11 +1,11 @@
 // frontend/src/components/Dashboard/SideBar.jsx
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
-    Menu, ChevronLeft, LogOut
+    Menu, ChevronLeft, LogOut, Store // 1. Thêm icon Store
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { useAuth } from "../../context/AuthContext"; // 👈 (Đảm bảo đường dẫn này đúng)
+import { useAuth } from "../../context/AuthContext";
 
 const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
@@ -32,11 +32,10 @@ const SideBar = ({ onToggle }) => {
         setActive(location.pathname);
     }, [location.pathname]);
 
-    // === (HÀM LOGOUT ĐÃ SỬA) ===
     const handleLogout = async () => {
         console.log("SideBar: Đang gọi logout...");
         try {
-            await logout(); // (Hàm logout từ AuthContext sẽ gọi API và xóa cookie)
+            await logout();
             console.log("SideBar: Đã gọi logout thành công.");
             navigate('/login');
         } catch (error) {
@@ -45,7 +44,6 @@ const SideBar = ({ onToggle }) => {
     };
 
     return (
-        // === SỬA LAYOUT: DÙNG 'fixed' ===
         <aside
             className={`
                 fixed top-0 left-0 h-screen bg-white shadow-lg
@@ -55,8 +53,6 @@ const SideBar = ({ onToggle }) => {
                 z-40 
             `}
         >
-            {/* ============================== */}
-
             {/* Khối Logo và Nút Toggle */}
             <div className={`
                 flex items-center 
@@ -79,7 +75,7 @@ const SideBar = ({ onToggle }) => {
                 </button>
             </div>
 
-            {/* Khối Menu (Giữ nguyên logic của bạn) */}
+            {/* Khối Menu Chính */}
             <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
                 {menuItems.map((item) => {
                     const isActive = active.startsWith(item.path);
@@ -101,16 +97,32 @@ const SideBar = ({ onToggle }) => {
                 })}
             </nav>
 
-            {/* Khối Logout (Giữ nguyên logic của bạn) */}
-            <div className={`w-full transition-all duration-300 mt-auto
-                 ${collapsed ? "flex justify-center" : "px-4"}
-                 py-4 border-t`}>
+            {/* === KHỐI FOOTER (Shop + Logout) === */}
+            <div className={`w-full transition-all duration-300 mt-auto space-y-2
+                 ${collapsed ? "flex flex-col items-center px-2" : "px-4"}
+                 py-4 border-t bg-gray-50/50`}
+            >
+                {/* 2. Nút Shop (Về trang chủ) */}
+                <button
+                    onClick={() => navigate('/')}
+                    className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
+                        text-gray-700 hover:text-blue-600 hover:bg-blue-100
+                        ${collapsed ? "justify-center" : "px-4"}
+                    `}
+                    title="Về cửa hàng"
+                >
+                    <Store size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
+                    {!collapsed && <span>Cửa hàng</span>}
+                </button>
+
+                {/* Nút Logout */}
                 <button
                     onClick={handleLogout}
                     className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
-                        text-gray-700 hover:text-red-600 hover:bg-red-50
+                        text-gray-700 hover:text-red-600 hover:bg-red-100
                         ${collapsed ? "justify-center" : "px-4"}
                     `}
+                    title="Đăng xuất"
                 >
                     <LogOut size={22} className={`${collapsed ? "" : "min-w-[22px]"} rotate-180`} />
                     {!collapsed && <span>Đăng xuất</span>}

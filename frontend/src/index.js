@@ -24,8 +24,22 @@ root.render(
       <AuthProvider>
         <CartProvider>
           <App />
-          <ToastContainer autoClose={3000} pauseOnHover={false} />
-        </CartProvider>
+          <ToastContainer
+            position="top-right" // Vẫn giữ top-right
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={true}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover={false}
+            theme="colored"
+            // 👇 THÊM mt-16 (margin-top) để né Header nếu Header cao
+            // 👇 THÊM zIndex cực lớn để đè lên mọi thứ
+            toastStyle={{ backgroundColor: "var(--toastify-color-success)" }}
+            style={{ zIndex: 99999999, marginTop: "60px" }}
+          />        </CartProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   </BrowserRouter>

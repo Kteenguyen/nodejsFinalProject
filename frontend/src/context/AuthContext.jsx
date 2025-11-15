@@ -61,6 +61,7 @@ export const AuthProvider = ({ children }) => {
     // Giá trị cung cấp cho các component con
     const authContextValue = {
         user,
+        setUser,
         isAuthenticated,
         isLoadingAuth,
         login,

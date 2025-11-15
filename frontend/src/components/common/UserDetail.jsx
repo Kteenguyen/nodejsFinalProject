@@ -1,20 +1,27 @@
 // frontend/src/components/common/UserDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// (Import đầy đủ icon)
-import { X, Save, UserX, PackageCheck, Truck, ArchiveRestore, ClipboardList, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+    X, Save, ChevronRight, Calendar as CalendarIcon, 
+    Award, Gift, Coins // 👈 Import thêm icon mới
+} from 'lucide-react';
 import { toast } from 'react-toastify';
+
 import { UserController } from '../../controllers/userController';
 import { useAuth } from '../../context/AuthContext';
-import Flatpickr from 'react-flatpickr';
-// (CSS của Flatpickr đã import ở index.js)
 
-// === CÁC HÀM HELPER (calculateAge, formatVND, formatDate, formatOrderStatusBadges) ===
+// Import Component
+import Calendar from './Calendar';
+import OrderHistory from '../Order/OrderHistory';
+
+// === HÀM TÍNH TUỔI ===
 const calculateAge = (dobString) => {
     if (!dobString) return 'N/A';
     try {
-        const birthDate = new Date(dobString.replace(/-/g, '/'));
+        const dateValue = typeof dobString === 'string' ? dobString.replace(/-/g, '/') : dobString;
+        const birthDate = new Date(dateValue);
         if (isNaN(birthDate.getTime())) return 'N/A';
+        
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
         const m = today.getMonth() - birthDate.getMonth();
@@ -24,478 +31,267 @@ const calculateAge = (dobString) => {
         return age;
     } catch (e) { return 'N/A'; }
 };
-const formatVND = (amount) => {
-    if (typeof amount !== 'number') return '0 ₫';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-};
-const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-        const [y, m, d] = dateString.split('-');
-        return `${d}/${m}/${y}`;
-    } catch (e) { return 'N/A'; }
-};
-const formatOrderStatusBadges = (stats) => {
-    if (!stats || (stats.delivered === 0 && stats.processing === 0 && stats.returned === 0)) {
-        return <span className="text-text-secondary text-xs">Chưa có đơn</span>;
-    }
-    return (
-        <div className="flex flex-col gap-1.5 p-3 bg-gray-100 rounded-md">
-            {stats.delivered > 0 && (
-                <span className="flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                    <PackageCheck size={14} className="mr-1.5" />
-                    Đã giao: <strong className="ml-1">{stats.delivered}</strong>
-                </span>
-            )}
-            {stats.processing > 0 && (
-                <span className="flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-                    <Truck size={14} className="mr-1.5" />
-                    Đang xử lý: <strong className="ml-1">{stats.processing}</strong>
-                </span>
-            )}
-            {stats.returned > 0 && (
-                <span className="flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                    <ArchiveRestore size={14} className="mr-1.5" />
-                    Đã hoàn/Hủy: <strong className="ml-1">{stats.returned}</strong>
-                </span>
-            )}
-        </div>
-    );
-};
-// ===================================
 
-const UserDetail = ({ user, onClose, onSave, context, onNext, onPrev }) => {
+// === HÀM TÍNH HẠNG THÀNH VIÊN (Giả lập) ===
+const getMemberTier = (points) => {
+    const p = parseInt(points) || 0;
+    if (p >= 5000) return { name: 'Kim Cương', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: '💎' };
+    if (p >= 2000) return { name: 'Vàng', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: '🥇' };
+    if (p >= 1000) return { name: 'Bạc', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '🥈' };
+    return { name: 'Đồng', color: 'bg-orange-50 text-orange-700 border-orange-100', icon: '🥉' };
+};
 
-    // (Phân quyền: Admin sửa tất cả, User sửa cột 1)
-    const isReadOnlyPersonal = false;
-    const isReadOnlySystem = context === 'user';
+const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
+    const isModal = context === 'admin';
+    const isAdmin = context === 'admin'; // Biến check quyền admin
+    const { setUser: setAuthUser } = useAuth();
 
-    // (State, setUser, useEffect parse ngày an toàn...)
-    const [formData, setFormData] = useState(user || {});
-    const { setUser } = useAuth();
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phoneNumber: '',
+        dateOfBirth: '',
+        gender: 'other',
+        points: 0, // 👈 Thêm trường điểm
+    });
+
+    const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [orders, setOrders] = useState([]);
+    const [loadingOrders, setLoadingOrders] = useState(false);
+
     useEffect(() => {
         if (user) {
-            const safeId = user._id || user.userId || 'defaultId';
-
-            const parseDateOfBirth = (dob) => {
-                if (!dob) return '';
-                const yyyyMmDdRegex = /^\d{4}-\d{2}-\d{2}$/;
-                if (typeof dob === 'string' && yyyyMmDdRegex.test(dob)) {
-                    return dob;
-                }
-                try {
-                    const dateObj = new Date(dob);
-                    if (isNaN(dateObj.getTime())) {
-                        return '';
-                    }
-                    return dateObj.toISOString().split('T')[0];
-                } catch (e) {
-                    return '';
-                }
-            };
-
             setFormData({
-                ...user,
-                dateOfBirth: parseDateOfBirth(user.dateOfBirth),
-                loyaltyPoints: user.loyaltyPoints || 0,
-                orderStats: user.orderStats || {
-                    delivered: (safeId.slice(-1).charCodeAt(0) % 3 + 1),
-                    processing: (safeId.slice(-2).charCodeAt(0) % 2),
-                    returned: (safeId.slice(-3).charCodeAt(0) % 2),
-                    // totalSpent: (safeId.slice(-2).charCodeAt(0) % 500) * 10000 + 150000,
-                    // firstOrderDate: `2024-0${safeId.slice(-1).charCodeAt(0) % 9 + 1}-10`, 
-                    // lastOrderDate: `2025-10-${safeId.slice(-1).charCodeAt(0) % 20 + 10}`
-                }
+                name: user.name || '',
+                email: user.email || '',
+                phoneNumber: user.phoneNumber || '',
+                dateOfBirth: user.dateOfBirth || '',
+                gender: user.gender || 'other',
+                points: user.points || 0, // 👈 Load điểm từ user prop
             });
+            setIsEditing(false);
+            fetchUserOrders(user._id);
         }
     }, [user]);
-    // ===================================
 
-    if (!user) return null;
+    const fetchUserOrders = async (userId) => {
+        setLoadingOrders(true);
+        try {
+            const response = await UserController.getOrdersHistory(userId);
+            if (response) {
+                setOrders(response.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+            }
+        } catch (error) {
+            console.error("Lỗi tải lịch sử đơn hàng:", error);
+        } finally {
+            setLoadingOrders(false);
+        }
+    };
 
-    // === CÁC HÀM XỬ LÝ (handleChange, handleDateChange) ===
     const handleChange = (e) => {
-        const { name, value, type } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'number' ? Number(value) : value
-        }));
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleDateChange = (dateArray) => {
-        const date = dateArray[0];
-        setFormData(prev => ({
-            ...prev,
-            dateOfBirth: date ? date.toISOString().split('T')[0] : ''
-        }));
-    };
-
-    // === (Hàm Save - GỌI API TRỰC TIẾP) ===
-    const handleSave = async (e) => {
-        e.preventDefault();
-
+    const handleSave = async () => {
+        setLoading(true);
         try {
-            if (context === 'user') {
-                // === CONTEXT NGƯỜI DÙNG (/profile) ===
-                const formDataInstance = new FormData();
-                Object.keys(formData).forEach(key => {
-                    if (key !== 'avatar' && formData[key] !== null && formData[key] !== undefined) {
-                        formDataInstance.append(key, formData[key]);
-                    }
-                });
+            // Gộp formData vào user cũ để giữ lại _id và các trường không sửa
+            const updatedData = { ...user, ...formData };
 
-                const response = await UserController.updateProfile(formDataInstance);
-
-                if (response.success && response.user) {
-                    toast.success("Cập nhật hồ sơ thành công!");
-                    setUser(response.user); // 👈 Cập nhật context
-                    if (onSave) onSave(response.user);
-                }
-
-            } else if (context === 'admin') {
-                // === CONTEXT ADMIN (/admin/users) ===
-                const response = await UserController.adminUpdateUser(user._id, formData);
-
-                if (response.success && response.user) {
-                    toast.success(`Đã cập nhật ${response.user.name}`);
-                    if (onSave) onSave(response.user); // Báo cho Users.jsx cập nhật list
-                    if (onClose) onClose(); // Tự động đóng Modal
+            if (context === 'admin' && onSave) {
+                await onSave(updatedData);
+                setIsEditing(false);
+            }
+            else if (context === 'user') {
+                // User thường không được sửa điểm, backend nên chặn, nhưng frontend cũng nên lọc ra
+                // Tuy nhiên ở đây ta gửi hết, backend xử lý security
+                const response = await UserController.updateProfile(formData);
+                if (response) {
+                    const updatedUser = response.user || response;
+                    setAuthUser(updatedUser);
+                    toast.success('Cập nhật thông tin thành công');
+                    setIsEditing(false);
                 }
             }
-
         } catch (error) {
-            console.error("Lỗi khi lưu UserDetail:", error);
-            // (toast.error đã được controller xử lý)
+            console.error(error);
+            toast.error('Lỗi khi lưu thông tin');
+        } finally {
+            setLoading(false);
         }
     };
-    // ==============================
 
-    // === (Hàm Ban - GỌI API TRỰC TIẾP) ===
-    const handleAdminBan = async (e) => {
-        e.stopPropagation();
-
-        const confirmBan = window.confirm(
-            `Bạn có chắc muốn ${formData.isBanned ? 'GỠ CẤM' : 'CẤM'} người dùng [${formData.name}]?`
-        );
-        if (!confirmBan) return;
-
-        try {
-            const data = await UserController.banUser(formData._id);
-            toast.success(data.message); // 👈 TOAST
-
-            if (onSave) {
-                // Báo cho Users.jsx cập nhật list VÀ data trong modal
-                onSave({ ...formData, isBanned: data.isBanned });
-            }
-            if (onClose) onClose(); // Tự động đóng
-
-        } catch (error) {
-            console.error("Lỗi khi cấm user:", error);
-            // (toast.error đã được controller xử lý)
-        }
-    };
-    // ==============================
-
-    const handleViewOrders = () => { /* ... (Code 'view order' của bạn) ... */ };
-    // ===================================
-
-    // === (Animation "Nảy ra") ===
-    const backdropVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { duration: 0.3 } },
-        exit: { opacity: 0, transition: { duration: 0.2 } }
-    };
-
-    const modalVariants = {
-        hidden: { opacity: 0, scale: 0.9, y: 50 },
-        visible: {
-            opacity: 1, scale: 1, y: 0,
-            transition: { type: "spring", stiffness: 400, damping: 30 }
-        },
-        exit: {
-            opacity: 0, scale: 0.9, y: 50,
-            transition: { duration: 0.2 }
-        }
-    };
-    // ===================================
-
-    // == Nội dung Form (Layout 3 cột) ==
-    const FormContent = () => (
-        <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-
-            {/* === CỘT 1: THÔNG TIN CÁ NHÂN (Admin/User sửa) === */}
-            <fieldset className="md:col-span-1 space-y-4">
-                <legend className="text-lg font-medium text-text-primary mb-2">Thông tin cá nhân</legend>
-
-                {/* (Input Họ tên) */}
-                <div>
-                    <label className="label-field">Họ tên</label>
-                    <input
-                        type="text" name="name"
-                        value={formData.name || ''}
-                        onChange={handleChange}
-                        className={isReadOnlyPersonal ? "input-field-disabled" : "input-field"}
-                        readOnly={isReadOnlyPersonal}
-                    />
-                </div>
-                {/* (Input Email) */}
-                <div>
-                    <label className="label-field">Email</label>
-                    <input
-                        type="email" name="email"
-                        value={formData.email || ''}
-                        onChange={handleChange}
-                        className={isReadOnlyPersonal ? "input-field-disabled" : "input-field"}
-                        readOnly={isReadOnlyPersonal}
-                    />
-                </div>
-                {/* (Input SĐT) */}
-                <div>
-                    <label className="label-field">Số điện thoại</label>
-                    <input
-                        type="tel" name="phoneNumber"
-                        value={formData.phoneNumber || ''}
-                        onChange={handleChange}
-                        className={isReadOnlyPersonal ? "input-field-disabled" : "input-field"}
-                        readOnly={isReadOnlyPersonal}
-                    />
-                </div>
-
-                {/* (Flatpickr cho Ngày sinh) */}
-                <div>
-                    <label className="label-field">Ngày sinh</label>
-                    <div className="relative">
-                        <Flatpickr
-                            value={formData.dateOfBirth}
-                            onChange={handleDateChange}
-                            options={{
-                                altInput: true,
-                                altFormat: "d/m/Y",
-                                dateFormat: "Y-m-d",
-                                placeholder: "Chọn ngày sinh",
-                                disableMobile: true,
-                                animate: true
-                            }}
-                            className={isReadOnlyPersonal ? "input-field-disabled w-full pl-10" : "input-field w-full pl-10"}
-                            disabled={isReadOnlyPersonal}
-                        />
-                        <Calendar
-                            size={18}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none"
-                        />
-                    </div>
-                </div>
-
-                {/* (Tuổi - Admin thấy) */}
-                {context === 'admin' && (
-                    <div>
-                        <label className="label-field">Tuổi (Tự tính)</label>
-                        <input
-                            type="text"
-                            value={calculateAge(formData.dateOfBirth)}
-                            className="input-field-disabled"
-                            readOnly
-                        />
-                    </div>
-                )}
-            </fieldset>
-
-            {/* === CỘT 2: QUÀ CỦA BẠN / HỆ THỐNG === */}
-            <fieldset className="md:col-span-1 space-y-4">
-                <legend className="text-lg font-medium text-text-primary mb-2">
-                    {context === 'user' ? "Quà của bạn" : "Thông tin hệ thống"}
-                </legend>
-
-                {/* (Phân quyền Điểm) */}
-                <div>
-                    <label className="label-field">Điểm tích lũy</label>
-                    <input
-                        type="number" name="loyaltyPoints"
-                        value={formData.loyaltyPoints || 0}
-                        onChange={handleChange}
-                        className={isReadOnlySystem ? "input-field-disabled" : "input-field"}
-                        readOnly={isReadOnlySystem}
-                    />
-                </div>
-
-                {/* (Phân quyền Role - Chỉ Admin thấy) */}
-                {context === 'admin' && (
-                    <div>
-                        <label className="label-field">Vai trò (Role)</label>
-                        <select
-                            name="role"
-                            value={formData.role || 'user'}
-                            onChange={handleChange}
-                            className="input-field"
-                            disabled={isReadOnlySystem}
-                        >
-                            <option value="user">User</option>
-                            <option value="staff">Staff</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                )}
-            </fieldset>
-
-            {/* === CỘT 3: THÔNG TIN ĐƠN HÀNG (DEMO) === */}
-            <fieldset className="md:col-span-1 space-y-4">
-                <legend className="text-lg font-medium text-text-primary mb-2">Thông tin đơn hàng</legend>
-
-                <div>
-                    <label className="label-field">Tình trạng (Demo)</label>
-                    {formatOrderStatusBadges(formData.orderStats)}
-                </div>
-
-
-                <div>
-                    <label className="label-field">Lịch sử đơn hàng</label>
-                    <button
-                        type="button"
-                        onClick={handleViewOrders}
-                        className="btn-secondary-profile w-full justify-center"
-                    >
-                        <ClipboardList size={18} className="mr-2" />
-                        Xem lịch sử đơn hàng
-                    </button>
-                </div>
-            </fieldset>
-
-        </form>
+    // --- LOGIC UI CHO CALENDAR (Giữ nguyên từ bước trước) ---
+    const age = calculateAge(formData.dateOfBirth);
+    const calendarRightContent = (age !== 'N/A') ? (
+        <span className={`text-xs px-2 py-1 rounded-full font-medium
+            ${!isEditing ? 'bg-gray-200 text-gray-600' : 'bg-blue-50 text-blue-600'}
+        `}>
+            {age} tuổi
+        </span>
+    ) : (
+        <CalendarIcon size={18} className="text-gray-400" />
     );
 
-    // === NÚT BẤM (Tách biệt Trái/Phải) ===
-    const ActionButtons = () => (
-        <div className="mt-6 flex flex-col md:flex-row md:justify-between gap-3">
+    // --- UI THÔNG TIN HẠNG THÀNH VIÊN ---
+    const tier = getMemberTier(formData.points);
 
-            {/* Nhóm bên trái (Nút Đóng) */}
-            <div>
-                {onClose && (
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="btn-secondary-profile w-full md:w-auto"
-                    >
-                        Đóng
-                    </button>
-                )}
+    const FormContent = () => (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+                
+                {/* === SECTION: ƯU ĐÃI & HẠNG (MỚI) === */}
+                <div className={`p-4 rounded-xl border flex items-center justify-between ${tier.color}`}>
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-white/50 flex items-center justify-center text-2xl shadow-sm">
+                            {tier.icon}
+                        </div>
+                        <div>
+                            <p className="text-xs uppercase font-bold opacity-70 tracking-wider">Hạng thành viên</p>
+                            <h3 className="text-lg font-bold">{tier.name} Member</h3>
+                        </div>
+                    </div>
+                    <div className="text-right hidden sm:block">
+                        <div className="flex items-center gap-1 justify-end font-medium">
+                            <Gift size={16} />
+                            <span>Ưu đãi của bạn</span>
+                        </div>
+                        <p className="text-sm opacity-80">Tích điểm để nhận thêm quà</p>
+                    </div>
+                </div>
+                {/* ==================================== */}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Họ tên */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-text-secondary">Họ và tên</label>
+                        <input
+                            type="text" name="name" value={formData.name} onChange={handleChange} disabled={!isEditing}
+                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
+                        />
+                    </div>
+                    
+                    {/* Email */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-text-secondary">Email</label>
+                        <input type="email" value={formData.email} disabled={true} className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-100 text-text-secondary cursor-not-allowed" />
+                    </div>
+
+                    {/* Số điện thoại */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-text-secondary">Số điện thoại</label>
+                        <input
+                            type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} disabled={!isEditing}
+                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
+                        />
+                    </div>
+
+                    {/* Lịch (đã fix UI) */}
+                    <Calendar 
+                        value={formData.dateOfBirth}
+                        onChange={(newDate) => setFormData(prev => ({ ...prev, dateOfBirth: newDate }))}
+                        disabled={!isEditing}
+                        rightContent={calendarRightContent}
+                    />
+
+                    {/* Giới tính */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-text-secondary">Giới tính</label>
+                        <select
+                            name="gender" value={formData.gender} onChange={handleChange} disabled={!isEditing}
+                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary appearance-none' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
+                        >
+                            <option value="male">Nam</option>
+                            <option value="female">Nữ</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+
+                    {/* === TRƯỜNG ĐIỂM TÍCH LŨY (MỚI) === */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
+                            <Coins size={16} className="text-yellow-500" />
+                            Điểm tích lũy
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="number" 
+                                name="points" 
+                                value={formData.points} 
+                                onChange={handleChange} 
+                                // LOGIC QUAN TRỌNG: 
+                                // Admin + Đang Edit => Được sửa
+                                // User hoặc Không Edit => Bị khóa
+                                disabled={!(isAdmin && isEditing)}
+                                className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none
+                                    ${!(isAdmin && isEditing)
+                                        ? 'bg-gray-50 border-gray-200 text-text-secondary cursor-not-allowed' 
+                                        : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
+                                    }
+                                `}
+                            />
+                            {/* Badge nhỏ bên trong input để hiển thị đơn vị */}
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">
+                                điểm
+                            </div>
+                        </div>
+                    </div>
+                    {/* =================================== */}
+
+                </div>
             </div>
 
-            {/* Nhóm bên phải (Cấm, Lưu) */}
-            <div className="flex flex-col-reverse md:flex-row gap-3">
-                <motion.button
-                    type="button"
-                    onClick={handleSave}
-                    className="btn-accent-profile w-full md:w-auto"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    <Save size={18} className="mr-2" />
-                    Lưu thay đổi
-                </motion.button>
-
-                {context === 'admin' && (
-                    <motion.button
-                        type="button"
-                        onClick={handleAdminBan}
-                        className="flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        <UserX size={18} />
-                        {formData.isBanned ? "Gỡ cấm" : "Cấm người dùng"}
-                    </motion.button>
-                )}
+            <div className="lg:col-span-1">
+                <OrderHistory orders={orders} isLoading={loadingOrders} />
             </div>
         </div>
     );
-    // =====================================
 
-    // === RENDER (Đã chính xác) ===
-    // (Render Div cho 'user')
-    if (context === 'user') {
-        return (
-            <div className="bg-surface rounded-lg shadow-md p-6">
-                <FormContent />
-                <ActionButtons />
-            </div>
-        );
+    // --- ActionButtons và Render Modal giữ nguyên ---
+    const ActionButtons = () => (
+        <div className="flex items-center justify-end gap-4 mt-8 pt-6 border-t border-gray-100">
+            {!isEditing ? (
+                <>
+                    <button onClick={() => onClose()} className="px-6 py-2.5 rounded-lg border border-gray-300 text-text-secondary hover:bg-gray-50 transition-colors font-medium">Đóng</button>
+                    <button onClick={() => setIsEditing(true)} className="px-6 py-2.5 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors font-medium shadow-md hover:shadow-lg transform active:scale-95 duration-200">Chỉnh sửa</button>
+                </>
+            ) : (
+                <>
+                    <button onClick={() => { setIsEditing(false); if(user) setFormData({ 
+                        name: user.name || '', email: user.email || '', phoneNumber: user.phoneNumber || '', dateOfBirth: user.dateOfBirth || '', gender: user.gender || 'other', 
+                        points: user.points || 0 // Reset điểm khi hủy
+                    }); }} className="px-6 py-2.5 rounded-lg border border-gray-300 text-text-secondary hover:bg-gray-50 transition-colors font-medium">Hủy bỏ</button>
+                    <button onClick={handleSave} disabled={loading} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors font-medium shadow-md hover:shadow-lg transform active:scale-95 duration-200 disabled:opacity-70">
+                        {loading ? 'Đang lưu...' : <><Save size={18} /> Lưu thay đổi</>}
+                    </button>
+                </>
+            )}
+        </div>
+    );
+
+    if (!isModal) {
+        return <div className="bg-surface rounded-lg"><FormContent /><ActionButtons /></div>;
     }
 
-    // (Render Modal (Cửa sổ nổi) cho 'admin')
     return (
         <AnimatePresence>
             {user && (
-                <motion.div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
-                    variants={backdropVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="hidden"
-                    onClick={onClose}
-                >
-
-                    {/* === MODAL NỘI DUNG (THÊM 'key' ĐỂ CÓ HIỆU ỨNG CHUYỂN) === */}
-                    <motion.div
-                        key={user._id} // 👈 QUAN TRỌNG: Giúp F-Motion biết user đã đổi
-                        className="bg-surface rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative" // 👈 Thêm 'relative'
-                        variants={modalVariants}
-                        initial="hidden"
-                        animate="visible"
-                        exit="exit"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {/* === NÚT CHUYỂN TRÁI (PREV) === */}
-                        {context === 'admin' && onPrev && (
-                            <motion.button
-                                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-black/20 rounded-full text-white hover:bg-black/50 transition-colors"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onPrev(); // 👈 Gọi hàm của Cha
-                                }}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                aria-label="Người dùng trước"
-                            >
-                                <ChevronLeft size={32} />
-                            </motion.button>
-                        )}
-                        {/* ================================== */}
-
-                        {/* (Header) */}
-                        <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-surface z-0">
-                            <h2 className="text-lg font-semibold text-text-primary">
-                                Chi tiết Người dùng (Admin)
-                            </h2>
-                            <button onClick={onClose} className="text-text-secondary hover:text-accent">
-                                <X size={24} />
-                            </button>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+                    <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="bg-surface w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold text-lg">{formData.name.charAt(0).toUpperCase()}</div>
+                                <div><h2 className="text-lg font-bold text-text-primary">Chi tiết người dùng</h2><p className="text-xs text-text-secondary">ID: {user._id}</p></div>
+                            </div>
+                            <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><X size={24} /></button>
                         </div>
-
-                        {/* (Content) */}
-                        <div className="p-6">
-                            <FormContent />
-                            <ActionButtons />
-                        </div>
-
-                        {/* === NÚT CHUYỂN PHẢI (NEXT) === */}
+                        <div className="p-6 overflow-y-auto custom-scrollbar"><FormContent /><ActionButtons /></div>
                         {context === 'admin' && onNext && (
-                            <motion.button
-                                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-black/20 rounded-full text-white hover:bg-black/50 transition-colors"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNext(); // 👈 Gọi hàm của Cha
-                                }}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                                aria-label="Người dùng kế tiếp"
-                            >
-                                <ChevronRight size={32} />
-                            </motion.button>
+                            <motion.button className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 bg-black/20 rounded-full text-white hover:bg-black/50 transition-colors" onClick={(e) => { e.stopPropagation(); onNext(); }} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><ChevronRight size={32} /></motion.button>
                         )}
-                        {/* =================================== */}
                     </motion.div>
-                    {/* ============================= */}
-
                 </motion.div>
             )}
         </AnimatePresence>
