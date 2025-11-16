@@ -220,7 +220,7 @@ exports.googleLogin = async (req, res) => {
 // --- HÀM FACEBOOK LOGIN (CẬP NHẬT LOGIC LIÊN KẾT) ---
 exports.facebookLogin = asyncHandler(async (req, res) => {
     const { accessToken, userID } = req.body;
-    const appSecret = process.env.FACEBOOK_APP_SECRET; 
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
 
     if (!accessToken || !userID) {
         return res.status(400).json({ message: 'Missing Facebook accessToken or userID' });
@@ -239,12 +239,12 @@ exports.facebookLogin = asyncHandler(async (req, res) => {
         // 2. Gọi API Facebook (thêm appsecret_proof)
         const { data } = await axios.get(
             `https://graph.facebook.com/${userID}`, {
-                params: {
-                    fields: 'id,name,email',
-                    access_token: accessToken,
-                    appsecret_proof: appsecret_proof
-                }
+            params: {
+                fields: 'id,name,email',
+                access_token: accessToken,
+                appsecret_proof: appsecret_proof
             }
+        }
         );
 
         if (!data) {
@@ -256,23 +256,41 @@ exports.facebookLogin = asyncHandler(async (req, res) => {
         // 3. Tìm user trong DB (Logic này của bạn đã đúng)
         let user = await User.findOne({ facebookId: facebookId });
 
+        // === SỬA LỖI TẠI ĐÂY ===
         if (!user && email) {
             user = await User.findOne({ email: email });
             if (user) {
                 user.facebookId = facebookId;
-                await user.save();
+
+                // "Dọn dẹp" địa chỉ rỗng (nếu có) trước khi save
+                if (user.shippingAddresses && user.shippingAddresses.length > 0) {
+                    // Lọc ra những địa chỉ "rỗng" (không có fullName hoặc address)
+                    user.shippingAddresses = user.shippingAddresses.filter(
+                        addr => addr.fullName && addr.address
+                    );
+                }
+
+                // Thêm provider nếu chưa có
+                if (!user.provider.includes('facebook')) {
+                    user.provider.push('facebook');
+                }
+
+                await user.save(); // Bây giờ sẽ save thành công
             }
         }
-
         if (!user) {
+            // ... (Code User.create của bạn đã đúng, giữ nguyên)
             const randomPassword = crypto.randomBytes(16).toString('hex');
             user = await User.create({
                 name: name,
                 email: email || `${facebookId}@facebook.placeholder.com`,
-                userName: facebookId, 
+                userName: facebookId,
                 facebookId: facebookId,
                 password: randomPassword,
-                isVerified: true, 
+                isVerified: true,
+                userId: uuidv4(),
+                provider: ['facebook'],
+                shippingAddresses: []
             });
         }
 
@@ -291,8 +309,22 @@ exports.facebookLogin = asyncHandler(async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Facebook login error:", error.response?.data || error.message);
-        res.status(500).json({ message: 'Lỗi máy chủ khi đăng nhập Facebook' });
+        // === BƯỚC 2: Sửa lại khối CATCH cho "an toàn" ===
+        // (Cách này sẽ bắt được cả lỗi 'uuidv4 is not defined' 
+        //  và cả lỗi 'axios' mà không bị crash)
+
+        console.error("🚨 [FACEBOOK LOGIN CRASH]: Lỗi nghiêm trọng:", error.message);
+        console.error("STACK TRACE:", error.stack);
+
+        if (error.response) {
+            console.error("DATA TỪ AXIOS (Facebook):", error.response.data);
+        }
+        // =============================================
+
+        res.status(500).json({
+            message: 'Lỗi máy chủ khi đăng nhập Facebook',
+            error: error.message
+        });
     }
 });
 // --- HÀM CHECK SESSION (Giữ nguyên từ file của fen) ---

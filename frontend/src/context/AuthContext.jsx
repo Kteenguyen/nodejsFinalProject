@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     const login = (userInfo) => {
         setUser(userInfo);
         setIsAuthenticated(true);
-        console.log("AuthContext: Login successful. Received userInfo object:", userInfo);
+        // console.log("AuthContext: Login successful. Received userInfo object:", userInfo);
     };
 
     // Hàm logout (gọi API để backend xóa cookie)

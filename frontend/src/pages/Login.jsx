@@ -59,20 +59,19 @@ const Login = () => {
     });
 
     const handleFacebookLoginSuccess = async (response) => {
-        console.log("Facebook response:", response);
+        // console.log("Facebook response:", response);
         if (response.accessToken) {
             try {
                 // 1. Gửi accessToken lên backend
-                const res = await AuthController.facebookLogin(response.accessToken);
-
+                const data = await AuthController.facebookLogin(response.accessToken, response.userID);
                 // 2. Báo cho AuthContext
-                login(res.user);
+                login(data);
 
                 toast.success("Đăng nhập Facebook thành công!");
 
                 // 3. Điều hướng
                 setTimeout(() => {
-                    if (res.user.role === "admin") {
+                    if (data.role === "admin") {
                         navigate("/admin/dashboard");
                     } else {
                         navigate("/");
@@ -117,10 +116,10 @@ const Login = () => {
 
                         <div className="flex-1">
                             <FacebookLogin
-                                appId="1089633542906282"
+                                appId={process.env.REACT_APP_FACEBOOK_APP_ID}
                                 onSuccess={handleFacebookLoginSuccess}
                                 onFail={(error) => console.log('Login Failed!', error)}
-                                onProfileSuccess={(response) => console.log('Get Profile Success!', response)}
+                                // XÓA DÒNG "onProfileSuccess" Ở ĐÂY
                                 render={({ onClick }) => (
                                     <button onClick={onClick} className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-md py-2 hover:bg-gray-50 transition text-gray-700">
                                         <FaFacebook className="w-5 h-5 text-blue-600" /> Facebook

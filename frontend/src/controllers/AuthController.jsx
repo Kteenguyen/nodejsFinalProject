@@ -42,9 +42,9 @@ export const AuthController = {
         }
     },
 
-    facebookLogin: async (accessToken) => {
+    facebookLogin: async (accessToken, userID) => {
         try {
-            const response = await api.post("/auth/facebookLogin", { accessToken });
+            const response = await api.post("/auth/facebookLogin", { accessToken, userID });
             return response.data;
         } catch (error) {
             console.error("Facebook login failed:", error.response?.data || error.message);
