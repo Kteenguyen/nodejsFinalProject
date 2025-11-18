@@ -21,17 +21,17 @@ const generateToken = (id) => {
         expiresIn: '1d',
     });
 };
-
+const isProduction = process.env.NODE_ENV === 'production';
 const getCookieOptions = () => {
     // ❗ CHÚ THÍCH: Cấu hình này rất tốt!
     // 'sameSite: none' và 'secure: true' là BẮT BUỘC
     // nếu API và Client của bạn chạy trên 2 domain khác nhau (ví dụ: api.com và app.com)
     const options = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Tự động true khi deploy
+        secure: isProduction, // Tự động true khi deploy
         maxAge: 24 * 60 * 60 * 1000, // 1 ngày
         path: '/',
-        sameSite: 'none' // Giữ nguyên
+        sameSite: isProduction ? 'none' : 'lax' // Giữ nguyên
     };
     return options;
 };
