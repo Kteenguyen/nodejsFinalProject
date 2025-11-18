@@ -13,10 +13,23 @@ export const AuthController = {
     login: async (identifier, password) => {
         try {
             const response = await api.post("/auth/login", { identifier, password });
+
+            // 🛡️ BỔ SUNG: Kiểm tra status code thủ công (đề phòng axios không ném lỗi)
+            if (response.status >= 400) {
+                throw new Error(response.data?.message || "Đăng nhập thất bại");
+            }
+
+            // 🛡️ BỔ SUNG: Kiểm tra biến success từ backend
+            if (response.data && !response.data.success) {
+                throw new Error(response.data.message || "Đăng nhập thất bại");
+            }
+
             return response.data;
         } catch (error) {
             console.error("Login failed:", error.response?.data || error.message);
-            throw new Error(error.response?.data?.message || "Đăng nhập thất bại");
+            // Ném lỗi ra để Login.jsx bắt được
+            const msg = error.response?.data?.message || error.message || "Đăng nhập thất bại";
+            throw new Error(msg);
         }
     },
 
@@ -51,7 +64,20 @@ export const AuthController = {
             throw new Error(error.response?.data?.message || "Đăng nhập Facebook thất bại");
         }
     },
-
+    changePassword: async (oldPassword, newPassword) => {
+        try {
+            // Gọi endpoint /change-password chúng ta vừa tạo
+            const response = await api.put("/auth/change-password", {
+                oldPassword,
+                newPassword
+            });
+            return response.data;
+        } catch (error) {
+            // Bắt lỗi từ backend (ví dụ: Sai mật khẩu cũ)
+            const message = error.response?.data?.message || "Đổi mật khẩu thất bại";
+            throw new Error(message);
+        }
+    },
     logout: async () => {
         try {
             const response = await api.post("/auth/logout");
@@ -61,7 +87,8 @@ export const AuthController = {
             throw new Error(error.response?.data?.message || "Đăng xuất thất bại");
         }
     },
-
+    // HÀM MỚI ĐỂ GỌI KHI F5
+    checkSession: () => api.get('/auth/check-session'),
     // =========================================================
     // === 🔴 FIX HOÀN TOÀN checkAuth KHÔNG NÉM LỖI KHI 401 🔴 ===
     // =========================================================

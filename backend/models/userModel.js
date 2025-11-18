@@ -50,6 +50,17 @@ const userSchema = new mongoose.Schema({
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
 });
+userSchema.pre('save', async function (next) {
+    // Chỉ hash nếu password có sự thay đổi (đổi pass hoặc tạo mới)
+    if (!this.isModified('password')) {
+        return next();
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+});
 // === VIRTUAL CHO HẠNG THÀNH VIÊN (MỚI) ===
 // Tự động tính hạng dựa trên điểm, không cần lưu vào DB
 // (Có thể tùy chỉnh các mốc điểm này)

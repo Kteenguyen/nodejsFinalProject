@@ -1,84 +1,126 @@
 // frontend/src/components/Profile/ChangePassword.jsx
 import React, { useState } from 'react';
-import { UserController } from '../../controllers/userController';
-import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
+import { FaGoogle, FaFacebook, FaLock } from 'react-icons/fa';
+import { AuthController } from '../../controllers/AuthController'; // 👈 Import Controller
 
 const ChangePassword = () => {
-    const [formData, setFormData] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    });
+    const { user } = useAuth();
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+    // Kiểm tra đăng nhập Social
+    const isSocialLogin = user?.provider?.includes('google') || user?.provider?.includes('facebook');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (formData.newPassword !== formData.confirmPassword) {
-            toast.error("Mật khẩu mới không khớp!");
+
+        if (newPassword.length < 6) {
+            toast.error("Mật khẩu mới phải có ít nhất 6 ký tự.");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            toast.error("Mật khẩu xác nhận không khớp!");
             return;
         }
 
         setIsLoading(true);
         try {
-            const response = await UserController.changeMyPassword(formData);
-            toast.success(response.message || "Đổi mật khẩu thành công!");
-            setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            // ❗ GỌI HÀM TỪ CONTROLLER
+            await AuthController.changePassword(oldPassword, newPassword);
+
+            toast.success("Đổi mật khẩu thành công!");
+
+            // Reset form
+            setOldPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
         } catch (error) {
-            // (userController.jsx đã tự động gọi toast.error)
-            console.error("Lỗi đổi mật khẩu:", error);
+            // Hiển thị thông báo lỗi (ví dụ: Mật khẩu cũ sai)
+            toast.error(error.message);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
+    // Nếu là Social Login thì ẩn form
+    if (isSocialLogin) {
+        return (
+            <div className="bg-surface rounded-lg shadow-md p-6">
+                <h2 className="text-lg font-medium text-text-primary mb-4">Đổi mật khẩu</h2>
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            {user?.provider?.includes('google') ?
+                                <FaGoogle className="h-6 w-6 text-blue-500" /> :
+                                <FaFacebook className="h-6 w-6 text-blue-600" />
+                            }
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-blue-700">
+                                Bạn đã đăng nhập bằng {user?.provider?.includes('google') ? 'Google' : 'Facebook'}.
+                            </p>
+                            <p className="text-sm text-blue-600">
+                                Bạn không cần quản lý mật khẩu tại đây.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        // === BỌC NỀN TRẮNG (GIỐNG USERDETAIL) ===
         <div className="bg-surface rounded-lg shadow-md p-6">
             <h2 className="text-lg font-medium text-text-primary mb-4">Đổi mật khẩu</h2>
-            <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+
+            <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    {/* (Giả sử bạn đã thêm 'label-field' vào index.css) */}
-                    <label className="label-field">Mật khẩu hiện tại</label>
+                    <label className="label-field">Mật khẩu cũ</label>
                     <input
-                        type="password" id="currentPassword" name="currentPassword"
-                        value={formData.currentPassword} onChange={handleChange}
-                        required className="input-field" 
+                        type="password"
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                        required
+                        className="input-field w-full px-3 py-2 border rounded-md"
                     />
                 </div>
                 <div>
                     <label className="label-field">Mật khẩu mới</label>
                     <input
-                        type="password" id="newPassword" name="newPassword"
-                        value={formData.newPassword} onChange={handleChange}
-                        required className="input-field" 
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        className="input-field w-full px-3 py-2 border rounded-md"
                     />
                 </div>
                 <div>
                     <label className="label-field">Xác nhận mật khẩu mới</label>
                     <input
-                        type="password" id="confirmPassword" name="confirmPassword"
-                        value={formData.confirmPassword} onChange={handleChange}
-                        required className="input-field" 
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="input-field w-full px-3 py-2 border rounded-md"
                     />
                 </div>
                 <div>
-                    <motion.button
+                    <button
                         type="submit"
-                        className="btn-accent-profile" 
                         disabled={isLoading}
-                        whileHover={{ scale: isLoading ? 1 : 1.05 }}
-                        whileTap={{ scale: isLoading ? 1 : 0.95 }}
+                        className={`btn-accent-profile flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                        {isLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
-                    </motion.button>
+                        <FaLock size={12} />
+                        {isLoading ? "Đang xử lý..." : "Lưu thay đổi"}
+                    </button>
                 </div>
             </form>
         </div>
-        // ======================================
     );
 };
+
 export default ChangePassword;

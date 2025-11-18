@@ -2,19 +2,19 @@ const mongoose = require('mongoose');
 const Order = require('../models/orderModel');
 const Product = require('../models/productModel');
 const Comment = require('../models/commentModel');
-const User    = require('../models/userModel');  
+const User = require('../models/userModel');
 const sendEmail = require('../utils/sendEmail'); // util của bạn
-
+const asyncHandler = require('express-async-handler');
 // Helpers cho khoảng thời gian
-function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
-function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-function startOfMonth(d) { const x = new Date(d); x.setDate(1); x.setHours(0,0,0,0); return x; }
+function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function startOfMonth(d) { const x = new Date(d); x.setDate(1); x.setHours(0, 0, 0, 0); return x; }
 
 // Sinh orderId: OD-YYYYMMDD-XXXX
 async function genOrderId() {
-  const ymd = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  for (let i=0;i<5;i++){
-    const code = `OD-${ymd}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  for (let i = 0; i < 5; i++) {
+    const code = `OD-${ymd}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     const exists = await Order.exists({ orderId: code });
     if (!exists) return code;
   }
@@ -22,7 +22,7 @@ async function genOrderId() {
 }
 
 function buildOrderEmailHTML(order) {
-  const currency = n => (Number(n)||0).toLocaleString('vi-VN') + ' ₫';
+  const currency = n => (Number(n) || 0).toLocaleString('vi-VN') + ' ₫';
   const rows = (order.items || []).map(i => `
     <tr>
       <td style="padding:8px;border:1px solid #ddd">${i.name}</td>
@@ -55,7 +55,7 @@ function buildOrderEmailHTML(order) {
       </p>
       <p><b>Giao tới:</b> ${order.shippingAddress?.recipientName} — ${order.shippingAddress?.phoneNumber}<br/>
          ${order.shippingAddress?.street}, ${order.shippingAddress?.city}</p>
-      <p>Phương thức thanh toán: ${String(order.paymentMethod||'').toUpperCase()}</p>
+      <p>Phương thức thanh toán: ${String(order.paymentMethod || '').toUpperCase()}</p>
     </div>
   `;
 }
@@ -131,15 +131,15 @@ exports.createOrder = async (req, res) => {
       }
 
       // Tính tiền
-      const subTotal = orderItems.reduce((s,i)=> s + i.price * i.quantity, 0);
-      const ship   = Number(shippingPrice || 0);
+      const subTotal = orderItems.reduce((s, i) => s + i.price * i.quantity, 0);
+      const ship = Number(shippingPrice || 0);
       const taxVal = Number(tax || 0);
 
-      const discPercent       = Number(discount?.percent || 0);
-      const discAmountInput   = Number(discount?.amount  || 0);
+      const discPercent = Number(discount?.percent || 0);
+      const discAmountInput = Number(discount?.amount || 0);
       const discAmountFromPct = discPercent > 0 ? Math.floor(subTotal * discPercent / 100) : 0;
 
-      let discAmount   = Math.max(discAmountInput, discAmountFromPct);
+      let discAmount = Math.max(discAmountInput, discAmountFromPct);
       let discountCode = discount?.code || undefined;
 
       // Dùng điểm (chỉ khi có user)
@@ -171,9 +171,9 @@ exports.createOrder = async (req, res) => {
 
       // Tạo orderId ngẫu nhiên dạng OD-YYYYMMDD-XXXX
       const orderId = await (async () => {
-        const ymd = new Date().toISOString().slice(0,10).replace(/-/g,'');
-        for (let i=0;i<5;i++){
-          const code = `OD-${ymd}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+        const ymd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        for (let i = 0; i < 5; i++) {
+          const code = `OD-${ymd}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
           const exists = await Order.exists({ orderId: code });
           if (!exists) return code;
         }
@@ -213,7 +213,7 @@ exports.createOrder = async (req, res) => {
       try {
         const to = payload.guestInfo?.email || req.user?.email;
         if (to) {
-          const currency = n => (Number(n)||0).toLocaleString('vi-VN') + ' ₫';
+          const currency = n => (Number(n) || 0).toLocaleString('vi-VN') + ' ₫';
           const rows = (payload.items || []).map(i => `
             <tr>
               <td style="padding:8px;border:1px solid #ddd">${i.name}</td>
@@ -251,10 +251,10 @@ exports.createOrder = async (req, res) => {
         }
       } catch (e) { console.warn('Gửi email thất bại:', e.message); }
 
-      return res.status(201).json({ success:true, order: created });
+      return res.status(201).json({ success: true, order: created });
 
     } catch (e) {
-      if (useTxn && session) { try { await session.abortTransaction(); } catch {} session.endSession(); }
+      if (useTxn && session) { try { await session.abortTransaction(); } catch { } session.endSession(); }
       throw e;
     }
   }
@@ -266,18 +266,17 @@ exports.createOrder = async (req, res) => {
     if (/Transaction numbers are only allowed on a replica set member or mongos/i.test(e.message)) {
       console.warn('No replica set → fallback no-transaction');
       try { return await runCreate(false); }
-      catch (e2) { return res.status(400).json({ success:false, message: e2.message }); }
+      catch (e2) { return res.status(400).json({ success: false, message: e2.message }); }
     }
-    return res.status(400).json({ success:false, message: e.message });
+    return res.status(400).json({ success: false, message: e.message });
   }
 };
-
 
 // #29: Admin list (phân trang + filter)
 // #29: Admin list (phân trang + filter + sort newest-first)
 exports.listOrders = async (req, res) => {
   try {
-    const page  = Math.max(parseInt(req.query.page)  || 1, 1);
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100); // mặc định 20
     const { date = 'all', start, end, status } = req.query;       // today|yesterday|thisWeek|thisMonth|range|all
 
@@ -309,7 +308,7 @@ exports.listOrders = async (req, res) => {
           return res.status(400).json({ success: false, message: 'Thiếu start hoặc end (YYYY-MM-DD)' });
         }
         from = startOfDay(new Date(start));
-        to   = addDays(startOfDay(new Date(end)), 1); // end-inclusive
+        to = addDays(startOfDay(new Date(end)), 1); // end-inclusive
         break;
       }
       case 'all':
@@ -319,7 +318,7 @@ exports.listOrders = async (req, res) => {
 
     const match = {};
     if (from && to) match.createdAt = { $gte: from, $lt: to };
-    if (status)    match.status = status; // 'Pending'|'Confirmed'|'Shipping'|'Delivered'|'Cancelled'
+    if (status) match.status = status; // 'Pending'|'Confirmed'|'Shipping'|'Delivered'|'Cancelled'
 
     const [orders, total] = await Promise.all([
       Order.find(match)
@@ -364,11 +363,11 @@ exports.listOrders = async (req, res) => {
   }
 };
 
-// User xem đơn của mình (tùy chọn)
 exports.listMyOrders = async (req, res) => {
   try {
-    const page  = Math.max(parseInt(req.query.page) || 1, 1);
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 12, 100);
+    // (Logic match này của bạn đã đúng, dùng req.user.id từ middleware 'protect')
     const match = req.user?.id
       ? { accountId: req.user.id }
       : (req.query.email ? { 'guestInfo.email': new RegExp(`^${req.query.email}$`, 'i') } : {});
@@ -381,9 +380,11 @@ exports.listMyOrders = async (req, res) => {
 
     const total = await Order.countDocuments(match);
     const totalPages = Math.max(Math.ceil(total / limit), 1);
-    return res.json({ success:true, orders, currentPage: page, totalPages, totalOrders: total });
+
+    // ❗ CHÚ Ý: Bạn trả về object { success: true, orders: [...] }
+    return res.json({ success: true, orders, currentPage: page, totalPages, totalOrders: total });
   } catch (e) {
-    return res.status(500).json({ success:false, message:'Lỗi server', error: e.message });
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };
 
@@ -392,16 +393,16 @@ exports.getOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const o = await Order.findOne({ orderId });
-    if (!o) return res.status(404).json({ success:false, message:'Không tìm thấy đơn hàng' });
+    if (!o) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
     const isAdmin = !!req.user?.isAdmin;
     const isOwner = o.accountId && req.user?.id && String(o.accountId) === String(req.user.id);
     if (!isAdmin && !isOwner) {
-      return res.status(403).json({ success:false, message:'Bạn không có quyền xem đơn này' });
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem đơn này' });
     }
-    return res.json({ success:true, order: o });
+    return res.json({ success: true, order: o });
   } catch (e) {
-    return res.status(500).json({ success:false, message:'Lỗi server', error:e.message });
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };
 
@@ -411,9 +412,9 @@ exports.updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
     const { status, isPaid } = req.body;
 
-    const allowed = ['Pending','Confirmed','Shipping','Delivered','Cancelled'];
+    const allowed = ['Pending', 'Confirmed', 'Shipping', 'Delivered', 'Cancelled'];
     if (status && !allowed.includes(status)) {
-      return res.status(400).json({ success:false, message:'Trạng thái không hợp lệ' });
+      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
     }
 
     const $set = {};
@@ -454,11 +455,11 @@ exports.updateOrderStatus = async (req, res) => {
         { new: true }
       );
     } else {
-      return res.status(400).json({ success:false, message:'Không có gì để cập nhật' });
+      return res.status(400).json({ success: false, message: 'Không có gì để cập nhật' });
     }
 
     if (!updatedOrder) {
-      return res.status(404).json({ success:false, message:'Không tìm thấy đơn hàng' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
     }
 
     // Cộng điểm nếu vừa Delivered lần đầu
@@ -466,7 +467,7 @@ exports.updateOrderStatus = async (req, res) => {
     if (justDelivered && updatedOrder.accountId) {
       const user = await User.findById(updatedOrder.accountId);
       if (user) {
-        const pointsEarned = Math.floor((Number(updatedOrder.totalPrice)||0) / 10000); // 10.000đ = 1 điểm
+        const pointsEarned = Math.floor((Number(updatedOrder.totalPrice) || 0) / 10000); // 10.000đ = 1 điểm
         if (pointsEarned > 0) {
           user.loyaltyPoints = (user.loyaltyPoints || 0) + pointsEarned;
           await user.save();
@@ -484,6 +485,21 @@ exports.updateOrderStatus = async (req, res) => {
     });
 
   } catch (e) {
-    return res.status(500).json({ success:false, message:'Lỗi server', error: e.message });
+    return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };
+exports.getOrdersByUser = asyncHandler(async (req, res) => {
+    // Lấy userId từ URL params (đây là _id)
+    const userId = req.params.id;
+    
+    // Tìm tất cả đơn hàng khớp với 'accountId' (theo schema của bạn)
+    const orders = await Order.find({ accountId: userId }).sort({ createdAt: -1 });
+    
+    // ❗ CHÚ Ý: Hàm này trả về trực tiếp mảng [...]
+    if (orders) {
+        res.status(200).json(orders);
+    } else {
+        res.status(404);
+        throw new Error('Không tìm thấy đơn hàng cho người dùng này');
+    }
+});

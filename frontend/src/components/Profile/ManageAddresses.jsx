@@ -18,6 +18,8 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
+    
+    // NÂNG CẤP: Giữ state cho ID để điều khiển dropdown
     const [selectedProvinceId, setSelectedProvinceId] = useState(null);
     const [selectedDistrictId, setSelectedDistrictId] = useState(null);
 
@@ -26,9 +28,11 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
         try {
             const data = await UserController.getProvinces();
             setProvinces(data);
-            // (Thêm logic để set giá trị ban đầu nếu là edit)
+            return data; // Trả về data để xử lý logic Edit
         } catch (error) {
             console.error("Lỗi load tỉnh thành:", error);
+            // NÂNG CẤP: Thêm toast error
+            toast.error("Lỗi khi tải danh sách Tỉnh/Thành.");
         }
     }, []);
 
@@ -38,8 +42,11 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
             const data = await UserController.getDistricts(provinceId);
             setDistricts(data);
             setWards([]); // Reset xã
+            return data; // Trả về data
         } catch (error) {
             console.error("Lỗi load quận huyện:", error);
+            // NÂNG CẤP: Thêm toast error
+            toast.error("Lỗi khi tải danh sách Quận/Huyện.");
         }
     }, []);
 
@@ -50,12 +57,45 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
             setWards(data);
         } catch (error) {
             console.error("Lỗi load xã phường:", error);
+            // NÂNG CẤP: Thêm toast error
+            toast.error("Lỗi khi tải danh sách Xã/Phường.");
         }
     }, []);
 
+    /**
+     * NÂNG CẤP: Thêm logic xử lý khi "Edit" (initialData)
+     * Tự động load và chọn các dropdown khi form được mở
+     */
     useEffect(() => {
-        loadProvinces();
-    }, [loadProvinces]);
+        const setupEditForm = async () => {
+            // 1. Luôn load tỉnh
+            const allProvinces = await loadProvinces();
+
+            // 2. Nếu là form Edit và đã có Tỉnh
+            if (initialData && allProvinces) {
+                // 3. Tìm ID Tỉnh từ tên
+                const currentProvince = allProvinces.find(p => p.ProvinceName === initialData.city);
+                if (currentProvince) {
+                    setSelectedProvinceId(currentProvince.ProvinceID);
+
+                    // 4. Load Quận
+                    const allDistricts = await loadDistricts(currentProvince.ProvinceID);
+                    if (allDistricts) {
+                        // 5. Tìm ID Quận từ tên
+                        const currentDistrict = allDistricts.find(d => d.DistrictName === initialData.district);
+                        if (currentDistrict) {
+                            setSelectedDistrictId(currentDistrict.DistrictID);
+                            // 6. Load Xã
+                            await loadWards(currentDistrict.DistrictID);
+                            // (Tên xã đã có sẵn trong formData.ward từ initialData)
+                        }
+                    }
+                }
+            }
+        };
+        setupEditForm();
+        // Thêm các dependencies để đảm bảo hàm chạy đúng
+    }, [initialData, loadProvinces, loadDistricts, loadWards]);
 
     // (Các hàm HandleChange, HandleSubmit cho Form)
     const handleChange = (e) => {
@@ -65,7 +105,8 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
 
     const handleProvinceChange = (e) => {
         const provinceId = e.target.value;
-        const provinceName = e.target.options[e.target.selectedIndex].text;
+        // Lấy tên Tỉnh từ text của option
+        const provinceName = provinceId ? e.target.options[e.target.selectedIndex].text : "";
         setSelectedProvinceId(provinceId);
         setFormData(prev => ({ ...prev, city: provinceName, district: '', ward: '' }));
         if (provinceId) {
@@ -78,7 +119,8 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
 
     const handleDistrictChange = (e) => {
         const districtId = e.target.value;
-        const districtName = e.target.options[e.target.selectedIndex].text;
+        // Lấy tên Quận từ text của option
+        const districtName = districtId ? e.target.options[e.target.selectedIndex].text : "";
         setSelectedDistrictId(districtId);
         setFormData(prev => ({ ...prev, district: districtName, ward: '' }));
         if (districtId) {
@@ -89,7 +131,8 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
     };
 
     const handleWardChange = (e) => {
-        const wardName = e.target.options[e.target.selectedIndex].text;
+        // Lấy tên Xã từ text của option
+        const wardName = e.target.value ? e.target.options[e.target.selectedIndex].text : "";
         setFormData(prev => ({ ...prev, ward: wardName }));
     };
 
@@ -120,6 +163,7 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label className="label-field">Tỉnh/Thành phố</label>
+                    {/* NÂNG CẤP: value dùng selectedProvinceId */}
                     <select value={selectedProvinceId || ''} onChange={handleProvinceChange} required className="input-field">
                         <option value="">Chọn Tỉnh/Thành</option>
                         {provinces.map(p => <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>)}
@@ -127,6 +171,7 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
                 </div>
                 <div>
                     <label className="label-field">Quận/Huyện</label>
+                    {/* NÂNG CẤP: value dùng selectedDistrictId */}
                     <select value={selectedDistrictId || ''} onChange={handleDistrictChange} required className="input-field" disabled={!districts.length}>
                         <option value="">Chọn Quận/Huyện</option>
                         {districts.map(d => <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>)}
@@ -134,8 +179,10 @@ const AddressForm = ({ initialData, onSubmit, onCancel }) => {
                 </div>
                 <div>
                     <label className="label-field">Xã/Phường</label>
+                    {/* NÂNG CẤP: value dùng formData.ward (vì đây là tên) */}
                     <select name="ward" value={formData.ward} onChange={handleWardChange} required className="input-field" disabled={!wards.length}>
                         <option value="">Chọn Xã/Phường</option>
+                        {/* NÂNG CẤP: value là WardName để khớp với formData */}
                         {wards.map(w => <option key={w.WardCode} value={w.WardName}>{w.WardName}</option>)}
                     </select>
                 </div>
@@ -186,6 +233,8 @@ const ManageAddresses = () => {
             setAddresses(data.addresses || []);
         } catch (error) {
             console.error("Lỗi load địa chỉ:", error);
+            // NÂNG CẤP: Thêm toast error
+            toast.error("Không thể tải danh sách địa chỉ.");
         }
         setIsLoading(false);
     }, []);
@@ -208,6 +257,8 @@ const ManageAddresses = () => {
                 loadAddresses(); // Tải lại
             } catch (error) {
                 console.error("Lỗi xóa địa chỉ:", error);
+                // NÂNG CẤP: Thêm toast error
+                toast.error(error.message || "Xóa địa chỉ thất bại.");
             }
         }
     };
@@ -216,6 +267,11 @@ const ManageAddresses = () => {
         setEditingAddress(null);
         setIsFormOpen(true);
     };
+
+    const handleCancelForm = () => {
+        setIsFormOpen(false);
+        setEditingAddress(null); // Đảm bảo reset khi hủy
+    }
 
     // (Xử lý Submit Form)
     const handleSubmit = async (formData) => {
@@ -234,6 +290,8 @@ const ManageAddresses = () => {
             loadAddresses(); // Tải lại
         } catch (error) {
             console.error("Lỗi lưu địa chỉ:", error);
+            // NÂNG CẤP: Thêm toast error
+            toast.error(error.message || "Lưu địa chỉ thất bại.");
         }
     };
 
@@ -246,7 +304,7 @@ const ManageAddresses = () => {
                 <AddressForm
                     initialData={editingAddress}
                     onSubmit={handleSubmit}
-                    onCancel={() => setIsFormOpen(false)}
+                    onCancel={handleCancelForm} // Dùng hàm hủy mới
                 />
             ) : (
                 // 2. Giao diện Danh sách

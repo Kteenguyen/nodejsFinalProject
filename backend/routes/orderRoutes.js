@@ -1,16 +1,10 @@
 // backend/routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
-
-// Giữ đúng tên file controller bạn đang có:
-// Nếu file là controllers/orderControllers.js => dùng dòng dưới:
-const orderCtrl = require('../controllers/orderControllers');
-// Nếu bạn đã đổi sang orderController.js => dùng:
-// const orderCtrl = require('../controllers/orderController');
-
 const discountCtrl = require('../controllers/discountControllers'); // tương tự: controllers/discountControllers.js
 const identifyUser = require('../middleware/identifyUser');
 const { protect, admin } = require('../middleware/authMiddleware');
+const orderCtrl = require('../controllers/orderControllers');
 
 /**
  * CREATE ORDER (#21) – khách/đăng nhập đều tạo được
@@ -35,7 +29,7 @@ router.get('/discount/validate', discountCtrl.validateCode);
 /**
  * USER: danh sách đơn của tôi
  */
-router.get('/my', protect, orderCtrl.listMyOrders);
+router.get('/myorders', protect, orderCtrl.listMyOrders);
 
 /**
  * ORDER DETAIL & UPDATE STATUS

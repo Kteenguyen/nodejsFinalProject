@@ -1,16 +1,16 @@
 // frontend/src/components/common/UserDetail.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // 👈 1. Import useCallback
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    X, Save, ChevronRight, Calendar as CalendarIcon, 
-    Award, Gift, Coins // 👈 Import thêm icon mới
+import {
+    X, Save, ChevronRight, Calendar as CalendarIcon,
+    Award, Gift, Coins
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 import { UserController } from '../../controllers/userController';
+import { OrderController } from '../../controllers/OrderController';
 import { useAuth } from '../../context/AuthContext';
 
-// Import Component
 import Calendar from './Calendar';
 import OrderHistory from '../Order/OrderHistory';
 
@@ -21,7 +21,7 @@ const calculateAge = (dobString) => {
         const dateValue = typeof dobString === 'string' ? dobString.replace(/-/g, '/') : dobString;
         const birthDate = new Date(dateValue);
         if (isNaN(birthDate.getTime())) return 'N/A';
-        
+
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
         const m = today.getMonth() - birthDate.getMonth();
@@ -32,7 +32,7 @@ const calculateAge = (dobString) => {
     } catch (e) { return 'N/A'; }
 };
 
-// === HÀM TÍNH HẠNG THÀNH VIÊN (Giả lập) ===
+// === HÀM TÍNH HẠNG THÀNH VIÊN ===
 const getMemberTier = (points) => {
     const p = parseInt(points) || 0;
     if (p >= 5000) return { name: 'Kim Cương', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: '💎' };
@@ -43,8 +43,9 @@ const getMemberTier = (points) => {
 
 const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
     const isModal = context === 'admin';
-    const isAdmin = context === 'admin'; // Biến check quyền admin
-    const { setUser: setAuthUser } = useAuth();
+    const isAdmin = context === 'admin';
+
+    const { setUser: setAuthUser, user: authUser } = useAuth();
 
     const [formData, setFormData] = useState({
         name: '',
@@ -52,7 +53,7 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
         phoneNumber: '',
         dateOfBirth: '',
         gender: 'other',
-        points: 0, // 👈 Thêm trường điểm
+        points: 0,
     });
 
     const [isEditing, setIsEditing] = useState(false);
@@ -60,6 +61,40 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
     const [orders, setOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
 
+    // 👈 2. DI CHUYỂN LÊN TRƯỚC useEffect VÀ DÙNG useCallback
+    const fetchUserOrders = useCallback(async () => {
+        if (!user?._id || !authUser) return;
+
+        setLoadingOrders(true);
+        try {
+            let orderData = [];
+
+            if (context === 'admin' && authUser.role === 'admin') {
+                const allOrders = await OrderController.getAllOrdersForAdmin();
+                if (Array.isArray(allOrders)) {
+                    orderData = allOrders.filter(order =>
+                        order.accountId === user._id || order.user === user._id
+                    );
+                }
+            }
+            else {
+                orderData = await OrderController.getMyOrders();
+            }
+
+            if (Array.isArray(orderData)) {
+                setOrders(orderData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+            } else {
+                setOrders([]);
+            }
+
+        } catch (error) {
+            console.error("Lỗi tải lịch sử đơn hàng:", error);
+        } finally {
+            setLoadingOrders(false);
+        }
+    }, [user, context, authUser]); // 👈 Dependencies của hàm này
+
+    // 👈 3. CẬP NHẬT useEffect
     useEffect(() => {
         if (user) {
             setFormData({
@@ -68,26 +103,14 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                 phoneNumber: user.phoneNumber || '',
                 dateOfBirth: user.dateOfBirth || '',
                 gender: user.gender || 'other',
-                points: user.points || 0, // 👈 Load điểm từ user prop
+                points: user.points || 0,
             });
             setIsEditing(false);
-            fetchUserOrders(user._id);
-        }
-    }, [user]);
 
-    const fetchUserOrders = async (userId) => {
-        setLoadingOrders(true);
-        try {
-            const response = await UserController.getOrdersHistory(userId);
-            if (response) {
-                setOrders(response.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-            }
-        } catch (error) {
-            console.error("Lỗi tải lịch sử đơn hàng:", error);
-        } finally {
-            setLoadingOrders(false);
+            // Gọi hàm tải đơn hàng
+            fetchUserOrders();
         }
-    };
+    }, [user, fetchUserOrders]); // 👈 Thêm fetchUserOrders vào dependency array
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -97,7 +120,6 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            // Gộp formData vào user cũ để giữ lại _id và các trường không sửa
             const updatedData = { ...user, ...formData };
 
             if (context === 'admin' && onSave) {
@@ -105,8 +127,6 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                 setIsEditing(false);
             }
             else if (context === 'user') {
-                // User thường không được sửa điểm, backend nên chặn, nhưng frontend cũng nên lọc ra
-                // Tuy nhiên ở đây ta gửi hết, backend xử lý security
                 const response = await UserController.updateProfile(formData);
                 if (response) {
                     const updatedUser = response.user || response;
@@ -123,7 +143,7 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
         }
     };
 
-    // --- LOGIC UI CHO CALENDAR (Giữ nguyên từ bước trước) ---
+    // --- LOGIC UI ---
     const age = calculateAge(formData.dateOfBirth);
     const calendarRightContent = (age !== 'N/A') ? (
         <span className={`text-xs px-2 py-1 rounded-full font-medium
@@ -135,14 +155,12 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
         <CalendarIcon size={18} className="text-gray-400" />
     );
 
-    // --- UI THÔNG TIN HẠNG THÀNH VIÊN ---
     const tier = getMemberTier(formData.points);
 
     const FormContent = () => (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-                
-                {/* === SECTION: ƯU ĐÃI & HẠNG (MỚI) === */}
+
                 <div className={`p-4 rounded-xl border flex items-center justify-between ${tier.color}`}>
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-full bg-white/50 flex items-center justify-center text-2xl shadow-sm">
@@ -161,10 +179,8 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                         <p className="text-sm opacity-80">Tích điểm để nhận thêm quà</p>
                     </div>
                 </div>
-                {/* ==================================== */}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Họ tên */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-text-secondary">Họ và tên</label>
                         <input
@@ -172,14 +188,12 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                             className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
                         />
                     </div>
-                    
-                    {/* Email */}
+
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-text-secondary">Email</label>
                         <input type="email" value={formData.email} disabled={true} className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-100 text-text-secondary cursor-not-allowed" />
                     </div>
 
-                    {/* Số điện thoại */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-text-secondary">Số điện thoại</label>
                         <input
@@ -188,16 +202,14 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                         />
                     </div>
 
-                    {/* Lịch (đã fix UI) */}
-                    <Calendar 
+                    <Calendar
                         value={formData.dateOfBirth}
                         onChange={(newDate) => setFormData(prev => ({ ...prev, dateOfBirth: newDate }))}
                         disabled={!isEditing}
                         rightContent={calendarRightContent}
                     />
 
-                    {/* Giới tính */}
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <label className="text-sm font-medium text-text-secondary">Giới tính</label>
                         <select
                             name="gender" value={formData.gender} onChange={handleChange} disabled={!isEditing}
@@ -207,9 +219,8 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                             <option value="female">Nữ</option>
                             <option value="other">Khác</option>
                         </select>
-                    </div>
+                    </div> */}
 
-                    {/* === TRƯỜNG ĐIỂM TÍCH LŨY (MỚI) === */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
                             <Coins size={16} className="text-yellow-500" />
@@ -217,28 +228,23 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                         </label>
                         <div className="relative">
                             <input
-                                type="number" 
-                                name="points" 
-                                value={formData.points} 
-                                onChange={handleChange} 
-                                // LOGIC QUAN TRỌNG: 
-                                // Admin + Đang Edit => Được sửa
-                                // User hoặc Không Edit => Bị khóa
+                                type="number"
+                                name="points"
+                                value={formData.points}
+                                onChange={handleChange}
                                 disabled={!(isAdmin && isEditing)}
                                 className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none
                                     ${!(isAdmin && isEditing)
-                                        ? 'bg-gray-50 border-gray-200 text-text-secondary cursor-not-allowed' 
+                                        ? 'bg-gray-50 border-gray-200 text-text-secondary cursor-not-allowed'
                                         : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
                                     }
                                 `}
                             />
-                            {/* Badge nhỏ bên trong input để hiển thị đơn vị */}
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">
                                 điểm
                             </div>
                         </div>
                     </div>
-                    {/* =================================== */}
 
                 </div>
             </div>
@@ -249,7 +255,6 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
         </div>
     );
 
-    // --- ActionButtons và Render Modal giữ nguyên ---
     const ActionButtons = () => (
         <div className="flex items-center justify-end gap-4 mt-8 pt-6 border-t border-gray-100">
             {!isEditing ? (
@@ -259,10 +264,12 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                 </>
             ) : (
                 <>
-                    <button onClick={() => { setIsEditing(false); if(user) setFormData({ 
-                        name: user.name || '', email: user.email || '', phoneNumber: user.phoneNumber || '', dateOfBirth: user.dateOfBirth || '', gender: user.gender || 'other', 
-                        points: user.points || 0 // Reset điểm khi hủy
-                    }); }} className="px-6 py-2.5 rounded-lg border border-gray-300 text-text-secondary hover:bg-gray-50 transition-colors font-medium">Hủy bỏ</button>
+                    <button onClick={() => {
+                        setIsEditing(false); if (user) setFormData({
+                            name: user.name || '', email: user.email || '', phoneNumber: user.phoneNumber || '', dateOfBirth: user.dateOfBirth || '', gender: user.gender || 'other',
+                            points: user.points || 0
+                        });
+                    }} className="px-6 py-2.5 rounded-lg border border-gray-300 text-text-secondary hover:bg-gray-50 transition-colors font-medium">Hủy bỏ</button>
                     <button onClick={handleSave} disabled={loading} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors font-medium shadow-md hover:shadow-lg transform active:scale-95 duration-200 disabled:opacity-70">
                         {loading ? 'Đang lưu...' : <><Save size={18} /> Lưu thay đổi</>}
                     </button>

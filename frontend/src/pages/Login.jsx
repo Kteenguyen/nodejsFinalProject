@@ -11,7 +11,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import AuthSide from "../components/common/AuthSide"; // Import Component mới
+import AuthSide from "../components/common/AuthSide";
 
 const Login = () => {
     const { login } = useAuth();
@@ -20,37 +20,47 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
+    /**
+         * ❗ NÂNG CẤP 1: Tạo hàm xử lý chung (DRY)
+         * Hàm này sẽ lo mọi logic sau khi có được 'userData'
+         */
+    const handleLoginSuccess = (userData) => {
+        // 1. Báo cho AuthContext (đã có provider)
+        // (userData này là từ hàm sendTokenResponse của backend)
+        login(userData);
+
+        toast.success("Đăng nhập thành công!");
+
+        // 2. Điều hướng (dựa trên userData)
+        setTimeout(() => {
+            if (userData.role === "admin") {
+                navigate("/admin/dashboard");
+            } else {
+                navigate("/");
+            }
+        }, 1500);
+    };
+    /**
+     * NÂNG CẤP 2: Sửa lại cả 3 hàm đăng nhập
+     */
+    // 1. Đăng nhập thường
     const handleNormalLogin = async (e) => {
         e.preventDefault();
         try {
+            // Backend trả về { ..., user: {...} }
             const data = await AuthController.login(identifier, password);
-            login(data.user);
-            toast.success("Đăng nhập thành công!");
-            setTimeout(() => {
-                if (data.user.role === "admin") {
-                    navigate("/admin/dashboard");
-                } else {
-                    navigate("/");
-                }
-            }, 1500);
+            handleLoginSuccess(data.user); // 👈 Gọi hàm chung
         } catch (error) {
             toast.error(error.message);
         }
     };
-
+    // 2. Đăng nhập Google
     const handleGoogleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
             try {
+                // Backend trả về { ..., user: {...} }
                 const data = await AuthController.googleLogin(tokenResponse.access_token);
-                login(data.user);
-                toast.success("Đăng nhập Google thành công!");
-                setTimeout(() => {
-                    if (data.user.role === "admin") {
-                        navigate("/admin/dashboard");
-                    } else {
-                        navigate("/");
-                    }
-                }, 1500);
+                handleLoginSuccess(data.user); // 👈 Gọi hàm chung
             } catch (error) {
                 toast.error("Lỗi đăng nhập Google: " + error.message);
             }
@@ -58,25 +68,13 @@ const Login = () => {
         onError: () => toast.error("Đăng nhập Google thất bại"),
     });
 
+    // 3. Đăng nhập Facebook
     const handleFacebookLoginSuccess = async (response) => {
-        // console.log("Facebook response:", response);
         if (response.accessToken) {
             try {
-                // 1. Gửi accessToken lên backend
+                // Backend trả về { ..., user: {...} }
                 const data = await AuthController.facebookLogin(response.accessToken, response.userID);
-                // 2. Báo cho AuthContext
-                login(data);
-
-                toast.success("Đăng nhập Facebook thành công!");
-
-                // 3. Điều hướng
-                setTimeout(() => {
-                    if (data.role === "admin") {
-                        navigate("/admin/dashboard");
-                    } else {
-                        navigate("/");
-                    }
-                }, 1500);
+                handleLoginSuccess(data.user); // 👈 Gọi hàm chung
             } catch (error) {
                 toast.error(error.message || "Đăng nhập Facebook thất bại!");
             }
@@ -85,20 +83,14 @@ const Login = () => {
         }
     };
 
+    // (Phần JSX return giữ nguyên như code của bạn)
     return (
         <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-
-            {/* SỬ DỤNG COMPONENT MỚI */}
             <AuthSide imgSrc="/img/login-illustration.svg" />
-
-            {/* RIGHT SIDE FORM */}
             <div className="flex flex-col justify-center items-center w-full md:w-1/2 px-8 py-10 overflow-y-auto bg-white">
-
-                {/* Logo cho Mobile */}
                 <div className="md:hidden absolute top-6 left-6 flex items-center space-x-2">
                     <img src="/img/logo.svg" alt="Logo" className="h-24 w-auto" />
                 </div>
-
                 <div className="max-w-sm w-full mt-24 md:mt-0">
                     <h1 className="text-2xl font-semibold text-gray-800 mb-1">Xin chào!</h1>
                     <h3 className="text-gray-600 mb-6">
@@ -119,7 +111,7 @@ const Login = () => {
                                 appId={process.env.REACT_APP_FACEBOOK_APP_ID}
                                 onSuccess={handleFacebookLoginSuccess}
                                 onFail={(error) => console.log('Login Failed!', error)}
-                                // XÓA DÒNG "onProfileSuccess" Ở ĐÂY
+                                // Xóa onProfileSuccess để tránh warning
                                 render={({ onClick }) => (
                                     <button onClick={onClick} className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-md py-2 hover:bg-gray-50 transition text-gray-700">
                                         <FaFacebook className="w-5 h-5 text-blue-600" /> Facebook
@@ -148,7 +140,6 @@ const Login = () => {
                                 required
                             />
                         </div>
-
                         <div>
                             <label className="block text-sm font-medium mb-1">Mật khẩu</label>
                             <div className="relative">
@@ -169,7 +160,6 @@ const Login = () => {
                                 </button>
                             </div>
                         </div>
-
                         <div className="flex items-center justify-between text-sm">
                             <label className="flex items-center text-gray-600">
                                 <input type="checkbox" className="mr-2 rounded text-blue-600" /> Ghi nhớ tài khoản này
@@ -179,7 +169,6 @@ const Login = () => {
                                 Quên mật khẩu ?
                             </Link>
                         </div>
-
                         <div className="pt-2">
                             <button
                                 type="submit"
@@ -189,7 +178,6 @@ const Login = () => {
                             </button>
                         </div>
                     </form>
-
                     <p className="text-center text-sm text-gray-600 mt-6 pb-10">
                         Lần đầu bạn đến với PhoneWorld?{" "}
                         <Link to="/register"
