@@ -28,7 +28,8 @@ function App() {
     location.pathname.startsWith("/admin") ||
     location.pathname === "/login" ||
     location.pathname === "/register" ||
-    location.pathname === "/register-address";
+    location.pathname === "/register-address"||
+    location.pathname === "/forgot-password" ;
 
   const LogoutRoute = () => {
   const { logout } = useAuth();
@@ -76,7 +77,6 @@ function App() {
         <Route path="/cart" element={<CartPage />} />                     {/* #17 */}
         <Route path="/category/:categoryId" element={<CategoryRoute />} />{/* #16 (ordering trong component) */}
         <Route path="/profile" element={<ProfilePage />} />
-
         {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

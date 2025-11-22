@@ -50,7 +50,6 @@ const ChangePassword = () => {
     if (isSocialLogin) {
         return (
             <div className="bg-surface rounded-lg shadow-md p-6">
-                <h2 className="text-lg font-medium text-text-primary mb-4">Đổi mật khẩu</h2>
                 <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
                     <div className="flex items-center">
                         <div className="flex-shrink-0">
@@ -75,7 +74,6 @@ const ChangePassword = () => {
 
     return (
         <div className="bg-surface rounded-lg shadow-md p-6">
-            <h2 className="text-lg font-medium text-text-primary mb-4">Đổi mật khẩu</h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>

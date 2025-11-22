@@ -78,6 +78,18 @@ export const AuthController = {
             throw new Error(message);
         }
     },
+    resetPassword: async (token, password) => {
+        try {
+            const response = await api.put(`/auth/reset-password/${token}`, {
+                password
+            });
+            return response.data;
+        } catch (error) {
+            // Ném lỗi để Component hiển thị
+            const message = error.response?.data?.message || "Đặt lại mật khẩu thất bại.";
+            throw new Error(message);
+        }
+    },
     logout: async () => {
         try {
             const response = await api.post("/auth/logout");

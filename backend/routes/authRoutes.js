@@ -10,6 +10,7 @@ const {
     checkSession,
     forgotPassword,
     changePassword,
+    resetPassword,
     emergencyReset
  } = require('../controllers/authController.js');
 
@@ -33,5 +34,6 @@ router.get('/check-session', checkSession);
 router.post("/logout", logout);
 router.post('/forgot-password', forgotPassword);
 router.put('/change-password', protect, changePassword);
+router.put('/reset-password/:token', resetPassword);
 router.get('/emergency-reset', emergencyReset); // Nhớ import hàm ở trên
 module.exports = router;
