@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import SidebarFilter from "../components/products/filters/SidebarFilter";
 import { listProducts, getBrands, getCategories } from "../services/productApi";
+import ProductCard from "../components/Home/ProductCard";
 
 function isAbort(err) {
   return err?.name === "AbortError" || /abort/i.test(String(err?.message));
@@ -119,19 +120,9 @@ export default function ProductsPage() {
       {/* Kết quả */}
       <section>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-          {items.map((p) => {
-            const name = p.name || p.productName || "(Không tên)";
-            const price =
-              (p.lowestPrice ?? p.minPrice ?? 0).toLocaleString("vi-VN") + " đ";
-            const img = (p.images && p.images[0]) || "/img/placeholder.png";
-            return (
-              <article key={p._id || p.productId} className="bg-white rounded shadow p-3">
-                <img src={img} alt="" className="w-full aspect-square object-cover rounded" />
-                <div className="mt-2 font-medium line-clamp-2">{name}</div>
-                <div className="text-indigo-600 font-semibold">{price}</div>
-              </article>
-            );
-          })}
+          {items.map((p) => (
+            <ProductCard key={p._id || p.productId || p.id} product={p} />
+          ))}
         </div>
 
         {/* phân trang */}
