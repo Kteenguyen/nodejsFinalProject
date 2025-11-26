@@ -1,15 +1,70 @@
-// frontend/src/services/productApi.js
+// src/services/productApi.js
+import axios from "axios";
 import { API_BASE } from "./https";
 
-// helper build query
+// helper build query cho mấy hàm khác (nếu cần)
 const toQS = (obj = {}) =>
   new URLSearchParams(
-    Object.entries(obj).filter(([, v]) => v !== undefined && v !== null && v !== "")
+    Object.entries(obj).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ""
+    )
   ).toString();
 
-  const jsonOrText = async (res) => {
+// Lấy danh sách sản phẩm cho trang admin
+export async function getProductsAdmin(params = {}) {
+  const {
+    page = 1,
+    limit = 10,
+    sort = "newest",      // newest | price_asc | price_desc ...
+    search = "",
+    brand = "",
+    category = "",
+    productType = "",     // all | new | bestseller | special ...
+  } = params;
+
+  try {
+    const res = await axios.get(`${API_BASE}/products`, {
+      params: {
+        page,
+        limit,
+        sort,
+        search: search || undefined,
+        brand: brand || undefined,
+        category: category || undefined,
+        productType: productType || undefined,
+        // param admin này backend hiện không dùng, nhưng để cũng không sao
+        admin: "true",
+      },
+      withCredentials: true,
+    });
+
+    // BE trả về dạng: { success, items, pagination }
+    return res.data;
+  } catch (error) {
+    console.error("LOAD PRODUCTS ERROR", error);
+    throw error;
+  }
+}
+
+/* ================== CÁC HÀM KHÁC (nếu cần) ================== */
+
+// (Tùy bạn có dùng hay không – mình để sẵn, nhưng đã bỏ bug page/limit & res.ok)
+export async function listProducts(params = {}, signal) {
+  const res = await axios.get(`${API_BASE}/products`, {
+    params,
+    withCredentials: true,
+    signal,
+  });
+  return res.data;
+}
+
+const jsonOrText = async (res) => {
   const text = await res.text();
-  try { return JSON.parse(text); } catch { return { success:false, message:text || res.statusText }; }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { success: false, message: text || res.statusText };
+  }
 };
 
 const throwIfFail = (j, res) => {
@@ -18,34 +73,9 @@ const throwIfFail = (j, res) => {
   throw new Error(msg);
 };
 
-/** Danh sách sản phẩm (FE + Admin dùng chung) */
-export async function listProducts(params = {}, signal) {
-  const qs = new URLSearchParams(params).toString();
-  try {
-    const res = await fetch(`${API_BASE}/api/products${qs ? `?${qs}` : ""}`, {
-      credentials: "include",
-      signal,
-    });
-    if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-    return res.json();
-  } catch (e) {
-    if (e?.name === "AbortError" || /aborted/i.test(String(e?.message))) {
-      // Cho phép caller nhận biết nếu cần
-      e.aborted = true;
-      throw e;
-    }
-    throw e;
-  }
-}
-
-/** ✅ Alias để không phải sửa component admin */
-export async function getProductsAdmin(params = {}, signal) {
-  return listProducts(params, signal);
-}
-
-/** Chi tiết sản phẩm */
+// ví dụ: /products/:id
 export async function getProductById(productId, signal) {
-  const res = await fetch(`${API_BASE}/api/products/${productId}`, {
+  const res = await fetch(`${API_BASE}/products/${productId}`, {
     credentials: "include",
     signal,
   });

@@ -1,18 +1,19 @@
-// Dùng các hàm named từ https.js (KHÔNG có default export)
+// src/services/ordersApi.js
 import { httpGet, httpPut } from './https';
 
-const BASE = '/api/orders';
+const BASE = '/orders';
 
 const OrdersApi = {
-  // Admin list – backend hiện tại là GET /api/orders/admin/all
   list(params) {
     return httpGet(`${BASE}/admin/all`, { params });
   },
+
   // Chi tiết đơn
   detail(orderId) {
     return httpGet(`${BASE}/${orderId}`);
   },
-  // Cập nhật trạng thái / isPaid (Admin)
+
+  // Cập nhật trạng thái
   updateStatus(orderId, body) {
     return httpPut(`${BASE}/${orderId}/status`, body);
   },

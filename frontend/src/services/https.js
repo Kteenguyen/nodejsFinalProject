@@ -3,7 +3,7 @@ export const API_BASE =
   (typeof process !== "undefined" &&
     process.env &&
     process.env.REACT_APP_API_BASE) ||
-  "https://localhost:3001";
+  "https://localhost:3001/api";
 
 // Helper chung cho mọi service
 async function request(method, path, { body, signal, headers } = {}) {
@@ -36,3 +36,4 @@ export const httpPost   = (path, opts) => request("POST",   path, opts);
 export const httpPut    = (path, opts) => request("PUT",    path, opts);
 export const httpPatch  = (path, opts) => request("PATCH",  path, opts);
 export const httpDelete = (path, opts) => request("DELETE", path, opts);
+export default API_BASE;

@@ -5,18 +5,43 @@ import ProductManagement from "../components/Dashboard/ProductManagement";
 import Settings from "../components/Dashboard/Settings";
 import DashboardAdvanced from "../pages/DashboardAdvanced";
 import AdminOrders from "../pages/AdminOrders";
+import AdminProductEditPage from "../pages/AdminProductEditPage";
+import AdminProductNewPage from "../pages/AdminProductNewPage";
+import AdminOrderDetail from "../pages/AdminOrderDetail";
+import DiscountManagement from "../pages/DiscountManagement"; 
 
 export default function DashboardRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />}>
-        {/* dùng Advanced */}
+        
+        {/* Route mặc định: Chuyển hướng về /admin/dashboard */}
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+
+        {/* Các trang chức năng */}
         <Route path="dashboard" element={<DashboardAdvanced />} />
         <Route path="users" element={<Users />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="products" element={<ProductManagement />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
+
+        {/* --- QUẢN LÝ SẢN PHẨM --- */}
+        <Route path="products" element={<ProductManagement />} />
+        <Route path="products/new" element={<AdminProductNewPage />} />
+        <Route path="products/:id/edit" element={<AdminProductEditPage />} />
+
+        {/* --- QUẢN LÝ ĐƠN HÀNG --- */}
+        {/* 1. Danh sách đơn hàng */}
+        <Route path="orders" element={<AdminOrders />} />
+        
+        {/* 2. Chi tiết đơn hàng (Lưu ý: path tương đối, không có /admin ở đầu) */}
+        <Route path="orders/:id" element={<AdminOrderDetail />} />
+
+        {/* --- CỤM DISCOUNT (QUAN TRỌNG) --- */}
+        <Route path="discounts" element={<DiscountManagement />} />
+
+        {/* --- FALLBACK (CHỐNG LỖI LẶP) --- */}
+        {/* Nếu đường dẫn sai, buộc quay về trang chủ Dashboard tuyệt đối */}
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+      
       </Route>
     </Routes>
   );

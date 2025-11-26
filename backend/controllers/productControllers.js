@@ -207,8 +207,16 @@ exports.getBrandsList = async (_req, res) => {
 exports.getCategoriesList = async (_req, res) => {
   try {
     const rows = await Product.aggregate([
+      // 1. Chỉ lấy sản phẩm có categoryId
       { $match: { 'category.categoryId': { $exists: true, $ne: '' } } },
-      { $group: { _id: '$category.categoryId', name: { $first: '$category.name' } } },
+      
+      // 2. Gom nhóm: SỬA LỖI Ở ĐÂY (dùng categoryName thay vì name)
+      { $group: { 
+          _id: '$category.categoryId', 
+          name: { $first: '$category.categoryName' } // <--- Đã sửa dòng này
+      }},
+      
+      // 3. Format lại kết quả trả về
       { $project: { _id: 0, id: '$_id', name: { $ifNull: ['$name', ''] } } },
       { $sort: { name: 1 } }
     ]);
