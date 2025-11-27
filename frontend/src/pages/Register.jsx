@@ -265,9 +265,7 @@ const Register = ({ onSuccess, onClose, context }) => {
     // Trường hợp Page (Public)
     return (
         <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-
             <AuthSide imgSrc="/img/register-illustration.svg" />
-
             <div className="flex flex-col justify-start items-center w-full md:w-1/2 px-8 py-10 overflow-y-auto">
                 <div className="max-w-sm w-full">
                     {formContent}

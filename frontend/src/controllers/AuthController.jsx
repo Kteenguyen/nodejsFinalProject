@@ -1,5 +1,6 @@
 // frontend/src/controllers/AuthController.jsx
 import api from "../services/api";
+import { toast } from 'react-toastify'; // 👈 BẮT BUỘC PHẢI CÓ DÒNG NÀY
 export const AuthController = {
     login: async (identifier, password) => {
         try {
