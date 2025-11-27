@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import SidebarFilter from "../components/products/filters/SidebarFilter";
-import { listProducts, getBrands, getCategories } from "../services/productApi";
+import { ProductController } from '../controllers/productController';
 import ProductCard from "../components/Home/ProductCard";
 
 function isAbort(err) {

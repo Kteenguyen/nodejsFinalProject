@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { getMe } from "../services/authApi";
+import { AuthController } from '../controllers/AuthController';
 
 function isAdminUser(u) {
   if (!u) return false;
@@ -20,7 +20,7 @@ export default function RequireAdmin({ children }) {
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
-    getMe(ctrl.signal)
+    AuthController.checkAuth()(ctrl.signal)
       .then((json) => {
         const user = json?.user ?? json; // tuỳ API
         setAllowed(isAdminUser(user));

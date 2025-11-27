@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { ProductController } from '../../controllers/productController';
 import { toast } from "react-toastify";
-import { getProductsAdmin } from "../../services/productApi";
 
 const API_BASE = "https://localhost:3001/api";
 
@@ -23,7 +23,7 @@ export default function ProductManagement() {
     const ctrl = new AbortController();
     setLoading(true);
 
-    getProductsAdmin({ page, limit, search, sort, admin: true }, ctrl.signal)
+    ProductController.getProducts({ page, limit, search, sort, admin: true }, ctrl.signal)
       .then((resData) => {
         // hỗ trợ nhiều kiểu shape trả về từ BE
         const raw =

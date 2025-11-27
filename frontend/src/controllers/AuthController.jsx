@@ -1,33 +1,14 @@
-// frontend/src/controllers/AuthController.js
+// frontend/src/controllers/AuthController.jsx
 import api from "../services/api";
-import { toast } from 'react-toastify';
-import axios from 'axios'; // Import axios để kiểm tra instance của lỗi
-
-const handleApiError = (error, customMessage = "Đã xảy ra lỗi") => {
-    const message = error.response?.data?.message || error.message || customMessage;
-    toast.error(message);
-    throw new Error(message);
-};
-
 export const AuthController = {
     login: async (identifier, password) => {
         try {
             const response = await api.post("/auth/login", { identifier, password });
-
-            // 🛡️ BỔ SUNG: Kiểm tra status code thủ công (đề phòng axios không ném lỗi)
-            if (response.status >= 400) {
+            if (response.status >= 400 || (response.data && !response.data.success)) {
                 throw new Error(response.data?.message || "Đăng nhập thất bại");
             }
-
-            // 🛡️ BỔ SUNG: Kiểm tra biến success từ backend
-            if (response.data && !response.data.success) {
-                throw new Error(response.data.message || "Đăng nhập thất bại");
-            }
-
             return response.data;
         } catch (error) {
-            console.error("Login failed:", error.response?.data || error.message);
-            // Ném lỗi ra để Login.jsx bắt được
             const msg = error.response?.data?.message || error.message || "Đăng nhập thất bại";
             throw new Error(msg);
         }
@@ -40,7 +21,6 @@ export const AuthController = {
             });
             return response.data;
         } catch (error) {
-            console.error("Registration failed:", error.response?.data || error.message);
             throw new Error(error.response?.data?.message || "Đăng ký thất bại");
         }
     },
@@ -78,72 +58,58 @@ export const AuthController = {
             throw new Error(message);
         }
     },
-    resetPassword: async (token, password) => {
-        try {
-            const response = await api.put(`/auth/reset-password/${token}`, {
-                password
-            });
-            return response.data;
-        } catch (error) {
-            // Ném lỗi để Component hiển thị
-            const message = error.response?.data?.message || "Đặt lại mật khẩu thất bại.";
-            throw new Error(message);
-        }
-    },
     logout: async () => {
         try {
             const response = await api.post("/auth/logout");
             return response.data;
         } catch (error) {
-            console.error("Logout failed:", error.response?.data || error.message);
-            throw new Error(error.response?.data?.message || "Đăng xuất thất bại");
+            throw new Error("Đăng xuất thất bại");
         }
     },
-    // HÀM MỚI ĐỂ GỌI KHI F5
-    checkSession: () => api.get('/auth/check-session'),
-    // =========================================================
-    // === 🔴 FIX HOÀN TOÀN checkAuth KHÔNG NÉM LỖI KHI 401 🔴 ===
-    // =========================================================
-    checkAuth: async () => {
+
+    // Tích hợp logic checkSession vào đây
+    checkSession: async () => {
         try {
-            const response = await api.get("/users/me");
-
-            // Nếu API trả về 200 (OK)
-            // (Giả định response.data có user và là đã xác thực)
-            return { isAuthenticated: true, user: response.data.user };
-
+            const response = await api.get('/auth/check-session');
+            return response.data; // { isAuthenticated: true, user: ... }
         } catch (error) {
-            // Khi API trả về 401, Axios sẽ ném lỗi vào khối catch này.
-
-            if (error.response?.status === 401) {
-                // Đây là trường hợp người dùng CHƯA ĐĂNG NHẬP.
-                // ✅ Thay vì ném lỗi, chúng ta CHỈ TRẢ VỀ một đối tượng báo hiệu chưa xác thực.
-                return { isAuthenticated: false, user: null };
-            }
-
-
             return { isAuthenticated: false, user: null };
         }
-    },    // =========================================================
+    },
+
+    // Tích hợp logic getMe vào đây
+    checkAuth: async () => {
+        try {
+            // Thay thế getMe() bằng gọi trực tiếp
+            const response = await api.get("/auth/me");
+            return { isAuthenticated: true, user: response.data.user || response.data };
+        } catch (error) {
+            // Check lỗi 401
+            if (error.response?.status === 401) {
+                return { isAuthenticated: false, user: null };
+            }
+            return { isAuthenticated: false, user: null };
+        }
+    },
 
     forgotPassword: async (email) => {
         try {
-            const response = await api.post('/auth/forgot-password', { email });
-            toast.success(response.data.message || "Yêu cầu thành công, kiểm tra email!");
+            const res = await api.post('/auth/forgot-password', { email });
+            toast.success(res.data.message);
             return true;
-        } catch (error) {
-            handleApiError(error, "Lỗi yêu cầu đặt lại mật khẩu!");
+        } catch (e) {
+            toast.error(e.response?.data?.message || "Lỗi");
             return false;
         }
     },
 
-    resetPassword: async (token, passwordData) => {
+    resetPassword: async (token, data) => {
         try {
-            const response = await api.put(`/auth/reset-password/${token}`, passwordData);
-            toast.success(response.data.message || "Đặt lại mật khẩu thành công!");
+            const res = await api.put(`/auth/reset-password/${token}`, data);
+            toast.success(res.data.message);
             return true;
-        } catch (error) {
-            handleApiError(error, "Lỗi đặt lại mật khẩu!");
+        } catch (e) {
+            toast.error(e.response?.data?.message || "Lỗi");
             return false;
         }
     }

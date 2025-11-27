@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import FilterBar from "../components/products/FilterBar";
 import SortBar from "../components/products/SortBar";
-import { listProducts } from "../services/productApi";
-import { API_BASE } from "../services/https";
+import { ProductController } from '../controllers/productController';
+import { API_BASE } from "../services/api";
 import { currency } from "../utils/format";
 
 function ProductCard({ p }) {

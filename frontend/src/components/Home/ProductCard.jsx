@@ -6,7 +6,6 @@ import { FaCartPlus } from "react-icons/fa";
 import { useCart } from "../../context/CartContext";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
-import { getProductById } from "../../services/productApi";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -21,7 +20,7 @@ export default function ProductCard({ product }) {
 
   const detailId = p.productId || p._id || p.id || "";
   const firstImg = p?.images?.[0];
-  const imageUrl = ProductController.getImageUrl(firstImg);
+  const imageUrl = ProductController.getImageUrl(product.image);
 
   // Chọn biến thể bán được; nếu không có variants -> dùng price chung
   const pickSellableVariant = (obj) => {
@@ -107,9 +106,7 @@ export default function ProductCard({ product }) {
     <motion.div variants={itemVariants}>
       <div className="bg-white rounded-xl shadow-xl overflow-hidden transform transition duration-500 hover:scale-105">
         <Link to={`/products/${detailId}`} className="block relative h-40 overflow-hidden">
-          <img
-            src={imageUrl}
-            alt={p?.productName || "Product image"}
+          <img src={imageUrl} alt={product.name}
             className="w-full h-full object-contain transition-transform duration-300"
             loading="lazy"
           />

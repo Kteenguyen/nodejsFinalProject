@@ -1,7 +1,6 @@
 // frontend/src/components/Dashboard/DashboardHome.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { getKpis, getFallbackCounts } from "../../services/dashboardApi";
-import { API_BASE } from "../../services/https";
+import { getKpis, getFallbackCounts } from "../services/api";
 import { TrendingUp, ShoppingCart, PiggyBank } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
