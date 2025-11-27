@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import FilterBar from "../components/products/FilterBar";
 import SortBar from "../components/products/SortBar";
 import { ProductController } from '../controllers/productController';
-import { API_BASE } from "../services/api";
 import { currency } from "../utils/format";
 
 function ProductCard({ p }) {
@@ -38,34 +37,36 @@ export default function ProductsSearch() {
   const limit = 12;
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/products/brands`, { credentials: "include" })
-      .then(r=>r.json()).then(j=>setBrands(j?.brands || []))
-      .catch(()=>setBrands([]));
-
-    fetch(`${API_BASE}/api/products/categories`, { credentials: "include" })
-      .then(r=>r.json()).then(j=>setCategories(j?.categories || []))
-      .catch(()=>setCategories([]));
+    (async () => {
+      try {
+        const brandsRes = await fetch('/api/products/brands', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
+        const categoriesRes = await fetch('/api/products/categories', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
+        setBrands(brandsRes?.data || brandsRes?.brands || []);
+        setCategories(categoriesRes?.data || categoriesRes?.categories || []);
+      } catch (e) {
+        console.error("Load facets failed:", e);
+      }
+    })();
   }, []);
 
   useEffect(() => { setPage(1); }, [keyword]);
 
   async function load() {
     const params = {
-      page, limit, sort,
-      keyword: keyword || undefined,
-      categoryId: filters.categoryId || undefined,
+      page, 
+      limit, 
+      sort,
+      search: keyword || undefined,
+      category: filters.categoryId || undefined,
       brand: (filters.brand || []).join(",") || undefined,
       minPrice: filters.minPrice || undefined,
       maxPrice: filters.maxPrice || undefined,
-      minRating: filters.minRating || undefined,
-      inStock: filters.inStock ? 'true' : undefined,
-      isNew: filters.isNew ? 'true' : undefined,
-      bestSeller: filters.bestSeller ? 'true' : undefined,
+      ratingMin: filters.minRating || undefined,
     };
-    const j = await listProducts(params);
+    const j = await ProductController.getProducts(params);
     const items = j?.products || j?.data || j?.items || [];
     setProducts(items);
-    setTotal(j?.totalProducts || j?.total || items.length);
+    setTotal(j?.pagination?.totalProducts || j?.total || items.length);
   }
 
   useEffect(() => {

@@ -141,46 +141,63 @@ exports.listOrders = async (req, res) => {
     const limit = 20;
     const skip = (page - 1) * limit;
 
-    // Lấy tham số từ Frontend
-    const { date, start, end, status } = req.query;
+    // Lấy tham số từ Frontend (hỗ trợ cả format cũ: date/start/end và mới: from/to)
+    let { date, start, end, status, from, to } = req.query;
+    
+    // Nếu có from/to thì dùng, không thì dùng start/end
+    if (!start && from) start = from;
+    if (!end && to) end = to;
     
     const now = new Date();
-    let from = null, to = null;
+    let filterFrom = null, filterTo = null;
 
     // LOGIC LỌC NGÀY
     const startOfDay = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
     const endOfDay = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
 
-    switch (date) {
-      case 'today':
-        from = startOfDay(now); to = endOfDay(now);
-        break;
-      case 'yesterday':
-        const y = new Date(now); y.setDate(y.getDate() - 1);
-        from = startOfDay(y); to = endOfDay(y);
-        break;
-      case 'week': 
-        const day = now.getDay() || 7; 
-        from = startOfDay(now); 
-        from.setDate(now.getDate() - day + 1); 
-        to = endOfDay(now);
-        break;
-      case 'month':
-        from = new Date(now.getFullYear(), now.getMonth(), 1);
-        to = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-        break;
-      case 'custom':
-        if (start && end) {
-          from = startOfDay(new Date(start));
-          to = endOfDay(new Date(end));
-        }
-        break;
-      default: break;
+    // Nếu có start/end (custom date range từ frontend)
+    if (start && end) {
+      filterFrom = startOfDay(new Date(start));
+      filterTo = endOfDay(new Date(end));
+      console.log('📋 Custom date range filter:', { from: filterFrom, to: filterTo });
+    } else {
+      // Nếu không có thì dùng date parameter (today, yesterday, week, month)
+      switch (date) {
+        case 'today':
+          filterFrom = startOfDay(now); filterTo = endOfDay(now);
+          break;
+        case 'yesterday':
+          const y = new Date(now); y.setDate(y.getDate() - 1);
+          filterFrom = startOfDay(y); filterTo = endOfDay(y);
+          break;
+        case 'week': 
+          const day = now.getDay() || 7; 
+          filterFrom = startOfDay(now); 
+          filterFrom.setDate(now.getDate() - day + 1); 
+          filterTo = endOfDay(now);
+          break;
+        case 'month':
+          filterFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+          filterTo = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+          break;
+        case 'custom':
+          if (start && end) {
+            filterFrom = startOfDay(new Date(start));
+            filterTo = endOfDay(new Date(end));
+          }
+          break;
+        default: break;
+      }
     }
 
     let filterQuery = {};
-    if (from && to) filterQuery.createdAt = { $gte: from, $lte: to };
+    if (filterFrom && filterTo) {
+      filterQuery.createdAt = { $gte: filterFrom, $lte: filterTo };
+      console.log('📊 Applied date filter:', { from: filterFrom, to: filterTo });
+    }
     if (status && status !== 'ALL' && status !== '') filterQuery.status = status;
+
+    console.log('🔍 listOrders - Query:', filterQuery);
 
     // --- TRUY VẤN DATABASE (KHÔNG DÙNG POPULATE ĐỂ TRÁNH LỖI) ---
     const [orders, totalOrders] = await Promise.all([
@@ -191,6 +208,8 @@ exports.listOrders = async (req, res) => {
         .lean(), // Trả về object thuần JavaScript giúp nhanh hơn và tránh lỗi cast
       Order.countDocuments(filterQuery)
     ]);
+
+    console.log('✅ Found orders:', orders.length);
 
     // --- XỬ LÝ DỮ LIỆU THỦ CÔNG ---
     const formattedOrders = orders.map(o => {

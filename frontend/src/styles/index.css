@@ -120,8 +120,64 @@
     /* Thêm opacity 50% */
   }
 
-  /* ================================================ */
+  /* ---- Header Components ---- */
+  .btn-avatar-header {
+    @apply flex items-center justify-center px-3 py-2 rounded-lg;
+    @apply bg-black/[.20] hover:bg-black/[.30];
+    @apply text-text-on-dark font-medium;
+    @apply transition-all duration-200;
+  }
 
+  .btn-accent-header {
+    @apply flex items-center justify-center px-3 py-2 rounded-lg;
+    background-color: var(--color-accent);
+    @apply text-text-on-dark font-medium;
+    @apply hover:bg-accent-hover transition-all duration-200;
+  }
+
+  .btn-hamburger-header {
+    @apply md:hidden p-2 rounded-lg;
+    @apply text-text-on-dark hover:bg-black/[.20];
+    @apply transition-all duration-200;
+  }
+
+  /* Dropdown menu items */
+  .menu-item {
+    @apply flex items-center px-4 py-3 text-text-primary;
+    @apply transition-colors duration-150;
+    @apply border-b border-gray-200/[.10] last:border-b-0;
+  }
+
+  .menu-item:hover {
+    background-color: rgba(118, 171, 174, 0.1);
+  }
+
+  .menu-item-danger {
+    @apply flex items-center px-4 py-3 text-red-500;
+    @apply transition-colors duration-150;
+    @apply border-b border-gray-200/[.10] w-full text-left;
+  }
+
+  .menu-item-danger:hover {
+    @apply bg-red-50;
+  }
+
+  /* Mobile nav links */
+  .mobile-nav-link {
+    @apply flex items-center px-4 py-3 rounded-lg;
+    @apply text-text-primary transition-colors duration-150;
+  }
+
+  .mobile-nav-link:hover {
+    background-color: rgba(49, 54, 63, 0.1);
+  }
+
+  .nav-link-dark {
+    @apply text-text-on-dark hover:text-accent-hover;
+    @apply transition-colors duration-200;
+  }
+
+  /* ================================================ */
 
   /* ---- Price Range Slider (Filter) ---- */
   .range-double {

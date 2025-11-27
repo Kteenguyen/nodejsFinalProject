@@ -47,7 +47,15 @@ exports.getProducts = async (req, res) => {
     } = req.query;
 
     const match = { status: 'available' };
-    if (categoryId) match['category.categoryId'] = categoryId;
+    
+    // multi-category: categoryId=laptop,monitor
+    if (categoryId) {
+      const arr = String(categoryId).split(',').map(s => s.trim()).filter(Boolean);
+      match['category.categoryId'] = arr.length > 1
+        ? { $in: arr }
+        : arr[0];
+    }
+    
     if (isNew === 'true') match.isNewProduct = true;
     if (bestSeller === 'true') match.isBestSeller = true;
 
@@ -210,15 +218,15 @@ exports.getCategoriesList = async (_req, res) => {
       // 1. Chỉ lấy sản phẩm có categoryId
       { $match: { 'category.categoryId': { $exists: true, $ne: '' } } },
       
-      // 2. Gom nhóm: SỬA LỖI Ở ĐÂY (dùng categoryName thay vì name)
+      // 2. Gom nhóm
       { $group: { 
           _id: '$category.categoryId', 
-          name: { $first: '$category.categoryName' } // <--- Đã sửa dòng này
+          categoryName: { $first: '$category.categoryName' }
       }},
       
       // 3. Format lại kết quả trả về
-      { $project: { _id: 0, id: '$_id', name: { $ifNull: ['$name', ''] } } },
-      { $sort: { name: 1 } }
+      { $project: { _id: 0, categoryId: '$_id', categoryName: { $ifNull: ['$categoryName', ''] } } },
+      { $sort: { categoryName: 1 } }
     ]);
     res.json({ success: true, categories: rows });
   } catch (e) {
@@ -292,14 +300,46 @@ exports.getNewProducts = async (_req, res) => {
 exports.getProductsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
-    const items = await Product.aggregate([
-      { $match: { 'category.categoryId': categoryId, status: 'available' } },
-      { $addFields: { minPrice: { $min: '$variants.price' } } },
-      { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice' } },
+    const { page = 1, limit = 12, sortBy = 'newest', sortOrder = 'desc' } = req.query;
+    
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const limitNum = Math.min(parseInt(limit) || 12, 60);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Determine sort stage
+    let sortStage = { createdAt: -1 }; // default: newest
+    if (sortBy === 'name') sortStage = { productName: sortOrder === 'desc' ? -1 : 1 };
+    if (sortBy === 'price') sortStage = { minPrice: sortOrder === 'desc' ? -1 : 1 };
+    if (sortBy === 'oldest') sortStage = { createdAt: 1 };
+    
+    // Count total documents
+    const [items, totalCount] = await Promise.all([
+      Product.aggregate([
+        { $match: { 'category.categoryId': categoryId, status: 'available' } },
+        { $addFields: { minPrice: { $min: '$variants.price' } } },
+        { $sort: sortStage },
+        { $skip: skip },
+        { $limit: limitNum },
+        { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice', minPrice: 1 } },
+      ]),
+      Product.countDocuments({ 'category.categoryId': categoryId, status: 'available' })
     ]);
-    res.json({ success: true, products: items });
-  } catch {
-    res.status(500).json({ success: false, message: 'Lỗi server' });
+    
+    const totalPages = Math.max(Math.ceil(totalCount / limitNum), 1);
+    
+    console.log(`📂 Category ${categoryId}: ${items.length} items on page ${pageNum}/${totalPages}`);
+    
+    res.json({ 
+      success: true, 
+      products: items,
+      totalProducts: totalCount,
+      totalPages,
+      currentPage: pageNum,
+      limit: limitNum
+    });
+  } catch (error) {
+    console.error('❌ Error in getProductsByCategory:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
   }
 };
 

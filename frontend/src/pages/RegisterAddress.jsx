@@ -34,8 +34,8 @@ const RegisterAddress = () => {
     useEffect(() => {
         const fetchProvinces = async () => {
             try {
-                const data = await AuthController.getProvinces();
-                if (data && data.data) setProvinces(data.data);
+                const data = await UserController.getProvinces();
+                setProvinces(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error("Lỗi tải tỉnh thành:", error);
             }
@@ -53,8 +53,8 @@ const RegisterAddress = () => {
 
         if (provinceId) {
             try {
-                const data = await AuthController.getDistricts(provinceId);
-                if (data && data.data) setDistricts(data.data);
+                const data = await UserController.getDistricts(provinceId);
+                setDistricts(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error("Lỗi tải quận huyện:", error);
             }
@@ -69,8 +69,8 @@ const RegisterAddress = () => {
 
         if (districtId) {
             try {
-                const data = await AuthController.getWards(districtId);
-                if (data && data.data) setWards(data.data);
+                const data = await UserController.getWards(districtId);
+                setWards(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error("Lỗi tải phường xã:", error);
             }

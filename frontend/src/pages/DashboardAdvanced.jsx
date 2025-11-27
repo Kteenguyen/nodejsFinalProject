@@ -1,11 +1,10 @@
 // src/pages/Admin/DashboardAdvanced.jsx
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line
 } from "recharts";
+import { DashboardController } from "../controllers/DashboardController";
 
-const API_BASE = "https://localhost:3001/api";
 const fmtVND = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 
 const FILTERS = [
@@ -20,45 +19,54 @@ export default function DashboardAdvanced() {
   const [period, setPeriod] = useState('year');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   
-  // --- 1. THÊM STATE TRẠNG THÁI ---
-  const [status, setStatus] = useState(''); // Mặc định rỗng (Tương đương ALL nhưng trừ Cancelled)
+  // Mặc định lấy "ALL" orders (không chỉ Delivered)
+  const [status, setStatus] = useState('ALL');
 
   const [stats, setStats] = useState({ totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, chartData: [] });
   const [loading, setLoading] = useState(false);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       
-      // --- 2. GỬI THÊM STATUS VÀO PARAMS ---
-      const params = { period, status };
+      const options = { period, status };
       
       if (period === 'custom') {
         if (!customRange.start || !customRange.end) { setLoading(false); return; }
-        params.start = customRange.start;
-        params.end = customRange.end;
+        options.from = customRange.start;
+        options.to = customRange.end;
       }
 
-      const res = await axios.get(`${API_BASE}/orders/dashboard/stats`, {
-        params,
-        withCredentials: true
-      });
+      const res = await DashboardController.getStats(options);
 
-      if (res.data.success) {
-        setStats(res.data);
+      if (res?.success && res?.data) {
+        // Đảm bảo tất cả field tồn tại với default value
+        setStats({
+          totalRevenue: Number(res.data.totalRevenue) || 0,
+          totalOrders: Number(res.data.totalOrders) || 0,
+          avgOrderValue: Number(res.data.avgOrderValue) || 0,
+          chartData: Array.isArray(res.data.chartData) ? res.data.chartData : []
+        });
+      } else {
+        // Fallback: set default values
+        setStats({
+          totalRevenue: 0,
+          totalOrders: 0,
+          avgOrderValue: 0,
+          chartData: []
+        });
       }
     } catch (error) {
       console.error("Lỗi:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, status, customRange]);
 
-  // --- 3. THÊM STATUS VÀO DEPENDENCY ---
+  // --- 3. GỌI LẠI FETCHSTATS KHI PERIOD HOẶC STATUS THAY ĐỔI ---
   useEffect(() => {
     fetchStats();
-    // eslint-disable-next-line
-  }, [period, status]); // Khi đổi thời gian hoặc trạng thái đều gọi lại API
+  }, [period, status]);
 
   const handleCustomFilter = () => {
     if (period === 'custom' && customRange.start && customRange.end) fetchStats();
@@ -85,7 +93,6 @@ export default function DashboardAdvanced() {
                onChange={(e) => setStatus(e.target.value)}
                className="border rounded px-3 py-1.5 text-sm bg-white outline-none focus:border-blue-500 shadow-sm"
              >
-               <option value="">Đơn thực tế (Trừ hủy)</option>
                <option value="ALL">Tất cả (Bao gồm hủy)</option>
                <option value="Pending">Chờ xử lý</option>
                <option value="Confirmed">Đã xác nhận</option>

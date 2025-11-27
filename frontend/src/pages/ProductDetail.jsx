@@ -56,7 +56,7 @@ export default function ProductDetail() {
       setLoading(true);
       setError("");
       try {
-        const j = await getProductById(urlId, ctrl.signal);
+        const j = await ProductController.getProductById(urlId);
         const data = j?.data || j?.product || j;
         if (!data || j?.success === false)
           throw new Error(j?.message || "Không tìm thấy sản phẩm.");
@@ -73,7 +73,7 @@ export default function ProductDetail() {
 
   async function refetch() {
     try {
-      const j = await getProductById(urlId);
+      const j = await ProductController.getProductById(urlId);
       setProduct(j?.data || j?.product || j);
     } catch (e) {
       if (!isAbort(e)) setError(e?.message || "Không tải được sản phẩm.");
@@ -84,7 +84,7 @@ export default function ProductDetail() {
     e.preventDefault();
     if (!cText.trim()) return;
     try {
-      await addComment(product?._id || product?.productId || urlId, {
+      await ProductController.addComment(product?._id || product?.productId || urlId, {
         name: cName || undefined,
         comment: cText.trim(), // BE yêu cầu "comment"
       });
@@ -105,7 +105,7 @@ export default function ProductDetail() {
     }
     try {
       setRateMsg("Đang gửi đánh giá…");
-      await rateProduct(product?._id || product?.productId || urlId, {
+      await ProductController.rateProduct(product?._id || product?.productId || urlId, {
         rating: stars,
       });
       await refetch();
@@ -126,8 +126,10 @@ export default function ProductDetail() {
     const arr = (Array.isArray(product?.images) ? product.images : []).filter(
       Boolean
     );
-    while (arr.length < 3) arr.push("/img/placeholder.png");
-    return arr.slice(0, 10);
+    // Chuyển đổi mỗi hình ảnh sang URL hoàn chỉnh
+    const converted = arr.map(img => ProductController.getImageUrl(img));
+    while (converted.length < 3) converted.push("/img/placeholder.png");
+    return converted.slice(0, 10);
   }, [product]);
 
   // Giá min

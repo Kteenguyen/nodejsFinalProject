@@ -13,6 +13,8 @@ export default function SidebarFilter({
   const topBrands = useMemo(() => brands.slice(0, 6), [brands]);
   const moreBrands = useMemo(() => brands.slice(6), [brands]);
 
+  console.log('🎨 SidebarFilter rendered:', { brandsCount: brands.length, categoriesCount: categories.length, brands, categories });
+
   function toggleBrand(b) {
     const s = new Set(value.brand || []);
     s.has(b) ? s.delete(b) : s.add(b);

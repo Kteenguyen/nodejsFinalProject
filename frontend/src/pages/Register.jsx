@@ -80,15 +80,19 @@ const Register = ({ onSuccess, onClose, context }) => {
 
             const data = await AuthController.register(registerFormData);
 
-            if (isModal && onSuccess) {
-                onSuccess(); 
+            // Backend trả về { success, user, ... }
+            if (data?.user) {
+                if (isModal && onSuccess) {
+                    onSuccess();
+                } else {
+                    await login(data.user);
+                    toast.success("Đăng ký thành công! Hãy thêm địa chỉ của bạn.");
+                    setTimeout(() => {
+                        navigate("/register-address");
+                    }, 2000);
+                }
             } else {
-                console.log("Response data:", data);
-                await login(data); 
-                toast.success("Đăng ký thành công! Hãy thêm địa chỉ của bạn.");
-                setTimeout(() => {
-                    navigate("/register-address");
-                }, 2000);
+                throw new Error(data?.message || "Đăng ký thất bại");
             }
 
         } catch (error) {

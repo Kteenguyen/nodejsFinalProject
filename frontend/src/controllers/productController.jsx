@@ -12,42 +12,88 @@ import api from "../services/api"; // Giữ file này để lấy cấu hình ax
 const getProducts = async (options = {}) => {
     const {
         page = 1,
-        limit = 10,
-        sort = "newest",      
+        limit = 12,
+        sortBy = "newest",
+        sortOrder = "desc",
         search = "",
+        keyword = "",
         brand = "",
-        category = "",
-        productType = "",    
+        categoryId = "",
         minPrice,
-        maxPrice
+        maxPrice,
+        ratingMin,
+        inStock,
+        isNew,
+        bestSeller
     } = options;
 
     try {
-        const params = {
-            page,
-            limit,
-            sort,
-            search: search || undefined,
-            brand: brand || undefined,
-            category: category || undefined,
-            productType: productType || undefined,
-            minPrice: minPrice || undefined,
-            maxPrice: maxPrice || undefined
-        };
+        const params = {};
+        
+        // Phân trang
+        if (page) params.page = page;
+        if (limit) params.limit = limit;
+        
+        // Sắp xếp
+        if (sortBy) params.sortBy = sortBy;
+        if (sortOrder) params.sortOrder = sortOrder;
+        
+        // Tìm kiếm
+        const searchQuery = search || keyword;
+        if (searchQuery) params.keyword = searchQuery;
+        
+        // Lọc brand - support cả string và array
+        if (brand) {
+            if (Array.isArray(brand)) {
+                params.brand = brand.join(",");
+            } else {
+                params.brand = brand;
+            }
+        }
+        
+        // Lọc category - support cả string và array
+        if (categoryId) {
+            if (Array.isArray(categoryId)) {
+                params.categoryId = categoryId.join(",");
+            } else {
+                params.categoryId = categoryId;
+            }
+        }
+        
+        // Lọc giá
+        if (minPrice != null) params.minPrice = minPrice;
+        if (maxPrice != null) params.maxPrice = maxPrice;
+        
+        // Lọc rating
+        if (ratingMin != null) params.minRating = ratingMin;
+        
+        // Lọc tình trạng
+        if (inStock === true || inStock === "true") params.inStock = "true";
+        if (isNew === true || isNew === "true") params.isNew = "true";
+        if (bestSeller === true || bestSeller === "true") params.bestSeller = "true";
+
+        console.log('📦 ProductController.getProducts called with:', { options, params });
 
         // Gọi trực tiếp endpoint
         const response = await api.get('/products', { params });
         
-        // Backend trả về: { success, items, pagination } hoặc { products: [...], ... }
+        console.log('✅ Products fetched:', response.data.products?.length, 'items');
+        
+        // Backend trả về: { success, products, pagination, totalProducts, totalPages } hoặc { items, ... }
         // Chuẩn hóa dữ liệu trả về để View dễ dùng
         return {
-            products: response.data.items || response.data.products || [],
-            pagination: response.data.pagination || {},
+            products: response.data.products || response.data.items || [],
+            pagination: response.data.pagination || {
+                totalProducts: response.data.totalProducts,
+                totalPages: response.data.totalPages,
+                currentPage: response.data.currentPage
+            },
+            total: response.data.totalProducts || response.data.total || 0,
             totalPages: response.data.totalPages || 1,
-            currentPage: response.data.currentPage || 1
+            currentPage: response.data.currentPage || response.data.page || 1
         };
     } catch (error) {
-        console.error("Lỗi getProducts:", error);
+        console.error("❌ Lỗi getProducts:", error);
         throw error;
     }
 };
@@ -90,7 +136,33 @@ const getProductById = async (idOrSlug) => {
  * Lấy sản phẩm theo Category (Helper function dùng lại getProducts)
  */
 const getProductsByCategory = async (categoryId, options = {}) => {
-    return getProducts({ ...options, category: categoryId });
+    try {
+        // Gọi endpoint riêng cho danh mục: /api/products/category/:categoryId
+        const params = new URLSearchParams();
+        if (options.sortBy) params.append('sortBy', options.sortBy);
+        if (options.sortOrder) params.append('sortOrder', options.sortOrder);
+        if (options.page) params.append('page', options.page);
+        if (options.limit) params.append('limit', options.limit);
+        
+        const url = `/products/category/${categoryId}${params.toString() ? '?' + params.toString() : ''}`;
+        console.log('📂 Fetching category products:', { categoryId, url, options });
+        
+        const response = await api.get(url);
+        const items = response.data.products || [];
+        
+        console.log('✅ Category products fetched:', items.length, 'items');
+        
+        return {
+            products: items,
+            totalProducts: items.length,
+            totalPages: 1,
+            currentPage: 1,
+            ...response.data
+        };
+    } catch (error) {
+        console.error('❌ Error fetching category products:', error);
+        return { products: [], totalProducts: 0, totalPages: 1, currentPage: 1 };
+    }
 };
 
 /**
@@ -119,14 +191,50 @@ const getBestSellers = async () => {
     }
 };
 
+/**
+ * Thêm bình luận cho sản phẩm
+ */
+const addComment = async (productIdOrSlug, commentData) => {
+    try {
+        const response = await api.post(`/products/${productIdOrSlug}/comments`, commentData);
+        return response.data;
+    } catch (error) {
+        console.error(`Lỗi thêm bình luận:`, error);
+        throw new Error(error.response?.data?.message || "Không thể thêm bình luận");
+    }
+};
+
+/**
+ * Đánh giá sản phẩm
+ */
+const rateProduct = async (productIdOrSlug, ratingData) => {
+    try {
+        const response = await api.post(`/products/${productIdOrSlug}/ratings`, ratingData);
+        return response.data;
+    } catch (error) {
+        console.error(`Lỗi đánh giá sản phẩm:`, error);
+        throw new Error(error.response?.data?.message || "Không thể đánh giá sản phẩm");
+    }
+};
+
 // ============================================
 // HELPERS (Không gọi API)
 // ============================================
 function getImageUrl(src) {
-    if (!src) return "/images/placeholder.png";
-    if (src.startsWith('http')) return src;
+    if (!src) {
+        console.log('❌ No image source provided, returning placeholder');
+        return "/images/placeholder.png";
+    }
+    
+    if (src.startsWith('http')) {
+        console.log('✅ Image is already a full URL:', src);
+        return src;
+    }
+    
     const BASE_URL = process.env.REACT_APP_API_URL || "https://localhost:3001";
-    return `${BASE_URL}${src.startsWith("/") ? "" : "/"}${src}`;
+    const fullUrl = `${BASE_URL}${src.startsWith("/") ? "" : "/"}${src}`;
+    console.log('🔄 Converted relative path to full URL:', { src, BASE_URL, fullUrl });
+    return fullUrl;
 }
 
 function getMinPrice(product) {
@@ -142,6 +250,8 @@ export const ProductController = {
     getProductsByCategory,
     getNewProducts,
     getBestSellers,
+    addComment,
+    rateProduct,
     getImageUrl,
     getMinPrice
 };

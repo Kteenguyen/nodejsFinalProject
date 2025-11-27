@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import SidebarFilter from "../components/products/filters/SidebarFilter";
 import { ProductController } from '../controllers/productController';
+import api from '../services/api';
 import ProductCard from "../components/Home/ProductCard";
 
 function isAbort(err) {
@@ -46,14 +47,29 @@ export default function ProductsPage() {
     const ctrl = new AbortController();
     (async () => {
       try {
-        const [b, c] = await Promise.all([
-          getBrands(ctrl.signal),
-          getCategories(ctrl.signal), // nếu backend chưa có, xem ghi chú bên dưới
+        console.log('📦 Loading brands and categories...');
+        
+        // Gọi API qua axios instance để có credentials
+        const [brandsRes, categoriesRes] = await Promise.all([
+          api.get('/products/brands', { signal: ctrl.signal }),
+          api.get('/products/categories', { signal: ctrl.signal })
         ]);
-        setBrands(b?.data || b?.brands || b || []);
-        setCategories(c?.data || c?.categories || c || []);
+        
+        const brandsList = brandsRes?.data?.brands || brandsRes?.data?.data || [];
+        const categoriesList = categoriesRes?.data?.categories || categoriesRes?.data?.data || [];
+        
+        console.log('✅ Brands loaded:', brandsList.length, 'items');
+        console.log('✅ Categories loaded:', categoriesList.length, 'items');
+        
+        setBrands(brandsList);
+        setCategories(categoriesList);
       } catch (e) {
-        if (!isAbort(e)) console.error("Load facets failed:", e);
+        if (!isAbort(e)) {
+          console.error("❌ Load facets failed:", e);
+          // Fallback: set empty arrays
+          setBrands([]);
+          setCategories([]);
+        }
       }
     })();
     return () => ctrl.abort();
@@ -84,15 +100,14 @@ export default function ProductsPage() {
     const ctrl = new AbortController();
     (async () => {
       try {
-        const res = await listProducts(
-          Object.fromEntries(queryParams),
-          ctrl.signal
+        const res = await ProductController.getProducts(
+          Object.fromEntries(queryParams)
         );
         setItems(res?.products || res?.data || []);
         setMeta({
-          total: res?.totalProducts ?? res?.total ?? 0,
-          page: res?.currentPage ?? res?.page ?? 1,
-          pages: res?.totalPages ?? res?.pages ?? 1,
+          total: res?.pagination?.totalProducts ?? res?.total ?? 0,
+          page: res?.pagination?.currentPage ?? res?.currentPage ?? res?.page ?? 1,
+          pages: res?.pagination?.totalPages ?? res?.totalPages ?? res?.pages ?? 1,
         });
       } catch (e) {
         if (!isAbort(e)) console.error("Load products failed:", e);
