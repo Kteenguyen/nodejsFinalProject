@@ -5,7 +5,7 @@ import { useEffect } from "react"; // chỉ cần useEffect cho LogoutRoute
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import RegisterAddress from '../pages/RegisterAddress';
-import {AuthController}  from "../controllers/AuthController";
+import { AuthController } from "../controllers/AuthController";
 import { Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import DashboardRoutes from "./DashboardRoutes";
 import ForgotPassword from '../pages/ForgotPassword';
@@ -32,25 +32,25 @@ function App() {
     location.pathname === "/forgot-password" ;
 
   const LogoutRoute = () => {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
+    const { logout } = useAuth();
+    const navigate = useNavigate();
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        await logout(); // gọi API + clear state
-        if (!cancelled) navigate("/login", { replace: true });
-      } catch (err) {
-        console.error("Logout failed:", err);
-        if (!cancelled) navigate("/login", { replace: true });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [logout, navigate]); // ✅ deps hợp lệ, không cảnh báo
+    useEffect(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          await logout(); // gọi API + clear state
+          if (!cancelled) navigate("/login", { replace: true });
+        } catch (err) {
+          console.error("Logout failed:", err);
+          if (!cancelled) navigate("/login", { replace: true });
+        }
+      })();
+      return () => { cancelled = true; };
+    }, [logout, navigate]); // ✅ deps hợp lệ, không cảnh báo
 
-  return <p>Đang đăng xuất...</p>;
-};
+    return <p>Đang đăng xuất...</p>;
+  };
 
   // ====== NEW: wrapper lấy :id và truyền vào ProductDetail ======
   const ProductDetailRoute = () => {
@@ -82,8 +82,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/register-address" element={<RegisterAddress />} />
         <Route path="/logout" element={<LogoutRoute />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} /> 
-        <Route path="/reset-password/:token" element={<ResetPassword />} /> 
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         {/* Admin */}
         <Route path="/admin/*" element={<DashboardRoutes />} />
       </Routes>

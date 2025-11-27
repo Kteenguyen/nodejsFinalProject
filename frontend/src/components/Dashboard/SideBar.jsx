@@ -1,7 +1,6 @@
-// frontend/src/components/Dashboard/SideBar.jsx
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
-    Menu, ChevronLeft, LogOut, ClipboardList, Store
+    Menu, ChevronLeft, LogOut, ClipboardList, Store, Ticket // 1. Import thêm icon Ticket
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -12,6 +11,7 @@ const menuItems = [
   { label: "Orders",    icon: ClipboardList,   path: "/admin/orders" },
   { label: "Users",     icon: Users,           path: "/admin/users" },
   { label: "Products",  icon: ShoppingCart,    path: "/admin/products" },
+  { label: "Discounts", icon: Ticket,          path: "/admin/discounts" }, // 2. Thêm mục Discounts vào đây
   { label: "Settings",  icon: Settings,        path: "/admin/settings" },
 ];
 
@@ -90,6 +90,7 @@ const SideBar = ({ onToggle }) => {
                                     : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
                                 ${collapsed ? "justify-center" : ""}
                             `}
+                            title={collapsed ? item.label : ""}
                         >
                             <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
                             {!collapsed && <span>{item.label}</span>}
