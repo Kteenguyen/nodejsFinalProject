@@ -146,11 +146,11 @@ const Header = () => {
                       initial="hidden"
                       animate="visible"
                       exit="hidden"
-                      className="absolute right-0 top-full mt-3 w-56 rounded-lg shadow-2xl z-10 border border-white/[.20] bg-surface/[.75] backdrop-blur-xl"
+                      className="absolute right-0 top-full mt-2 w-64 rounded-lg shadow-2xl z-50 border border-white/[.20] bg-surface/[.95] backdrop-blur-xl overflow-hidden"
                     >
                       <div className="px-4 py-2 border-b border-gray-500/[.20]">
                         <p className="text-sm font-medium text-text-primary truncate">{userDisplayName}</p>
-                        <p className="text-xs text-text-secondary">{isAdmin ? 'Quản trị viên' : 'Khách hàng'}</p>
+                        <p className="text-xs text-text-secondary">{isAdmin ? 'Quản lý viên' : 'Khách hàng'}</p>
                       </div>
 
                       {/* CHỈ ADMIN thấy mục thống kê */}
@@ -160,7 +160,7 @@ const Header = () => {
                           onClick={() => setIsAvatarMenuOpen(false)}
                           className="menu-item"
                         >
-                          <FaChartBar className="mr-3 text-text-accent" /> Thống kê và biểu đồ
+                          <FaChartBar className="mr-3 text-text-accent" /> Quản Lý và Thống Kê
                         </Link>
                       )}
 

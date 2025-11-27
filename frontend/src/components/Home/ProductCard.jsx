@@ -19,8 +19,17 @@ export default function ProductCard({ product }) {
   const p = product ?? {}; // dùng object an toàn, không return sớm
 
   const detailId = p.productId || p._id || p.id || "";
-  const firstImg = p?.images?.[0];
-  const imageUrl = ProductController.getImageUrl(product.image);
+  // Lấy hình ảnh: ưu tiên images array, nếu không thì dùng image field, cuối cùng dùng placeholder
+  const firstImg = Array.isArray(p?.images) && p.images.length > 0 ? p.images[0] : p?.image;
+  const imageUrl = ProductController.getImageUrl(firstImg);
+  
+  console.log('🖼️ ProductCard received product:', {
+    productName: p.productName,
+    images: p.images,
+    firstImg,
+    imageUrl,
+    allKeys: Object.keys(p)
+  });
 
   // Chọn biến thể bán được; nếu không có variants -> dùng price chung
   const pickSellableVariant = (obj) => {

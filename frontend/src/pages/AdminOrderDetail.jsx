@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import api from "../services/api"; // Import api instance chuẩn
+import { OrderController } from "../controllers/OrderController";
 
 const fmtVND = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 const fmtDate = (d) => new Date(d).toLocaleString('vi-VN');
@@ -22,19 +22,17 @@ export default function AdminOrderDetail() {
       try {
         setLoading(true);
         // Gọi API lấy chi tiết
-        const res = await api.get(`/orders/${id}`);
+        const order = await OrderController.getOrderDetail(id);
         
-        // Kiểm tra dữ liệu trả về có hợp lệ không
-        const data = res.data || res;
-        if (data.success && data.order) {
-          setOrder(data.order);
-          setNewStatus(data.order.status);
+        if (order) {
+          setOrder(order);
+          setNewStatus(order.status);
         } else {
-          setError(data.message || "Không tìm thấy thông tin đơn hàng");
+          setError("Không tìm thấy thông tin đơn hàng");
         }
       } catch (err) {
         console.error("Lỗi tải chi tiết:", err);
-        const msg = err.response?.data?.message || err.message || "Lỗi kết nối";
+        const msg = err.message || "Lỗi kết nối";
         setError(msg);
       } finally {
         setLoading(false);
@@ -48,17 +46,16 @@ export default function AdminOrderDetail() {
     if (!newStatus) return;
     try {
       setUpdating(true);
-      const res = await api.put(`/orders/${id}/status`, { status: newStatus });
-      const data = res.data || res;
+      const res = await OrderController.updateOrderStatus(id, newStatus);
       
-      if (data.success) {
+      if (res?.success || res?.order) {
         toast.success(`Cập nhật trạng thái thành công: ${newStatus}`);
-        setOrder(data.order); 
+        setOrder(res.order || order); 
       } else {
-        toast.error(data.message || "Cập nhật thất bại");
+        toast.error(res?.message || "Cập nhật thất bại");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi cập nhật trạng thái");
+      toast.error(err.message || "Lỗi cập nhật trạng thái");
     } finally {
       setUpdating(false);
     }

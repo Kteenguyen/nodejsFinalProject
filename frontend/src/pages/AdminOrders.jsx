@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api"; // Đảm bảo đường dẫn này đúng với cấu trúc thư mục của bạn
+import { OrderController } from "../controllers/OrderController";
 
 const LABELS = {
   today: "Hôm nay",
@@ -35,26 +35,51 @@ export default function AdminOrders() {
     setLoading(true);
     setErrorMsg(""); // Reset lỗi cũ
 
-    const params = { page: p, limit, date, status };
-
-    if (date === "custom") {
-      if (range.start) params.start = range.start;
-      if (range.end) params.end = range.end;
+    const params = { page: p, limit };
+    if (status) params.status = status;
+    
+    // Map date filter to period parameter
+    if (date === "today") {
+      const today = new Date();
+      params.from = today.toISOString().split('T')[0];
+      params.to = today.toISOString().split('T')[0];
+    } else if (date === "yesterday") {
+      const yesterday = new Date(Date.now() - 86400000);
+      params.from = yesterday.toISOString().split('T')[0];
+      params.to = yesterday.toISOString().split('T')[0];
+    } else if (date === "week") {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek;
+      const startOfWeek = new Date(now.setDate(diff));
+      params.from = startOfWeek.toISOString().split('T')[0];
+      params.to = new Date().toISOString().split('T')[0];
+    } else if (date === "month") {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      params.from = startOfMonth.toISOString().split('T')[0];
+      params.to = new Date().toISOString().split('T')[0];
+    } else if (date === "custom") {
+      if (range.start) params.from = range.start;
+      if (range.end) params.to = range.end;
     }
+    // date === "all" means no date filter
+
+    console.log('📋 Fetching orders with params:', params);
 
     try {
       // Gọi API
-      const res = await api.get('/orders', { params });
+      const res = await OrderController.getAllOrdersForAdmin(params);
       
       // Xử lý dữ liệu an toàn
-      const data = res.data || res;
-      const list = data.orders || [];
+      const list = Array.isArray(res) ? res : res?.orders || [];
       
+      console.log('✅ Orders fetched:', list.length, 'orders');
       setOrders(list);
       
-      const total = data.totalOrders || data.total || 0;
+      const total = res?.pagination?.totalOrders || res?.totalOrders || res?.total || list.length;
       setTotalPages(Math.max(Math.ceil(total / limit), 1));
-      setPage(data.currentPage || p);
+      setPage(res?.pagination?.currentPage || res?.currentPage || p);
       
     } catch (e) {
       console.error("Lỗi tải đơn hàng:", e);
