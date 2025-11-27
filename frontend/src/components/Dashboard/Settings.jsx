@@ -1,5 +1,5 @@
 // frontend/src/components/Dashboard/Settings.jsx
-import { API_BASE } from "../../services/https";
+import { API_BASE } from "../../services/api";
 
 export default function Settings() {
   return (

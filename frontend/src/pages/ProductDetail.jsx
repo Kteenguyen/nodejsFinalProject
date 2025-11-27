@@ -1,7 +1,7 @@
 // src/pages/ProductDetail.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getProductById, addComment, rateProduct } from "../services/productApi";
+import { ProductController } from '../controllers/productController';
 
 const money = (n) => `${(Number(n) || 0).toLocaleString("vi-VN")} đ`;
 const isAbort = (e) =>
