@@ -71,8 +71,10 @@ export const AuthController = {
     checkSession: async () => {
         try {
             const response = await api.get('/auth/check-session');
+            console.log('🔌 AuthController.checkSession - Full response:', response);
             return response.data; // { isAuthenticated: true, user: ... }
         } catch (error) {
+            console.error('🔌 AuthController.checkSession - Error:', error);
             return { isAuthenticated: false, user: null };
         }
     },

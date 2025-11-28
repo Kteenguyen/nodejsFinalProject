@@ -6,6 +6,13 @@ import { toast } from "react-toastify";
 
 const API_BASE = "https://localhost:3001/api";
 
+// Hàm sinh ID ngẫu nhiên
+const generateProductId = () => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `PRD-${timestamp}-${random}`;
+};
+
 const emptyVariant = () => ({
   variantId: "",
   name: "",
@@ -21,10 +28,10 @@ export default function AdminProductNewPage() {
   const [categories, setCategories] = useState([]);
   const [isNewCategory, setIsNewCategory] = useState(false);
 
-  // Khởi tạo state
+  // Khởi tạo state với ID tự sinh
   const [product, setProduct] = useState({
     productName: "",
-    productId: "",
+    productId: generateProductId(), // Tự sinh ID ngay từ đầu
     brand: "",
     category: { categoryId: "", name: "" },
     description: "",
@@ -196,13 +203,24 @@ export default function AdminProductNewPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Mã sản phẩm (ID) *</label>
-            <input
-              type="text"
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-              value={product.productId}
-              onChange={(e) => updateField("productId", e.target.value)}
-              required
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="flex-1 border border-gray-300 rounded px-3 py-2 bg-gray-100 text-gray-700 cursor-not-allowed"
+                value={product.productId}
+                readOnly
+                disabled
+              />
+              <button
+                type="button"
+                onClick={() => updateField("productId", generateProductId())}
+                className="px-3 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                title="Tạo mã ID mới"
+              >
+                Tạo lại
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Mã ID được sinh ngẫu nhiên tự động</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Thương hiệu</label>

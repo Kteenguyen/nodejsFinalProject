@@ -153,15 +153,24 @@ const Header = () => {
                         <p className="text-xs text-text-secondary">{isAdmin ? 'Quản lý viên' : 'Khách hàng'}</p>
                       </div>
 
-                      {/* CHỈ ADMIN thấy mục thống kê */}
+                      {/* CHỈ ADMIN thấy mục thống kê và quản lý */}
                       {isAdmin && (
-                        <Link
-                          to="/admin/dashboard"
-                          onClick={() => setIsAvatarMenuOpen(false)}
-                          className="menu-item"
-                        >
-                          <FaChartBar className="mr-3 text-text-accent" /> Quản Lý và Thống Kê
-                        </Link>
+                        <>
+                          <Link
+                            to="/admin/dashboard"
+                            onClick={() => setIsAvatarMenuOpen(false)}
+                            className="menu-item"
+                          >
+                            <FaChartBar className="mr-3 text-text-accent" /> Thống kê và biểu đồ
+                          </Link>
+                          <Link
+                            to="/admin/management"
+                            onClick={() => setIsAvatarMenuOpen(false)}
+                            className="menu-item"
+                          >
+                            <FaChartBar className="mr-3 text-text-accent" /> Quản Lý
+                          </Link>
+                        </>
                       )}
 
                       <Link to="/profile" onClick={() => setIsAvatarMenuOpen(false)} className="menu-item">

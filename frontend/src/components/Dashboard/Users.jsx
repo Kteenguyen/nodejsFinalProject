@@ -194,6 +194,17 @@ const Users = () => {
             
             <Breadcrumb crumbs={breadcrumbs} /> 
 
+            {/* Nút Quay lại */}
+            <div className="mb-4">
+                <button
+                    onClick={() => window.location.href = "/admin/management"}
+                    className="px-3 py-2 rounded bg-gray-300 text-gray-800 hover:bg-gray-400 transition flex items-center gap-2"
+                    title="Quay lại Management Hub"
+                >
+                    ← Quay lại
+                </button>
+            </div>
+
             {/* 1. Tiêu đề và Search + Tạo User */}
             <motion.div 
                 className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4"

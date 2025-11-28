@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OrderController } from "../controllers/OrderController";
+import Pagination from "../components/common/Pagination";
 
 const LABELS = {
   today: "Hôm nay",
@@ -104,6 +105,17 @@ export default function AdminOrders() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Nút Quay lại */}
+      <div className="mb-4">
+        <button
+          onClick={() => navigate("/admin/management")}
+          className="px-3 py-2 rounded bg-gray-300 text-gray-800 hover:bg-gray-400 transition flex items-center gap-2"
+          title="Quay lại Management Hub"
+        >
+          ← Quay lại
+        </button>
+      </div>
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Quản lý Đơn hàng</h1>
         <span className="text-sm text-gray-500">Tổng quan đơn hàng</span>
@@ -239,13 +251,13 @@ export default function AdminOrders() {
       </div>
 
       {/* --- PHÂN TRANG --- */}
-      <div className="flex items-center justify-between mt-4 px-2">
-        <span className="text-sm text-gray-500">Trang {page}/{totalPages}</span>
-        <div className="flex gap-2">
-          <button disabled={page <= 1} onClick={() => fetchOrders(page - 1)} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 text-sm">Trước</button>
-          <button disabled={page >= totalPages} onClick={() => fetchOrders(page + 1)} className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 text-sm">Sau</button>
-        </div>
-      </div>
+      {totalPages > 1 && (
+        <Pagination 
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={(newPage) => fetchOrders(newPage)}
+        />
+      )}
     </div>
   );
 }

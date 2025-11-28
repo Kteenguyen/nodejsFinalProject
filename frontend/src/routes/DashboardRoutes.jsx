@@ -8,7 +8,8 @@ import AdminOrders from "../pages/AdminOrders";
 import AdminProductEditPage from "../pages/AdminProductEditPage";
 import AdminProductNewPage from "../pages/AdminProductNewPage";
 import AdminOrderDetail from "../pages/AdminOrderDetail";
-import DiscountManagement from "../pages/DiscountManagement"; 
+import DiscountManagement from "../pages/DiscountManagement";
+import AdminManagement from "../pages/AdminManagement"; 
 
 export default function DashboardRoutes() {
   return (
@@ -20,6 +21,7 @@ export default function DashboardRoutes() {
 
         {/* Các trang chức năng */}
         <Route path="dashboard" element={<DashboardAdvanced />} />
+        <Route path="management" element={<AdminManagement />} />
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
 

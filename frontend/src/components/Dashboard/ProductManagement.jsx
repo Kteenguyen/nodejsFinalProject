@@ -65,7 +65,16 @@ export default function ProductManagement() {
 
   return (
     <div className="p-4 md:p-6">
-      <h2 className="text-xl font-semibold mb-4">Product Management</h2>
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          onClick={() => navigate("/admin/management")}
+          className="px-3 py-2 rounded bg-gray-300 text-gray-800 hover:bg-gray-400 transition flex items-center gap-2"
+          title="Quay lại Management Hub"
+        >
+          ← Quay lại
+        </button>
+        <h2 className="text-xl font-semibold">Product Management</h2>
+      </div>
 
       <div className="flex gap-2 mb-3">
         <input

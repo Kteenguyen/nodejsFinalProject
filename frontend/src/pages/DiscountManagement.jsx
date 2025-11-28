@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../services/api"; // Đảm bảo đường dẫn đúng tới file cấu hình axios
 
 export default function DiscountManagement() {
+  const navigate = useNavigate();
   const [discounts, setDiscounts] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -79,6 +81,17 @@ export default function DiscountManagement() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Nút Quay lại */}
+      <div className="mb-4">
+        <button
+          onClick={() => navigate("/admin/management")}
+          className="px-3 py-2 rounded bg-gray-300 text-gray-800 hover:bg-gray-400 transition flex items-center gap-2"
+          title="Quay lại Management Hub"
+        >
+          ← Quay lại
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>

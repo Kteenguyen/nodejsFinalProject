@@ -19,18 +19,23 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const checkUserStatus = async () => {
             try {
+                console.log('🔍 AuthContext: Checking session...');
                 // Chúng ta gọi API /auth/check-session mà backend đã có
                 const response = await AuthController.checkSession();
+                console.log('📡 AuthContext: checkSession response:', response);
 
                 // Backend trả về { isAuthenticated: true, user: {...} }
-                if (response.data.isAuthenticated) {
-                    setUser(response.data.user);
+                if (response.isAuthenticated && response.user) {
+                    console.log('✅ AuthContext: User restored:', response.user);
+                    setUser(response.user);
                 } else {
+                    console.log('❌ AuthContext: No authenticated user');
                     setUser(null);
                 }
 
             } catch (error) {
                 // Nếu cookie không hợp lệ hoặc hết hạn, coi như chưa login
+                console.error('⚠️ AuthContext: Error checking session:', error);
                 setUser(null);
             } finally {
                 // Báo là đã load xong, cho phép app render

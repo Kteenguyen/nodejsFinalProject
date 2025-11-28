@@ -1,17 +1,23 @@
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
-    Menu, ChevronLeft, LogOut, ClipboardList, Store, Ticket // 1. Import thêm icon Ticket
+    Menu, ChevronLeft, LogOut, ClipboardList, Store, Ticket
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 
-const menuItems = [
+const statisticsItems = [
   { label: "Statistics", icon: LayoutDashboard, path: "/admin/dashboard" },
+];
+
+const managementItems = [
   { label: "Orders",    icon: ClipboardList,   path: "/admin/orders" },
   { label: "Users",     icon: Users,           path: "/admin/users" },
   { label: "Products",  icon: ShoppingCart,    path: "/admin/products" },
-  { label: "Discounts", icon: Ticket,          path: "/admin/discounts" }, // 2. Thêm mục Discounts vào đây
+  { label: "Discounts", icon: Ticket,          path: "/admin/discounts" },
+];
+
+const otherItems = [
   { label: "Settings",  icon: Settings,        path: "/admin/settings" },
 ];
 
@@ -32,6 +38,15 @@ const SideBar = ({ onToggle }) => {
     useEffect(() => {
         setActive(location.pathname);
     }, [location.pathname]);
+
+    // Kiểm tra xem đang ở trang nào để hiển thị menu phù hợp
+    const isManagementPage = active.includes('/admin/management') || 
+                             active.includes('/admin/orders') || 
+                             active.includes('/admin/users') || 
+                             active.includes('/admin/products') || 
+                             active.includes('/admin/discounts');
+    
+    const isStatisticsPage = active.includes('/admin/dashboard');
 
     const handleLogout = async () => {
         console.log("SideBar: Đang gọi logout...");
@@ -77,26 +92,88 @@ const SideBar = ({ onToggle }) => {
             </div>
 
             {/* Khối Menu Chính */}
-            <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-                {menuItems.map((item) => {
-                    const isActive = active.startsWith(item.path);
-                    return (
-                        <button
-                            key={item.label}
-                            onClick={() => navigate(item.path)}
-                            className={`
-                                flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
-                                ${isActive ? "bg-blue-100 text-blue-600"
-                                    : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
-                                ${collapsed ? "justify-center" : ""}
-                            `}
-                            title={collapsed ? item.label : ""}
-                        >
-                            <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
-                            {!collapsed && <span>{item.label}</span>}
-                        </button>
-                    );
-                })}
+            <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                {/* STATISTICS SECTION - Chỉ hiện khi ở dashboard */}
+                {isStatisticsPage && (
+                    <div>
+                        {!collapsed && <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 mb-2">Statistics</h3>}
+                        <div className="space-y-2">
+                            {statisticsItems.map((item) => {
+                                const isActive = active.startsWith(item.path);
+                                return (
+                                    <button
+                                        key={item.label}
+                                        onClick={() => navigate(item.path)}
+                                        className={`
+                                            flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
+                                            ${isActive ? "bg-blue-100 text-blue-600"
+                                                : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
+                                            ${collapsed ? "justify-center" : ""}
+                                        `}
+                                        title={collapsed ? item.label : ""}
+                                    >
+                                        <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
+                                        {!collapsed && <span>{item.label}</span>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* MANAGEMENT SECTION - Chỉ hiện khi ở management */}
+                {isManagementPage && (
+                    <div>
+                        {!collapsed && <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 mb-2">Management</h3>}
+                        <div className="space-y-2">
+                            {managementItems.map((item) => {
+                                const isActive = active.startsWith(item.path);
+                                return (
+                                    <button
+                                        key={item.label}
+                                        onClick={() => navigate(item.path)}
+                                        className={`
+                                            flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
+                                            ${isActive ? "bg-blue-100 text-blue-600"
+                                                : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
+                                            ${collapsed ? "justify-center" : ""}
+                                        `}
+                                        title={collapsed ? item.label : ""}
+                                    >
+                                        <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
+                                        {!collapsed && <span>{item.label}</span>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* OTHER SECTION */}
+                <div>
+                    {!collapsed && <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 mb-2">Other</h3>}
+                    <div className="space-y-2">
+                        {otherItems.map((item) => {
+                            const isActive = active.startsWith(item.path);
+                            return (
+                                <button
+                                    key={item.label}
+                                    onClick={() => navigate(item.path)}
+                                    className={`
+                                        flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
+                                        ${isActive ? "bg-blue-100 text-blue-600"
+                                            : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
+                                        ${collapsed ? "justify-center" : ""}
+                                    `}
+                                    title={collapsed ? item.label : ""}
+                                >
+                                    <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
+                                    {!collapsed && <span>{item.label}</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </nav>
 
             {/* === KHỐI FOOTER (Shop + Logout) === */}
