@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import FilterBar from "../components/products/FilterBar";
-import SortBar from "../components/products/SortBar";
+import Filters from "../components/catalog/Filters";
+import SortBar from "../components/catalog/SortBar";
 import { ProductController } from '../controllers/productController';
 import { currency } from "../utils/format";
 
@@ -78,9 +78,9 @@ export default function ProductsSearch() {
 
   return (
     <div className="container mx-auto p-4 md:p-6">
-      <h1 className="text-2xl font-bold mb-3">Kết quả tìm kiếm {keyword ? `cho “${keyword}”` : ""}</h1>
+      <h1 className="text-2xl font-bold mb-3">Kết quả tìm kiếm {keyword ? `cho "${keyword}"` : ""}</h1>
 
-      <FilterBar
+      <Filters
         brands={brands}
         categories={categories}
         initial={filters}
