@@ -9,13 +9,14 @@ import AdminProductEditPage from "../pages/AdminProductEditPage";
 import AdminProductNewPage from "../pages/AdminProductNewPage";
 import AdminOrderDetail from "../pages/AdminOrderDetail";
 import DiscountManagement from "../pages/DiscountManagement";
-import AdminManagement from "../pages/AdminManagement"; 
+import AdminManagement from "../pages/AdminManagement";
+import CategoriesManagement from "../pages/CategoriesManagement";
 
 export default function DashboardRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />}>
-        
+
         {/* Route mặc định: Chuyển hướng về /admin/dashboard */}
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
 
@@ -24,6 +25,8 @@ export default function DashboardRoutes() {
         <Route path="management" element={<AdminManagement />} />
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="categories" element={<CategoriesManagement />} />
+
 
         {/* --- QUẢN LÝ SẢN PHẨM --- */}
         <Route path="products" element={<ProductManagement />} />
@@ -33,7 +36,7 @@ export default function DashboardRoutes() {
         {/* --- QUẢN LÝ ĐƠN HÀNG --- */}
         {/* 1. Danh sách đơn hàng */}
         <Route path="orders" element={<AdminOrders />} />
-        
+
         {/* 2. Chi tiết đơn hàng (Lưu ý: path tương đối, không có /admin ở đầu) */}
         <Route path="orders/:id" element={<AdminOrderDetail />} />
 
@@ -43,7 +46,7 @@ export default function DashboardRoutes() {
         {/* --- FALLBACK (CHỐNG LỖI LẶP) --- */}
         {/* Nếu đường dẫn sai, buộc quay về trang chủ Dashboard tuyệt đối */}
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
-      
+
       </Route>
     </Routes>
   );

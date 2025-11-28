@@ -1,24 +1,27 @@
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
-    Menu, ChevronLeft, LogOut, ClipboardList, Store, Ticket
+    ChevronLeft, LogOut, ClipboardList, Store, Ticket, List, 
+    ChevronRight // Import icon
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 
+// --- CẤU HÌNH MENU ---
 const statisticsItems = [
-  { label: "Statistics", icon: LayoutDashboard, path: "/admin/dashboard" },
+    { label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
 ];
 
 const managementItems = [
-  { label: "Orders",    icon: ClipboardList,   path: "/admin/orders" },
-  { label: "Users",     icon: Users,           path: "/admin/users" },
-  { label: "Products",  icon: ShoppingCart,    path: "/admin/products" },
-  { label: "Discounts", icon: Ticket,          path: "/admin/discounts" },
+    { label: "Đơn hàng", icon: ClipboardList, path: "/admin/orders" },
+    { label: "Người dùng", icon: Users, path: "/admin/users" },
+    { label: "Sản phẩm", icon: ShoppingCart, path: "/admin/products" },
+    { label: "Danh mục", icon: List, path: "/admin/categories" },
+    { label: "Mã giảm giá", icon: Ticket, path: "/admin/discounts" },
 ];
 
 const otherItems = [
-  { label: "Settings",  icon: Settings,        path: "/admin/settings" },
+    { label: "Cài đặt", icon: Settings, path: "/admin/settings" },
 ];
 
 const SideBar = ({ onToggle }) => {
@@ -39,175 +42,153 @@ const SideBar = ({ onToggle }) => {
         setActive(location.pathname);
     }, [location.pathname]);
 
-    // Kiểm tra xem đang ở trang nào để hiển thị menu phù hợp
-    const isManagementPage = active.includes('/admin/management') || 
-                             active.includes('/admin/orders') || 
-                             active.includes('/admin/users') || 
-                             active.includes('/admin/products') || 
-                             active.includes('/admin/discounts');
-    
-    const isStatisticsPage = active.includes('/admin/dashboard');
-
     const handleLogout = async () => {
-        console.log("SideBar: Đang gọi logout...");
-        try {
-            await logout();
-            console.log("SideBar: Đã gọi logout thành công.");
-            navigate('/login');
-        } catch (error) {
-            console.error("SideBar: Lỗi khi logout:", error);
+        if (window.confirm("Bạn có chắc chắn muốn đăng xuất quyền Admin?")) {
+            try {
+                await logout();
+                navigate('/login');
+            } catch (error) {
+                console.error("Lỗi đăng xuất:", error);
+            }
         }
+    };
+
+    const NavItem = ({ item }) => {
+        const isActive = active === item.path || active.startsWith(`${item.path}/`);
+        return (
+            <button
+                onClick={() => navigate(item.path)}
+                className={`
+                    relative group w-full py-3 rounded-xl transition-all duration-200 font-medium
+                    flex items-center
+                    ${collapsed ? "justify-center px-2" : "justify-between px-4"} 
+                    ${isActive 
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+                        : "text-gray-500 hover:bg-blue-50 hover:text-blue-600"
+                    }
+                `}
+                title={collapsed ? item.label : ""}
+            >
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <item.icon 
+                        size={22} 
+                        strokeWidth={isActive ? 2.5 : 2}
+                        className={`flex-shrink-0 transition-transform duration-200 ${isActive ? "scale-105" : "group-hover:scale-110"}`} 
+                    />
+                    {!collapsed && <span className="text-sm whitespace-nowrap truncate">{item.label}</span>}
+                </div>
+                {/* Giữ lại mũi tên chỉ dẫn nhỏ ở item nếu muốn (hoặc xóa đoạn này nếu thấy rối) */}
+                {!collapsed && isActive && <ChevronRight size={16} className="text-white" />}
+
+                {collapsed && (
+                    <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap shadow-lg">
+                        {item.label}
+                        <div className="absolute top-1/2 right-full -translate-y-1/2 border-4 border-transparent border-r-gray-800"></div>
+                    </div>
+                )}
+            </button>
+        );
     };
 
     return (
         <aside
             className={`
-                fixed top-0 left-0 h-screen bg-white shadow-lg
-                flex flex-col
-                transition-all duration-300 ease-in-out
-                ${collapsed ? "w-20" : "w-72"}
-                z-40 
+                fixed top-0 left-0 h-screen bg-white shadow-xl border-r border-gray-100
+                flex flex-col z-50 transition-all duration-300 ease-in-out
+                overflow-x-hidden
+                ${collapsed ? "w-20" : "w-64"}
             `}
         >
-            {/* Khối Logo và Nút Toggle */}
+            {/* === HEADER (SỬA ĐỔI CHÍNH Ở ĐÂY) === */}
             <div className={`
-                flex items-center 
-                ${collapsed ? "justify-center" : "justify-between"}
-                p-4 h-[65px] border-b
+                flex items-center flex-shrink-0 border-b border-gray-50 transition-all duration-300
+                ${collapsed 
+                    ? "flex-col justify-center gap-4 py-4 h-auto" // Thu nhỏ: Xếp dọc (Logo trên, Nút dưới)
+                    : "justify-between p-4 h-[72px]"             // Mở rộng: Xếp ngang
+                }
             `}>
-                {!collapsed && (
-                    <h1
-                        onClick={() => navigate('/')}
-                        className="text-xl font-bold text-text-primary cursor-pointer"
-                    >
-                        FenShop
-                    </h1>
-                )}
+                {/* LOGO */}
+                <div 
+                    className="flex items-center gap-3 cursor-pointer group overflow-hidden" 
+                    onClick={() => navigate('/')}
+                >
+                    <div className="w-9 h-9 flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform">
+                        P
+                    </div>
+                    
+                    {!collapsed && (
+                        <div className="flex flex-col truncate">
+                            <h1 className="text-lg font-bold text-gray-800 tracking-tight leading-tight truncate">PhoneWorld</h1>
+                            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">Admin</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* NÚT TOGGLE (MŨI TÊN XỔ RA/THU VÀO) */}
                 <button
                     onClick={toggleSidebar}
-                    className="p-2 rounded-lg hover:bg-gray-100"
+                    className={`
+                        p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 flex-shrink-0
+                        ${collapsed ? "bg-gray-50 hover:scale-110" : ""} /* Style nổi bật hơn khi thu nhỏ */
+                    `}
+                    title={collapsed ? "Mở rộng menu" : "Thu gọn menu"}
                 >
-                    {collapsed ? <Menu size={20} /> : <ChevronLeft size={20} />}
+                    {collapsed ? (
+                        // Icon khi thu nhỏ: Mũi tên Phải (>)
+                        <ChevronRight size={24} strokeWidth={2.5} />
+                    ) : (
+                        // Icon khi mở rộng: Mũi tên Trái (<)
+                        <ChevronLeft size={20} />
+                    )}
                 </button>
             </div>
 
-            {/* Khối Menu Chính */}
-            <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-                {/* STATISTICS SECTION - Chỉ hiện khi ở dashboard */}
-                {isStatisticsPage && (
-                    <div>
-                        {!collapsed && <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 mb-2">Statistics</h3>}
-                        <div className="space-y-2">
-                            {statisticsItems.map((item) => {
-                                const isActive = active.startsWith(item.path);
-                                return (
-                                    <button
-                                        key={item.label}
-                                        onClick={() => navigate(item.path)}
-                                        className={`
-                                            flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
-                                            ${isActive ? "bg-blue-100 text-blue-600"
-                                                : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
-                                            ${collapsed ? "justify-center" : ""}
-                                        `}
-                                        title={collapsed ? item.label : ""}
-                                    >
-                                        <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
-                                        {!collapsed && <span>{item.label}</span>}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+            {/* === MENU BODY === */}
+            <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6 space-y-6 custom-scrollbar">
+                <div className="space-y-1">
+                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">Tổng quan</p>}
+                    {statisticsItems.map((item) => <NavItem key={item.path} item={item} />)}
+                </div>
 
-                {/* MANAGEMENT SECTION - Chỉ hiện khi ở management */}
-                {isManagementPage && (
-                    <div>
-                        {!collapsed && <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 mb-2">Management</h3>}
-                        <div className="space-y-2">
-                            {managementItems.map((item) => {
-                                const isActive = active.startsWith(item.path);
-                                return (
-                                    <button
-                                        key={item.label}
-                                        onClick={() => navigate(item.path)}
-                                        className={`
-                                            flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
-                                            ${isActive ? "bg-blue-100 text-blue-600"
-                                                : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
-                                            ${collapsed ? "justify-center" : ""}
-                                        `}
-                                        title={collapsed ? item.label : ""}
-                                    >
-                                        <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
-                                        {!collapsed && <span>{item.label}</span>}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
+                <div className="space-y-1">
+                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Quản lý cửa hàng</p>}
+                    {managementItems.map((item) => <NavItem key={item.path} item={item} />)}
+                </div>
 
-                {/* OTHER SECTION */}
-                <div>
-                    {!collapsed && <h3 className="text-xs font-semibold text-gray-500 uppercase px-3 mb-2">Other</h3>}
-                    <div className="space-y-2">
-                        {otherItems.map((item) => {
-                            const isActive = active.startsWith(item.path);
-                            return (
-                                <button
-                                    key={item.label}
-                                    onClick={() => navigate(item.path)}
-                                    className={`
-                                        flex items-center gap-3 w-full px-3 py-3 rounded-xl transition font-medium
-                                        ${isActive ? "bg-blue-100 text-blue-600"
-                                            : "text-gray-700 hover:text-blue-600 hover:bg-blue-50"}
-                                        ${collapsed ? "justify-center" : ""}
-                                    `}
-                                    title={collapsed ? item.label : ""}
-                                >
-                                    <item.icon size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
-                                    {!collapsed && <span>{item.label}</span>}
-                                </button>
-                            );
-                        })}
-                    </div>
+                <div className="space-y-1">
+                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Hệ thống</p>}
+                    {otherItems.map((item) => <NavItem key={item.path} item={item} />)}
                 </div>
             </nav>
 
-            {/* === KHỐI FOOTER (Shop + Logout) === */}
-            <div className={`w-full transition-all duration-300 mt-auto space-y-2
-                 ${collapsed ? "flex flex-col items-center px-2" : "px-4"}
-                 py-4 border-t bg-gray-50/50`}
-            >
-                {/* 2. Nút Shop (Về trang chủ) */}
+            {/* === FOOTER === */}
+            <div className="mt-auto border-t border-gray-100 bg-gray-50/50 p-3 space-y-1 flex-shrink-0">
                 <button
                     onClick={() => navigate('/')}
-                    className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
-                        text-gray-700 hover:text-blue-600 hover:bg-blue-100
-                        ${collapsed ? "justify-center" : "px-4"}
+                    className={`flex items-center w-full py-2.5 rounded-xl transition font-medium group
+                        ${collapsed ? "justify-center" : "px-4 gap-3"}
+                        text-gray-600 hover:text-blue-600 hover:bg-white hover:shadow-sm
                     `}
-                    title="Về cửa hàng"
+                    title={collapsed ? "Về cửa hàng" : ""}
                 >
-                    <Store size={22} className={`${collapsed ? "" : "min-w-[22px]"}`} />
-                    {!collapsed && <span>Cửa hàng</span>}
+                    <Store size={20} className="group-hover:text-blue-600 transition-colors flex-shrink-0" />
+                    {!collapsed && <span className="text-sm">Về cửa hàng</span>}
                 </button>
 
-                {/* Nút Logout */}
                 <button
                     onClick={handleLogout}
-                    className={`flex items-center gap-3 w-full py-3 rounded-xl transition font-medium
-                        text-gray-700 hover:text-red-600 hover:bg-red-100
-                        ${collapsed ? "justify-center" : "px-4"}
+                    className={`flex items-center w-full py-2.5 rounded-xl transition font-medium group
+                        ${collapsed ? "justify-center" : "px-4 gap-3"}
+                        text-gray-500 hover:text-red-600 hover:bg-red-50
                     `}
-                    title="Đăng xuất"
+                    title={collapsed ? "Đăng xuất" : ""}
                 >
-                    <LogOut size={22} className={`${collapsed ? "" : "min-w-[22px]"} rotate-180`} />
-                    {!collapsed && <span>Đăng xuất</span>}
+                    <LogOut size={20} className={`${collapsed ? "" : "rotate-180"} transition-transform group-hover:text-red-600 flex-shrink-0`} />
+                    {!collapsed && <span className="text-sm">Đăng xuất</span>}
                 </button>
             </div>
         </aside>
     );
 };
+
 export default SideBar;
