@@ -1,10 +1,7 @@
 // frontend/src/controllers/userController.jsx
 import api from "../services/api"; // API chính
 import axios from "axios"; // Dùng riêng cho Province
-import { toast } from 'react-toastify';
-
-// === TẠO RIÊNG INSTANCE CHO PROVINCE TẠI ĐÂY ===
-// Thay thế file provinceApi.js
+import { toast } from "react-toastify";
 const provinceRequest = axios.create({
     baseURL: "https://provinces.open-api.vn/api/",
 });
@@ -37,7 +34,7 @@ export const UserController = {
             handleApiError(error, "Lỗi tải thông tin người dùng.");
         }
     },
-    
+
     adminUpdateUser: async (userId, userData) => {
         try {
             const response = await api.put(`/users/${userId}`, userData);
@@ -46,7 +43,7 @@ export const UserController = {
             handleApiError(error, "Lỗi cập nhật người dùng.");
         }
     },
-    
+
     deleteUser: async (userId) => {
         try {
             const response = await api.delete(`/users/${userId}`);
@@ -55,11 +52,11 @@ export const UserController = {
             handleApiError(error, "Lỗi xóa người dùng.");
         }
     },
-    
+
     banUser: async (userId) => {
         try {
             const response = await api.put(`/users/${userId}/ban`);
-            return response.data; 
+            return response.data;
         } catch (error) {
             handleApiError(error, "Lỗi khi cấm người dùng.");
         }

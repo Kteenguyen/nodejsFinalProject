@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiMail, FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
-import { FaGoogle, FaFacebook } from 'react-icons/fa'; // Import icon cho Social
 import { toast } from 'react-toastify';
 
 // Import các thành phần cần thiết

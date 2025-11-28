@@ -26,10 +26,12 @@ function App() {
 
   const hideHeader =
     location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/reset-password")||
     location.pathname === "/login" ||
     location.pathname === "/register" ||
-    location.pathname === "/register-address"||
-    location.pathname === "/forgot-password" ;
+    location.pathname === "/register-address" ||
+    location.pathname === "/forgot-password" 
+    ;
 
   const LogoutRoute = () => {
     const { logout } = useAuth();
