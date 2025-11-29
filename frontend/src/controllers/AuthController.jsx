@@ -8,6 +8,13 @@ export const AuthController = {
             if (response.status >= 400 || (response.data && !response.data.success)) {
                 throw new Error(response.data?.message || "Đăng nhập thất bại");
             }
+            
+            // Lưu token vào localStorage để dùng cho Authorization header
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to localStorage');
+            }
+            
             return response.data;
         } catch (error) {
             const msg = error.response?.data?.message || error.message || "Đăng nhập thất bại";
@@ -20,6 +27,13 @@ export const AuthController = {
             const response = await api.post("/auth/register", formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
+            
+            // Lưu token sau khi đăng ký thành công
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to localStorage after registration');
+            }
+            
             return response.data;
         } catch (error) {
             throw new Error(error.response?.data?.message || "Đăng ký thất bại");
@@ -61,9 +75,14 @@ export const AuthController = {
     },
     logout: async () => {
         try {
-            const response = await api.post("/auth/logout");
-            return response.data;
+            await api.post("/auth/logout");
+            // Xóa token khỏi localStorage
+            localStorage.removeItem('token');
+            console.log('✅ Token removed from localStorage');
+            return { success: true };
         } catch (error) {
+            // Vẫn xóa token dù API lỗi
+            localStorage.removeItem('token');
             throw new Error("Đăng xuất thất bại");
         }
     },

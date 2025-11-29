@@ -42,6 +42,11 @@ const SideBar = ({ onToggle }) => {
         setActive(location.pathname);
     }, [location.pathname]);
 
+    // --- Xác định loại trang hiện tại ---
+    const isStatisticsPage = location.pathname === '/admin/dashboard';
+    const isManagementPage = ['/admin/management', '/admin/orders', '/admin/users', '/admin/products', '/admin/categories', '/admin/discounts'].some(path => location.pathname.startsWith(path));
+    const isSettingsPage = location.pathname === '/admin/settings';
+
     const handleLogout = async () => {
         if (window.confirm("Bạn có chắc chắn muốn đăng xuất quyền Admin?")) {
             try {
@@ -145,20 +150,49 @@ const SideBar = ({ onToggle }) => {
 
             {/* === MENU BODY === */}
             <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6 space-y-6 custom-scrollbar">
-                <div className="space-y-1">
-                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">Tổng quan</p>}
-                    {statisticsItems.map((item) => <NavItem key={item.path} item={item} />)}
-                </div>
+                {/* THỐNG KÊ VÀ BIỂU ĐỒ - Chỉ hiển thị khi ở /admin/dashboard */}
+                {isStatisticsPage && (
+                    <div className="space-y-1">
+                        {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">📊 Thống kê & Biểu đồ</p>}
+                        {statisticsItems.map((item) => <NavItem key={item.path} item={item} />)}
+                    </div>
+                )}
 
-                <div className="space-y-1">
-                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Quản lý cửa hàng</p>}
-                    {managementItems.map((item) => <NavItem key={item.path} item={item} />)}
-                </div>
+                {/* QUẢN LÝ CỬA HÀNG - Chỉ hiển thị khi ở quản lý */}
+                {isManagementPage && (
+                    <div className="space-y-1">
+                        {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">🏪 Quản lý cửa hàng</p>}
+                        {managementItems.map((item) => <NavItem key={item.path} item={item} />)}
+                    </div>
+                )}
 
-                <div className="space-y-1">
-                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Hệ thống</p>}
-                    {otherItems.map((item) => <NavItem key={item.path} item={item} />)}
-                </div>
+                {/* CÀI ĐẶT - Chỉ hiển thị khi ở settings */}
+                {isSettingsPage && (
+                    <div className="space-y-1">
+                        {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">⚙️ Hệ thống</p>}
+                        {otherItems.map((item) => <NavItem key={item.path} item={item} />)}
+                    </div>
+                )}
+
+                {/* MỤC KHÁC - Luôn hiển thị nút dashboard và quay lại */}
+                {!isStatisticsPage && !isManagementPage && !isSettingsPage && (
+                    <>
+                        <div className="space-y-1">
+                            {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">Tổng quan</p>}
+                            {statisticsItems.map((item) => <NavItem key={item.path} item={item} />)}
+                        </div>
+
+                        <div className="space-y-1">
+                            {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Quản lý cửa hàng</p>}
+                            {managementItems.map((item) => <NavItem key={item.path} item={item} />)}
+                        </div>
+
+                        <div className="space-y-1">
+                            {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Hệ thống</p>}
+                            {otherItems.map((item) => <NavItem key={item.path} item={item} />)}
+                        </div>
+                    </>
+                )}
             </nav>
 
             {/* === FOOTER === */}

@@ -31,14 +31,10 @@ const Login = () => {
 
         toast.success("Đăng nhập thành công!");
 
-        // 2. Điều hướng (dựa trên userData)
+        // 2. Reload trang để AuthContext check lại token và load user
         setTimeout(() => {
-            if (userData.role === "admin") {
-                navigate("/admin/dashboard");
-            } else {
-                navigate("/");
-            }
-        }, 1500);
+            window.location.href = "/";
+        }, 1000);
     };
     /**
      * NÂNG CẤP 2: Sửa lại cả 3 hàm đăng nhập

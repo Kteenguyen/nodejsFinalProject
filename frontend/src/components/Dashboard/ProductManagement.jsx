@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ProductController } from '../../controllers/productController';
 import { toast } from "react-toastify";
+import { getImageUrl } from '../../services/api';
 
 const API_BASE = "https://localhost:3001/api";
 
@@ -35,19 +36,36 @@ export default function ProductManagement() {
 
         const arr = Array.isArray(raw) ? raw : [];
 
-        const mapped = arr.map((p) => ({
-          id: p.productId || p._id,
-          name: p.productName || p.name || "(Không tên)",
+        const mapped = arr.map((p) => {
+          // 1. Tính tổng tồn kho để xác định trạng thái Hết hàng
+          // SỬA: Ưu tiên lấy totalStock từ API nếu có, nếu không mới tính từ variants
+          let calculatedStock = 0;
 
-          // --- THÊM DÒNG NÀY ---
-          // Lấy tên danh mục từ object category
-          category: p.category?.categoryName || p.category?.name || "—",
-          // ---------------------
+          if (p.totalStock !== undefined && p.totalStock !== null) {
+            // Trường hợp 1: API danh sách đã tính sẵn totalStock
+            calculatedStock = Number(p.totalStock);
+          } else if (Array.isArray(p.variants) && p.variants.length > 0) {
+            // Trường hợp 2: Có variants (thường là trang chi tiết), tự cộng dồn
+            calculatedStock = p.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+          } else {
+            // Trường hợp 3: Fallback các trường khác
+            calculatedStock = Number(p.stock) || Number(p.quantity) || 0;
+          }
 
-          brand: p.brand || "—",
-          lowestPrice: p.lowestPrice ?? p.minPrice ?? 0,
-          image: (Array.isArray(p.images) && p.images[0]) || p.image || "/img/no_image.png",
-        }));
+          const isOutOfStock = calculatedStock <= 0;
+
+          return {
+            id: p.productId || p._id,
+            name: p.productName || p.name || "(Không tên)",
+            category: p.category?.categoryName || p.category?.name || "—",
+            brand: p.brand || "—",
+            lowestPrice: p.lowestPrice ?? p.minPrice ?? 0,
+            image: getImageUrl((Array.isArray(p.images) && p.images[0]) || p.image || "/img/no_image.png"),
+
+            // Cập nhật giá trị cuối cùng vào đây
+            totalStock: p.totalStock || 0,
+          };
+        });
         setRows(mapped);
       })
       .catch((err) => {
@@ -118,77 +136,92 @@ export default function ProductManagement() {
               <th className="text-left px-4 py-3">Danh mục</th>
               <th className="text-left px-4 py-3">Brand</th>
               <th className="text-left px-4 py-3">Giá thấp nhất</th>
+              <th className="px-4 py-3 text-center">Tồn kho</th>
               <th className="text-left px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="px-4 py-4 text-gray-500" colSpan={5}>
+                <td className="px-4 py-4 text-gray-500" colSpan={7}>
                   Đang tải…
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-gray-500" colSpan={5}>
+                <td className="px-4 py-4 text-gray-500" colSpan={7}>
                   Không có sản phẩm
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-4 py-3">
-                    <img src={r.image} alt={r.name} className="w-12 h-12 object-cover rounded" />
-                  </td>
-                  <td className="px-4 py-3 font-medium">{r.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{r.category}</td>
-                  <td className="px-4 py-3">{r.brand}</td>
-                  <td className="px-4 py-3">{fmtVND(r.lowestPrice)}</td>
-                  <td className="px-4 py-3 space-x-2">
-                    <button
-                      className="px-3 py-1.5 rounded border"
-                      onClick={() =>
-                        navigate(
-                          `/admin/products/${encodeURIComponent(r.id)}/edit`
-                        )
-                      }
-                    >
-                      Sửa
-                    </button>
-                    <button
-                      className="px-3 py-1.5 rounded border border-red-500 text-red-600"
-                      onClick={async () => {
-                        if (
-                          !window.confirm(
-                            "Bạn có chắc muốn xóa sản phẩm này?"
+              rows.map((r) => {
+                // 2. XỬ LÝ MÀU SẮC CHO TỒN KHO
+                const stockColor = r.totalStock > 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50";
+
+                return (
+                  <tr key={r.id} className="border-t">
+                    <td className="px-4 py-3">
+                      <img src={r.image} alt={r.name} className="w-12 h-12 object-cover rounded" />
+                    </td>
+                    <td className="px-4 py-3 font-medium">{r.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{r.category}</td>
+                    <td className="px-4 py-3">{r.brand}</td>
+                    <td className="px-4 py-3">{fmtVND(r.lowestPrice)}</td>
+
+                    {/* 👇 CỘT HIỂN THỊ TỒN KHO MỚI 👇 */}
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${stockColor}`}>
+                        {r.totalStock > 0 ? r.totalStock : "Hết hàng"}
+                      </span>
+                    </td>
+                    {/* -------------------------------- */}
+
+                    <td className="px-4 py-3 space-x-2">
+                      <button
+                        className="px-3 py-1.5 rounded border"
+                        onClick={() =>
+                          navigate(
+                            `/admin/products/${encodeURIComponent(r.id)}/edit`
                           )
-                        )
-                          return;
-                        try {
-                          await axios.delete(
-                            `${API_BASE}/products/${encodeURIComponent(r.id)}`,
-                            { withCredentials: true }
-                          );
-                          toast.success("Xóa sản phẩm thành công");
-                          setRows((prev) =>
-                            prev.filter((x) => x.id !== r.id)
-                          );
-                        } catch (err) {
-                          console.error("DELETE ERROR", err.response || err);
-                          const msg =
-                            err.response?.data?.message ||
-                            err.response?.statusText ||
-                            err.message ||
-                            "Xóa sản phẩm thất bại";
-                          toast.error(msg);
                         }
-                      }}
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))
+                      >
+                        Sửa
+                      </button>
+                      <button
+                        className="px-3 py-1.5 rounded border border-red-500 text-red-600"
+                        onClick={async () => {
+                          if (
+                            !window.confirm(
+                              "Bạn có chắc muốn xóa sản phẩm này?"
+                            )
+                          )
+                            return;
+                          try {
+                            await axios.delete(
+                              `${API_BASE}/products/${encodeURIComponent(r.id)}`,
+                              { withCredentials: true }
+                            );
+                            toast.success("Xóa sản phẩm thành công");
+                            setRows((prev) =>
+                              prev.filter((x) => x.id !== r.id)
+                            );
+                          } catch (err) {
+                            console.error("DELETE ERROR", err.response || err);
+                            const msg =
+                              err.response?.data?.message ||
+                              err.response?.statusText ||
+                              err.message ||
+                              "Xóa sản phẩm thất bại";
+                            toast.error(msg);
+                          }
+                        }}
+                      >
+                        Xóa
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

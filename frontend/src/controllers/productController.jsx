@@ -192,6 +192,38 @@ const getBestSellers = async () => {
 };
 
 /**
+ * Lấy danh sách tất cả thương hiệu
+ * Endpoint: /api/products/brands
+ */
+const getBrands = async () => {
+    try {
+        const response = await api.get('/products/brands');
+        // Backend trả về { success: true, brands: [...] }
+        console.log('🏷️ Brands fetched:', response.data.brands?.length);
+        return response.data.brands || [];
+    } catch (error) {
+        console.error("Lỗi lấy danh sách thương hiệu:", error);
+        return [];
+    }
+};
+
+/**
+ * Lấy danh sách tất cả danh mục
+ * Endpoint: /api/products/categories
+ */
+const getCategories = async () => {
+    try {
+        const response = await api.get('/products/categories');
+        // Backend trả về { success: true, categories: [...] }
+        console.log('📂 Categories fetched:', response.data.categories?.length);
+        return response.data.categories || [];
+    } catch (error) {
+        console.error("Lỗi lấy danh sách danh mục:", error);
+        return [];
+    }
+};
+
+/**
  * Thêm bình luận cho sản phẩm
  */
 const addComment = async (productIdOrSlug, commentData) => {
@@ -250,6 +282,8 @@ export const ProductController = {
     getProductsByCategory,
     getNewProducts,
     getBestSellers,
+    getBrands,
+    getCategories,
     addComment,
     rateProduct,
     getImageUrl,

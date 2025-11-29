@@ -103,8 +103,19 @@ const saveCartToDatabase = async (cartItems) => {
     return Promise.resolve({ success: true });
 };
 
+const clearCart = async () => {
+    try {
+        await api.delete('/cart/clear'); // Gọi endpoint xóa sạch giỏ hàng ở Backend
+        return true;
+    } catch (error) {
+        console.error("Lỗi xóa giỏ hàng:", error);
+        return false;
+    }
+};
+
 
 export const CartController = {
     enrichCart,
-    saveCartToDatabase
+    saveCartToDatabase,
+    clearCart
 };

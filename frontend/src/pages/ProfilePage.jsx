@@ -1,8 +1,9 @@
 // frontend/src/pages/ProfilePage.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { FaUser, FaLock, FaMapMarkerAlt, FaCamera } from 'react-icons/fa';
+import { FaUser, FaLock, FaMapMarkerAlt, FaCamera, FaShoppingBag } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import OrderHistory from '../components/Order/OrderHistory';
 
 // Import các component Tab
 import ChangePassword from '../components/Profile/ChangePassword';
@@ -16,7 +17,8 @@ import Breadcrumb from '../components/common/Breadcrumb';
 const TABS = {
     PROFILE: 'profile',
     PASSWORD: 'password',
-    ADDRESSES: 'addresses'
+    ADDRESSES: 'addresses',
+    ORDERS: 'orders' // <--- MỚI
 };
 
 const LoadingSpinner = () => (
@@ -128,8 +130,18 @@ const ProfilePage = () => {
                         <ManageAddresses />
                     </div>
                 );
-            default:
-                return null;
+            case TABS.ORDERS:
+                return (
+                    <div className="bg-surface p-6 rounded-lg shadow-md min-h-[400px]">
+                        <h3 className="text-xl font-semibold text-text-primary mb-6 pb-2 border-b border-gray-100">
+                            Lịch sử đơn hàng
+                        </h3>
+                        {/* Gọi component OrderHistory đã tự xử lý logic fetch data */}
+                        <OrderHistory />
+                    </div>
+                );
+            
+            default: return null;
         }
     };
 
@@ -199,6 +211,32 @@ const ProfilePage = () => {
 
                                 <h2 className="text-xl font-semibold text-text-primary">{user.name}</h2>
                                 <p className="text-sm text-text-secondary">{user.email}</p>
+                                
+                                {/* Hiển thị điểm thưởng */}
+                                {user.loyaltyPoints !== undefined && (
+                                    <div className="mt-4 w-full">
+                                        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-3 border border-yellow-200">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-2xl">🎁</span>
+                                                    <div className="text-left">
+                                                        <p className="text-xs text-gray-600">Điểm tích lũy</p>
+                                                        <p className="text-lg font-bold text-orange-600">{user.loyaltyPoints} điểm</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-600">Giá trị</p>
+                                                    <p className="text-sm font-semibold text-green-600">
+                                                        {(user.loyaltyPoints * 1000).toLocaleString()}đ
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2 text-center">
+                                            Tích 10% giá trị đơn hàng • 1 điểm = 1.000đ
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* 2. Menu */}
@@ -206,6 +244,7 @@ const ProfilePage = () => {
                                 <TabButton tabKey={TABS.PROFILE} icon={<FaUser />} label="Hồ sơ cá nhân" />
                                 <TabButton tabKey={TABS.PASSWORD} icon={<FaLock />} label="Đổi mật khẩu" />
                                 <TabButton tabKey={TABS.ADDRESSES} icon={<FaMapMarkerAlt />} label="Địa chỉ" />
+                                <TabButton tabKey={TABS.ORDERS} icon={<FaShoppingBag />} label="Đơn mua" />
                             </nav>
                         </div>
                     </aside>

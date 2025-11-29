@@ -4,7 +4,8 @@ import { useCart } from '../context/CartContext';
 import { CartController } from '../controllers/CartController';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTrash, FaPlus, FaMinus, FaShoppingBag } from 'react-icons/fa';
-import { toast } from 'react-toastify'; // 👈 Bổ sung
+import { toast } from 'react-toastify';
+import { getImageUrl } from '../services/api';
 
 // === Helpers: Chuẩn hoá field từ nhiều nguồn (#17, local, v.v.) ===
 function getVariantKey(it) {
@@ -23,7 +24,8 @@ function getVariantName(it) {
   return it.variantName || it.attrs?.name || it.variant || '';
 }
 function getImage(it) {
-  return it.image || it.images?.[0] || '/img/placeholder-1.jpg';
+  const img = it.image || it.images?.[0] || '/img/placeholder-1.jpg';
+  return getImageUrl(img);
 }
 function getPrice(it) {
   // đồng bộ nhất quán: price hoặc unitPrice

@@ -1,10 +1,12 @@
+// src/components/products/filters/SidebarFilter.jsx
 import { useMemo, useState } from "react";
+import { Filter, ChevronDown, ChevronUp, Star, RotateCcw, Check } from "lucide-react";
 import PriceRange from "./PriceRange";
 
 export default function SidebarFilter({
   brands = [],
   categories = [],
-  value,            // { brand:[], minPrice, maxPrice, categoryId:[], ratingMin }
+  value,
   onChange,
   priceMin = 0,
   priceMax = 100_000_000,
@@ -12,8 +14,6 @@ export default function SidebarFilter({
   const [showAllBrands, setShowAllBrands] = useState(false);
   const topBrands = useMemo(() => brands.slice(0, 6), [brands]);
   const moreBrands = useMemo(() => brands.slice(6), [brands]);
-
-  console.log('🎨 SidebarFilter rendered:', { brandsCount: brands.length, categoriesCount: categories.length, brands, categories });
 
   function toggleBrand(b) {
     const s = new Set(value.brand || []);
@@ -28,14 +28,40 @@ export default function SidebarFilter({
   }
 
   function setRating(r) {
-    onChange({ ...value, ratingMin: r });
+    // Nếu bấm lại vào rating đang chọn thì bỏ chọn
+    onChange({ ...value, ratingMin: value.ratingMin === r ? undefined : r });
   }
 
+  const clearAll = () => {
+    onChange({ brand: [], categoryId: [], minPrice: undefined, maxPrice: undefined, ratingMin: undefined });
+  };
+
   return (
-    <aside className="w-full lg:w-64 xl:w-72 bg-white rounded-lg shadow p-4 space-y-6 lg:sticky lg:top-4 h-fit">
-      {/* KHOẢNG GIÁ */}
-      <section>
-        <div className="font-semibold mb-3">Khoảng giá (VND)</div>
+    <aside className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-200 overflow-hidden lg:sticky lg:top-24 h-fit">
+      
+      {/* HEADER: Tiêu đề + Nút xóa với gradient */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-white flex items-center gap-2 text-base">
+            <Filter size={20} className="drop-shadow" /> Bộ Lọc Tìm Kiếm
+          </h3>
+          <button 
+              onClick={clearAll} 
+              className="text-xs bg-white/20 hover:bg-white/30 text-white font-medium flex items-center gap-1 px-3 py-1.5 rounded-full transition-all backdrop-blur-sm"
+          >
+              <RotateCcw size={12} /> Đặt lại
+          </button>
+        </div>
+      </div>
+
+      <div className="p-5 space-y-6">
+
+      {/* 1. KHOẢNG GIÁ */}
+      <section className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <h4 className="font-bold text-sm text-gray-800 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-blue-600 rounded-full"></span>
+          Khoảng giá
+        </h4>
         <PriceRange
           min={priceMin}
           max={priceMax}
@@ -47,77 +73,109 @@ export default function SidebarFilter({
         />
       </section>
 
-      {/* THƯƠNG HIỆU */}
-      <section>
-        <div className="font-semibold mb-3">Thương hiệu</div>
+      {/* 2. DANH MỤC (Custom Checkbox) */}
+      <section className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <h4 className="font-bold text-sm text-gray-800 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-green-600 rounded-full"></span>
+          Danh mục sản phẩm
+        </h4>
+        <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+          {categories.map((c) => {
+            const isChecked = (value.categoryId || []).includes(c.categoryId || c.id);
+            return (
+                <label key={c.categoryId || c.id} className="flex items-center gap-3 cursor-pointer group p-2 hover:bg-blue-50 rounded-lg transition-all">
+                {/* Custom Checkbox UI with animation */}
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 ${isChecked ? 'bg-gradient-to-br from-blue-600 to-blue-700 border-blue-600 scale-110' : 'border-gray-300 bg-white group-hover:border-blue-400 group-hover:shadow-sm'}`}>
+                    {isChecked && <Check size={14} className="text-white" strokeWidth={3} />}
+                </div>
+                
+                <input
+                    type="checkbox"
+                    className="hidden"
+                    checked={isChecked}
+                    onChange={() => toggleCategory(c.categoryId || c.id)}
+                />
+                <span className={`text-sm transition-colors ${isChecked ? 'text-blue-700 font-semibold' : 'text-gray-600 group-hover:text-blue-600'}`}>
+                    {c.categoryName || c.name}
+                </span>
+                </label>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 3. THƯƠNG HIỆU */}
+      <section className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <h4 className="font-bold text-sm text-gray-800 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-purple-600 rounded-full"></span>
+          Thương hiệu
+        </h4>
         <div className="space-y-2">
-          {(showAllBrands ? brands : topBrands).map((b) => (
-            <label key={b} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={(value.brand || []).includes(b)}
-                onChange={() => toggleBrand(b)}
-              />
-              <span className="select-none">{b}</span>
-            </label>
-          ))}
+          {(showAllBrands ? brands : topBrands).map((b) => {
+            const isChecked = (value.brand || []).includes(b);
+            return (
+                <label key={b} className="flex items-center gap-3 cursor-pointer group p-2 hover:bg-purple-50 rounded-lg transition-all">
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 ${isChecked ? 'bg-gradient-to-br from-purple-600 to-purple-700 border-purple-600 scale-110' : 'border-gray-300 bg-white group-hover:border-purple-400 group-hover:shadow-sm'}`}>
+                    {isChecked && <Check size={14} className="text-white" strokeWidth={3} />}
+                </div>
+                <input
+                    type="checkbox"
+                    className="hidden"
+                    checked={isChecked}
+                    onChange={() => toggleBrand(b)}
+                />
+                <span className={`text-sm transition-colors ${isChecked ? 'text-purple-700 font-semibold' : 'text-gray-600 group-hover:text-purple-600'}`}>
+                    {b}
+                </span>
+                </label>
+            );
+          })}
+          
           {moreBrands.length > 0 && (
             <button
-              className="text-indigo-600 text-sm"
+              className="text-purple-600 text-sm font-medium flex items-center gap-1 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-all ml-1 mt-2"
               onClick={() => setShowAllBrands((s) => !s)}
             >
-              {showAllBrands ? "Thu gọn" : "Xem thêm"}
+              {showAllBrands ? <>Thu gọn <ChevronUp size={14}/></> : <>Xem thêm {moreBrands.length} hãng <ChevronDown size={14}/></>}
             </button>
           )}
         </div>
       </section>
 
-      {/* DANH MỤC */}
-      <section>
-        <div className="font-semibold mb-3">Danh mục</div>
-        <div className="space-y-2 max-h-56 overflow-auto pr-1">
-          {categories.map((c) => (
-            <label key={c.categoryId || c.id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={(value.categoryId || []).includes(c.categoryId || c.id)}
-                onChange={() => toggleCategory(c.categoryId || c.id)}
-              />
-              <span className="select-none">{c.categoryName || c.name}</span>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      {/* ĐÁNH GIÁ (hiện số, không icon) */}
-      <section>
-        <div className="font-semibold mb-3">Đánh giá</div>
-        <div className="grid grid-cols-3 gap-2">
+      {/* 4. ĐÁNH GIÁ (Compact Style) */}
+      <section className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <h4 className="font-bold text-sm text-gray-800 mb-4 flex items-center gap-2">
+          <span className="w-1 h-4 bg-yellow-500 rounded-full"></span>
+          Đánh giá
+        </h4>
+        <div className="flex flex-col gap-1.5">
           {[5, 4, 3, 2, 1].map((n) => (
             <button
               key={n}
               onClick={() => setRating(n)}
-              className={`px-2 py-1 rounded border text-sm ${
+              className={`flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition-all ${
                 value.ratingMin === n
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-gray-300 text-gray-700"
+                  ? "border-yellow-400 bg-gradient-to-r from-yellow-50 to-orange-50 text-yellow-800 shadow-sm"
+                  : "border-transparent text-gray-600 hover:bg-yellow-50 hover:border-yellow-200"
               }`}
             >
-              {n}+
+              <div className="flex items-center gap-2">
+                <div className="flex text-yellow-400">
+                  {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={14} fill={i < n ? "currentColor" : "none"} className={`${i >= n ? "text-gray-300" : ""}`} strokeWidth={2} />
+                  ))}
+                </div>
+                <span className={`text-xs ${value.ratingMin === n ? "font-semibold" : ""}`}>trở lên</span>
+              </div>
+              {value.ratingMin === n && (
+                <Check size={16} className="text-yellow-600" strokeWidth={3} />
+              )}
             </button>
           ))}
         </div>
-        {value.ratingMin && (
-          <button
-            className="mt-2 text-sm text-gray-500 underline"
-            onClick={() => setRating(undefined)}
-          >
-            Xoá đánh giá
-          </button>
-        )}
       </section>
+      
+      </div>
     </aside>
   );
 }

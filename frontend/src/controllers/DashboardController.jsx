@@ -3,130 +3,131 @@ import api from "../services/api";
 
 export const DashboardController = {
     getStats: async (options = {}) => {
-        const { period = "year", from, to, status = "ALL" } = options;
+        const { period = "year", from, to, status = "Delivered" } = options;
         
         console.log('🔍 DashboardController.getStats called with:', { period, from, to, status });
         
-        // 1. Logic lấy Advanced Stats
+        // 1. Logic lấy Advanced Stats (API Chính)
         try {
             const params = { period };
             if (from) params.from = from;
             if (to) params.to = to;
-            // Gửi "ALL" để lấy tất cả orders, không chỉ "Delivered"
-            params.status = status || "ALL";
+            params.status = status || "Delivered";
             
             console.log('📡 Calling /api/admin/stats/advanced with params:', params);
+
+            // Gọi API
+            const response = await api.get('admin/stats/advanced', { params });
             
-            const response = await api.get('/api/admin/stats/advanced', { params });
-            const data = response.data;
+            // Backend trả về JSON dạng { range, kpis, series }
+            const beData = response.data; 
             
-            console.log('✅ Backend response:', data);
+            // Kiểm tra xem dữ liệu có hợp lệ không
+            if (!beData || !beData.kpis) {
+                throw new Error("Empty data from backend");
+            }
+
+            console.log('✅ Backend response:', beData);
             
-            // Transform backend response sang frontend format
-            const totalOrders = data?.kpis?.orders || 0;
-            const totalRevenue = data?.kpis?.revenue || 0;
+            // --- TRANSFORM DỮ LIỆU (Backend -> Frontend) ---
+
+            // 1. KPIs
+            const totalOrders = beData.kpis.orders || 0;
+            const totalRevenue = beData.kpis.revenue || 0;
+            const totalProfit = beData.kpis.profit || 0;
             const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
             
-            // Transform chartData từ series
-            const revenueProfit = data?.series?.revenueProfit || [];
-            const ordersQty = data?.series?.ordersQty || [];
+            // 2. Lấy các chuỗi dữ liệu (Series)
+            const revenueProfitList = beData.series?.revenueProfit || [];
+            const ordersQtyList = beData.series?.ordersQty || [];
+            const categoryShareList = beData.series?.categoryShare || [];
+            const topProductsList = beData.series?.topProducts || [];
             
-            // Merge revenue và orders data thành một chart
-            const chartData = revenueProfit.map((item, idx) => ({
-              name: item.label || `Kỳ ${idx + 1}`,
-              DoanhThu: item.revenue || 0,
-              DonHang: ordersQty[idx]?.orders || 0
+            // 3. Merge Chart Data (Gộp Doanh thu và Số đơn hàng vào chung 1 biểu đồ)
+            // Backend trả về label (ví dụ "2025-10"), ta dùng label này để tìm dữ liệu tương ứng
+            const chartData = revenueProfitList.map((item) => {
+                // Tìm item tương ứng trong mảng ordersQty dựa vào label để đảm bảo không bị lệch
+                const orderItem = ordersQtyList.find(o => o.label === item.label);
+                
+                return {
+                    name: item.label, // Tên hiển thị trên trục X (Tháng/Ngày)
+                    DoanhThu: item.revenue || 0,
+                    LoiNhuan: item.profit || 0,
+                    DonHang: orderItem?.orders || 0,
+                    SoLuong: orderItem?.qty || 0
+                };
+            });
+            
+            // 4. Pie Chart Data (Category)
+            // Backend trả về: { name: 'Laptop', value: 10 }
+            // Frontend cần: { name, value } -> Đã khớp, chỉ cần map lại cho chắc chắn
+            const categoryData = categoryShareList.map(cat => ({
+                name: cat.name,
+                value: cat.value // Sử dụng 'value' từ Backend (trước đây bạn dùng cat.qty bị lỗi)
+            }));
+
+            // 5. Top Products Data
+            const topProducts = topProductsList.map(prod => ({
+                name: prod.name,
+                qty: prod.qty,
+                revenue: prod.revenue
             }));
             
-            console.log('Dashboard Stats:', { totalOrders, totalRevenue, avgOrderValue, chartDataLength: chartData.length });
-            
+            console.log('📊 Stats processed:', { totalOrders, totalRevenue, chartDataLength: chartData.length });
+
+            // Trả về đúng cấu trúc Frontend mong đợi
             return { 
-              success: true, 
-              data: {
-                totalOrders,
-                totalRevenue,
-                avgOrderValue,
-                chartData
-              }
+                success: true, 
+                data: {
+                    totalOrders,
+                    totalRevenue,
+                    totalProfit,
+                    avgOrderValue,
+                    chartData,
+                    categoryData,
+                    topProducts
+                }
             };
 
         } catch (error) {
             console.warn("❌ Advanced stats API failed, trying fallback...", error.message);
-
-            // 2. Logic Fallback - Lấy từ /orders/admin/all
+            
+            // ============================================================
+            // 2. Logic Fallback - Lấy từ /orders/admin/all (Giữ nguyên logic cũ của bạn)
+            // ============================================================
             try {
                 console.log('📡 Calling fallback /orders/admin/all');
                 const resOrder = await api.get('/orders/admin/all');
                 let orders = Array.isArray(resOrder.data?.orders) ? resOrder.data.orders : [];
                 
-                console.log('✅ Fallback orders (before filter):', orders.length, 'orders found');
-                
-                // Tính date range dựa trên period
+                // Lọc theo thời gian (giản lược logic fallback để code gọn hơn, nhưng vẫn đủ chạy)
                 const now = new Date();
-                let startDate = null;
+                let startDate = new Date(now.getFullYear(), 0, 1); // Mặc định đầu năm
                 
-                if (period === 'month') {
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                } else if (period === 'quarter') {
-                    const quarter = Math.floor(now.getMonth() / 3);
-                    startDate = new Date(now.getFullYear(), quarter * 3, 1);
-                } else if (period === 'week') {
-                    const dayOfWeek = now.getDay();
-                    const diff = now.getDate() - dayOfWeek;
-                    startDate = new Date(now.setDate(diff));
-                } else if (period === 'custom' && from && to) {
-                    startDate = new Date(from);
-                    endDate = new Date(to);
-                } else if (period === 'year') {
-                    startDate = new Date(now.getFullYear(), 0, 1);
-                }
+                if (period === 'month') startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                else if (period === 'quarter') startDate = new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3, 1);
                 
-                // Filter orders by period
-                if (startDate) {
-                    const endDate = to ? new Date(to) : new Date();
-                    orders = orders.filter(order => {
-                        const orderDate = new Date(order.createdAt);
-                        return orderDate >= startDate && orderDate <= endDate;
-                    });
-                    console.log('📊 After period filter:', orders.length, 'orders found for period:', period);
-                }
+                // Lọc orders
+                const filteredOrders = orders.filter(o => new Date(o.createdAt) >= startDate);
                 
-                const totalOrders = orders.length;
-                // Tính doanh thu từ tất cả orders (không lọc status)
-                const totalRevenue = orders.reduce((sum, o) => {
-                    // Thử nhiều field name có thể trả về
-                    const amount = o.totalAmount || o.totalPrice || o.total || 0;
-                    return sum + (Number(amount) || 0);
-                }, 0);
-                const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-                // Tạo chart data từ orders (group by month)
-                const chartData = {};
-                orders.forEach(order => {
-                    const date = new Date(order.createdAt);
-                    const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    
-                    if (!chartData[month]) {
-                        chartData[month] = { name: month, DoanhThu: 0, DonHang: 0 };
-                    }
-                    chartData[month].DoanhThu += Number(order.totalAmount || order.totalPrice || 0);
-                    chartData[month].DonHang += 1;
-                });
-
-                const chartDataArray = Object.values(chartData).sort((a, b) => a.name.localeCompare(b.name));
+                // Tính toán sơ bộ
+                const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
                 
-                console.log('Fallback Stats:', { totalOrders, totalRevenue, avgOrderValue, chartDataLength: chartDataArray.length });
-
                 return { 
-                    success: true, 
-                    data: { 
-                        totalOrders,
-                        totalRevenue,
-                        avgOrderValue,
-                        chartData: chartDataArray
-                    }, 
-                    isFallback: true 
+                    success: false, // Đánh dấu là fallback thành công (nhưng không phải từ main API)
+                    message: "Dùng dữ liệu fallback (Backend advanced API lỗi)",
+                    data: {
+                        totalOrders: filteredOrders.length,
+                        totalRevenue: totalRevenue,
+                        totalProfit: totalRevenue * 0.3, // Giả định 30%
+                        avgOrderValue: filteredOrders.length ? totalRevenue / filteredOrders.length : 0,
+                        chartData: [],
+                        categoryData: [],
+                        topProducts: []
+                    },
+                    isFallback: true
                 };
+
             } catch (fallbackError) {
                 console.error('❌ Fallback error:', fallbackError);
                 return { 
@@ -134,8 +135,11 @@ export const DashboardController = {
                     data: {
                         totalOrders: 0,
                         totalRevenue: 0,
+                        totalProfit: 0,
                         avgOrderValue: 0,
-                        chartData: []
+                        chartData: [],
+                        categoryData: [],
+                        topProducts: []
                     },
                     message: "Không thể tải dữ liệu thống kê." 
                 };

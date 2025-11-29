@@ -1,10 +1,13 @@
 // src/pages/ProductsPage.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
+import { LayoutGrid, List as ListIcon, Home, ChevronRight } from "lucide-react"; 
+
 import SidebarFilter from "../components/products/filters/SidebarFilter";
+import ProductCard from "../components/Home/ProductCard";
+import Pagination from "../components/common/Pagination";
 import { ProductController } from '../controllers/productController';
 import api from '../services/api';
-import ProductCard from "../components/Home/ProductCard";
 
 function isAbort(err) {
   return err?.name === "AbortError" || /abort/i.test(String(err?.message));
@@ -13,74 +16,53 @@ function isAbort(err) {
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // dữ liệu bộ lọc (nguồn)
+  // --- STATE ---
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
-
-  // danh sách SP + meta
   const [items, setItems] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, pages: 1 });
+  
+  // Mặc định grid view
+  const [viewMode, setViewMode] = useState('grid'); 
+  const [loading, setLoading] = useState(false);
 
-  // state filter đồng bộ với URL khi mount
+  // --- FILTER STATE ---
   const [filter, setFilter] = useState({
     brand: (searchParams.get("brand") || "").split(",").filter(Boolean),
-    minPrice: searchParams.get("minPrice")
-      ? Number(searchParams.get("minPrice"))
-      : undefined,
-    maxPrice: searchParams.get("maxPrice")
-      ? Number(searchParams.get("maxPrice"))
-      : undefined,
-    categoryId: (searchParams.get("categoryId") || "")
-      .split(",")
-      .filter(Boolean),
-    ratingMin: searchParams.get("ratingMin")
-      ? Number(searchParams.get("ratingMin"))
-      : undefined,
+    minPrice: searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined,
+    maxPrice: searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined,
+    categoryId: (searchParams.get("categoryId") || "").split(",").filter(Boolean),
+    ratingMin: searchParams.get("ratingMin") ? Number(searchParams.get("ratingMin")) : undefined,
     sortBy: searchParams.get("sortBy") || "newest",
     sortOrder: searchParams.get("sortOrder") || "desc",
     page: Number(searchParams.get("page") || 1),
     limit: Number(searchParams.get("limit") || 12),
   });
 
-  // ---------- Load brands & categories một lần ----------
+  // 1. Load Facets
   useEffect(() => {
     const ctrl = new AbortController();
     (async () => {
       try {
-        console.log('📦 Loading brands and categories...');
-        
-        // Gọi API qua axios instance để có credentials
-        const [brandsRes, categoriesRes] = await Promise.all([
+        const { CategoryController } = await import('../controllers/categoryController');
+        const [brandsRes, categoriesList] = await Promise.all([
           api.get('/products/brands', { signal: ctrl.signal }),
-          api.get('/products/categories', { signal: ctrl.signal })
+          CategoryController.getAll()
         ]);
-        
-        const brandsList = brandsRes?.data?.brands || brandsRes?.data?.data || [];
-        const categoriesList = categoriesRes?.data?.categories || categoriesRes?.data?.data || [];
-        
-        console.log('✅ Brands loaded:', brandsList.length, 'items');
-        console.log('✅ Categories loaded:', categoriesList.length, 'items');
-        
-        setBrands(brandsList);
-        setCategories(categoriesList);
+        setBrands(brandsRes?.data?.brands || []);
+        setCategories(categoriesList || []);
       } catch (e) {
-        if (!isAbort(e)) {
-          console.error("❌ Load facets failed:", e);
-          // Fallback: set empty arrays
-          setBrands([]);
-          setCategories([]);
-        }
+        if (!isAbort(e)) console.error("Load facets failed:", e);
       }
     })();
     return () => ctrl.abort();
   }, []);
 
-  // ---------- Từ filter -> query string (memo để đỡ build lại) ----------
+  // 2. Memo query params
   const queryParams = useMemo(() => {
     const qp = new URLSearchParams();
     if (filter.brand?.length) qp.set("brand", filter.brand.join(","));
-    if (filter.categoryId?.length)
-      qp.set("categoryId", filter.categoryId.join(","));
+    if (filter.categoryId?.length) qp.set("categoryId", filter.categoryId.join(","));
     if (filter.minPrice != null) qp.set("minPrice", filter.minPrice);
     if (filter.maxPrice != null) qp.set("maxPrice", filter.maxPrice);
     if (filter.ratingMin != null) qp.set("ratingMin", filter.ratingMin);
@@ -91,74 +73,163 @@ export default function ProductsPage() {
     return qp;
   }, [filter]);
 
-  // ---------- Đồng bộ URL & fetch danh sách ----------
+  // 3. Fetch products
   useEffect(() => {
-    // 1) Cập nhật URL
     setSearchParams(queryParams, { replace: true });
-
-    // 2) Gọi API (bắt AbortError để không đỏ màn hình)
+    
     const ctrl = new AbortController();
     (async () => {
+      setLoading(true);
       try {
-        const res = await ProductController.getProducts(
-          Object.fromEntries(queryParams)
-        );
-        setItems(res?.products || res?.data || []);
+        const res = await ProductController.getProducts(Object.fromEntries(queryParams));
+        setItems(res?.products || []);
         setMeta({
-          total: res?.pagination?.totalProducts ?? res?.total ?? 0,
-          page: res?.pagination?.currentPage ?? res?.currentPage ?? res?.page ?? 1,
-          pages: res?.pagination?.totalPages ?? res?.totalPages ?? res?.pages ?? 1,
+          total: res?.total || 0,
+          page: res?.currentPage || 1,
+          pages: res?.totalPages || 1,
         });
       } catch (e) {
         if (!isAbort(e)) console.error("Load products failed:", e);
+      } finally {
+        setLoading(false);
       }
     })();
-
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     return () => ctrl.abort();
   }, [queryParams, setSearchParams]);
 
-  // (nếu chưa build API min/max từ server) – cấu hình thủ công
-  const priceMin = 0;
-  const priceMax = 100_000_000;
+  const handlePageChange = (newPage) => setFilter((prev) => ({ ...prev, page: newPage }));
+
+  const handleSortChange = (e) => {
+    const value = e.target.value;
+    let sortBy = 'newest', sortOrder = 'desc';
+    if (value === 'price_asc') { sortBy = 'price'; sortOrder = 'asc'; }
+    else if (value === 'price_desc') { sortBy = 'price'; sortOrder = 'desc'; }
+    else if (value === 'name_asc') { sortBy = 'name'; sortOrder = 'asc'; }
+    else if (value === 'name_desc') { sortBy = 'name'; sortOrder = 'desc'; }
+    setFilter(prev => ({ ...prev, sortBy, sortOrder, page: 1 }));
+  };
 
   return (
-    <div className="container mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-4">
-      <SidebarFilter
-        brands={brands}
-        categories={categories}
-        value={filter}
-        onChange={(v) => setFilter((s) => ({ ...s, ...v, page: 1 }))}
-        priceMin={priceMin}
-        priceMax={priceMax}
-      />
-
-      {/* Kết quả */}
-      <section>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-          {items.map((p) => (
-            <ProductCard key={p._id || p.productId || p.id} product={p} />
-          ))}
+    <div className="bg-[#f4f6f8] min-h-screen font-sans pb-12">
+      
+      {/* --- BREADCRUMB (Thanh điều hướng) --- */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Link to="/" className="hover:text-blue-600 flex items-center gap-1 transition-colors">
+                    <Home size={14} /> Trang chủ
+                </Link>
+                <ChevronRight size={14} />
+                <span className="text-gray-900 font-medium">Tất cả sản phẩm</span>
+            </div>
         </div>
+      </div>
 
-        {/* phân trang */}
-        <div className="mt-6 flex items-center gap-2">
-          <button
-            disabled={meta.page <= 1}
-            onClick={() => setFilter((s) => ({ ...s, page: s.page - 1 }))}
-            className="px-3 py-1 rounded border disabled:opacity-50"
-          >
-            Trước
-          </button>
-          <div>Trang {meta.page}/{meta.pages}</div>
-          <button
-            disabled={meta.page >= meta.pages}
-            onClick={() => setFilter((s) => ({ ...s, page: s.page + 1 }))}
-            className="px-3 py-1 rounded border disabled:opacity-50"
-          >
-            Sau
-          </button>
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-6">
+            
+            {/* SIDEBAR */}
+            <div className="hidden lg:block">
+                <SidebarFilter
+                    brands={brands}
+                    categories={categories}
+                    value={filter}
+                    onChange={(v) => setFilter((s) => ({ ...s, ...v, page: 1 }))}
+                />
+            </div>
+
+            {/* MAIN CONTENT */}
+            <main>
+                {/* TOOLBAR (Thanh công cụ) */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h1 className="text-lg font-bold text-gray-800">
+                        Sản phẩm <span className="text-sm font-normal text-gray-500 ml-1">({meta.total} kết quả)</span>
+                    </h1>
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-medium">Sắp xếp:</span>
+                            <select
+                                value={`${filter.sortBy}_${filter.sortOrder}` === 'price_asc' ? 'price_asc' 
+                                        : `${filter.sortBy}_${filter.sortOrder}` === 'price_desc' ? 'price_desc'
+                                        : `${filter.sortBy}_${filter.sortOrder}` === 'name_asc' ? 'name_asc'
+                                        : `${filter.sortBy}_${filter.sortOrder}` === 'name_desc' ? 'name_desc'
+                                        : 'newest'}
+                                onChange={handleSortChange}
+                                className="appearance-none pl-16 pr-8 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer font-medium text-gray-700 hover:border-gray-300"
+                            >
+                                <option value="newest">Mới nhất</option>
+                                <option value="price_asc">Giá thấp - cao</option>
+                                <option value="price_desc">Giá cao - thấp</option>
+                                <option value="name_asc">Tên A-Z</option>
+                                <option value="name_desc">Tên Z-A</option>
+                            </select>
+                            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14}/>
+                        </div>
+
+                        {/* View Toggle */}
+                        <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200">
+                            <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                <LayoutGrid size={18} />
+                            </button>
+                            <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                <ListIcon size={18} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* PRODUCT GRID */}
+                {loading ? (
+                    <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
+                        {[...Array(8)].map((_, i) => (
+                            <div key={i} className="bg-white h-[340px] rounded-xl shadow-sm border border-gray-100 animate-pulse"></div>
+                        ))}
+                    </div>
+                ) : items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 bg-white rounded-xl border border-dashed border-gray-300 shadow-sm">
+                        <img src="/img/empty-box.png" onError={(e) => e.target.style.display='none'} className="w-32 opacity-50 mb-4" alt="Empty"/>
+                        <p className="text-gray-500 text-lg font-medium">Không tìm thấy sản phẩm nào.</p>
+                        <button onClick={() => setFilter(s => ({...s, brand: [], categoryId: [], minPrice: undefined, maxPrice: undefined}))} className="mt-4 text-blue-600 font-medium hover:underline">
+                            Xóa bộ lọc để thử lại
+                        </button>
+                    </div>
+                ) : (
+                    <div className={
+                        viewMode === 'grid'
+                        ? "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
+                        : "flex flex-col gap-4"
+                    }>
+                        {items.map((p) => (
+                            <div key={p._id || p.productId} className={viewMode === 'list' ? "w-full" : ""}>
+                                <ProductCard product={p} viewMode={viewMode} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* PAGINATION */}
+                {!loading && items.length > 0 && (
+                    <div className="mt-10 flex justify-center">
+                        <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                            <Pagination
+                                currentPage={meta.page}
+                                totalPages={meta.pages}
+                                onPageChange={handlePageChange}
+                            />
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
+
+// Icon mũi tên nhỏ cho select box
+const ChevronDownIcon = ({ className, size }) => (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+)

@@ -18,6 +18,13 @@ import ProductsSearch from "../pages/ProductsSearch";
 import CartPage from "../pages/CartPage";
 import CategoryProducts from '../components/Home/CategoryProducts';
 import RequireAdmin from "./RequireAdmin";
+import ProtectedRoute from "./ProtectedRoutes";
+import OrderDetailPage from '../pages/OrderDetailPage';
+import CheckoutPage from '../pages/CheckoutPage';
+import OrderSuccessPage from '../pages/OrderSuccessPage';
+import PaymentReturnPage from '../pages/PaymentReturnPage';
+import AboutPage from '../pages/AboutPage';
+import ContactPage from '../pages/ContactPage';
 
 function App() {
   const location = useLocation();
@@ -78,6 +85,8 @@ function App() {
         <Route path="/products/:id" element={<ProductDetail />} />  {/* #11 */}
         <Route path="/cart" element={<CartPage />} />                     {/* #17 */}
         <Route path="/category/:categoryId" element={<CategoryRoute />} />{/* #16 (ordering trong component) */}
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         {/* Auth */}
         <Route path="/login" element={<Login />} />
@@ -86,6 +95,17 @@ function App() {
         <Route path="/logout" element={<LogoutRoute />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        {/* --- KHU VỰC CẦN ĐĂNG NHẬP (USER) --- */}
+        {/* 1. Trang cá nhân (Bọc ProtectedRoute) */}
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        {/* 2. Xem chi tiết đơn hàng (Bọc ProtectedRoute) */}
+        <Route path="/order/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+        {/* 3. Checkout (Bọc ProtectedRoute) */}
+        <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+        {/* 4. Payment Return - Xử lý callback từ VNPay */}
+        <Route path="/payment-return" element={<PaymentReturnPage />} />
+        {/* 5. Order Success (Bọc ProtectedRoute) */}
+        <Route path="/order-success" element={<OrderSuccessPage />} />
         {/* Admin */}
         <Route path="/admin/*" element={<DashboardRoutes />} />
       </Routes>

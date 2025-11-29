@@ -14,13 +14,24 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * ❗ NÂNG CẤP 2: useEffect chạy 1 LẦN KHI APP LOAD
-     * Nhiệm vụ: Gọi API /auth/check-session để khôi phục user
+     * Nhiệm vụ: Kiểm tra token trong localStorage và gọi API để lấy user info
      */
     useEffect(() => {
         const checkUserStatus = async () => {
             try {
                 console.log('🔍 AuthContext: Checking session...');
-                // Chúng ta gọi API /auth/check-session mà backend đã có
+                
+                // Kiểm tra token trong localStorage
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.log('❌ AuthContext: No token in localStorage');
+                    setUser(null);
+                    setIsLoading(false);
+                    return;
+                }
+                
+                console.log('✅ AuthContext: Token found, checking session...');
+                // Có token thì gọi API để lấy user info
                 const response = await AuthController.checkSession();
                 console.log('📡 AuthContext: checkSession response:', response);
 
@@ -31,12 +42,15 @@ export const AuthProvider = ({ children }) => {
                 } else {
                     console.log('❌ AuthContext: No authenticated user');
                     setUser(null);
+                    // Token không hợp lệ, xóa đi
+                    localStorage.removeItem('token');
                 }
 
             } catch (error) {
-                // Nếu cookie không hợp lệ hoặc hết hạn, coi như chưa login
+                // Token hết hạn hoặc không hợp lệ
                 console.error('⚠️ AuthContext: Error checking session:', error);
                 setUser(null);
+                localStorage.removeItem('token');
             } finally {
                 // Báo là đã load xong, cho phép app render
                 setIsLoading(false);
