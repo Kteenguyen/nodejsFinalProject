@@ -2,11 +2,13 @@
 const Cart = require('../models/cartModel');
 const Product = require('../models/productModel');
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 
 // === HÀM MỚI: Lấy giỏ hàng của user đã đăng nhập ===
 exports.getCart = async (req, res) => {
     try {
-        const cartItems = await Cart.find({ accountId: req.user.id })
+        const userId = req.user._id || req.user.id;
+        const cartItems = await Cart.find({ accountId: userId })
             .populate('productId', 'productName images variants productId'); // Thêm 'productId' (string)
 
         // "Làm giàu" giỏ hàng
@@ -42,7 +44,7 @@ exports.getCart = async (req, res) => {
 exports.syncCart = async (req, res) => {
     try {
         const { localCart } = req.body; // Giỏ hàng từ localStorage
-        const accountId = req.user.id;
+        const accountId = req.user._id || req.user.id;
 
         if (!Array.isArray(localCart) || localCart.length === 0) {
             return exports.getCart(req, res); // Không có gì sync, chỉ cần lấy giỏ hàng DB
@@ -82,53 +84,67 @@ exports.syncCart = async (req, res) => {
 };
 
 
-// === HÀM CŨ CỦA FEN (ĐÃ SỬA ĐỂ TRẢ VỀ ITEM ĐƯỢC "ENRICH") ===
+// === HÀM addToCart ĐÃ SỬA (FIX LỖI DUPLICATE KEY) ===
 exports.addToCart = async (req, res) => {
     try {
         const { productId, variantId, quantity = 1 } = req.body;
-        const accountId = req.user.id;
+        const accountId = req.user._id || req.user.id;
+        const qtyToAdd = parseInt(quantity);
 
         if (!productId || !variantId) {
             return res.status(400).json({ success: false, message: 'Thiếu productId hoặc variantId.' });
         }
 
-        // Tìm sản phẩm bằng Mongo _id
-        const product = await Product.findById(productId); 
+        // 1. Kiểm tra sản phẩm và tồn kho trước
+        const product = await Product.findById(productId);
         if (!product) return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại.' });
 
         const variant = product.variants.find(v => v.variantId === variantId);
         if (!variant) return res.status(404).json({ success: false, message: 'Phiên bản không tồn tại.' });
 
-        // Tìm item trong giỏ hàng
-        let cartItem = await Cart.findOne({
-            accountId: accountId,
-            productId: product._id, 
-            variantId: variantId
-        });
-
-        const newQuantity = (cartItem ? cartItem.quantity : 0) + parseInt(quantity);
-
-        if (newQuantity > variant.stock) {
-            return res.status(400).json({ success: false, message: `Vượt quá tồn kho (chỉ còn ${variant.stock})` });
+        // Kiểm tra sơ bộ tồn kho (chỉ check lượng thêm vào)
+        if (qtyToAdd > variant.stock) {
+            return res.status(400).json({ success: false, message: `Số lượng vượt quá tồn kho (chỉ còn ${variant.stock})` });
         }
 
-        if (cartItem) {
-            cartItem.quantity = newQuantity;
-            await cartItem.save();
-        } else {
-            cartItem = await Cart.create({
+        // 2. Dùng findOneAndUpdate với upsert: true (Thần chú fix lỗi)
+        // $inc: Cộng dồn số lượng
+        // upsert: true -> Chưa có thì tạo, có rồi thì update
+        // new: true -> Trả về dữ liệu mới nhất sau khi update
+        let cartItem = await Cart.findOneAndUpdate(
+            {
                 accountId: accountId,
-                productId: product._id,
-                variantId: variantId,
-                quantity: newQuantity
-            });
+                productId: new mongoose.Types.ObjectId(productId), // Ép kiểu ObjectId cho chắc chắn
+                variantId: variantId
+            },
+            {
+                $inc: { quantity: qtyToAdd }, // Cộng dồn số lượng
+                $setOnInsert: { // Những trường này chỉ set khi tạo mới
+                    accountId: accountId,
+                    productId: new mongoose.Types.ObjectId(productId),
+                    variantId: variantId
+                }
+            },
+            { new: true, upsert: true }
+        );
+
+        // 3. Kiểm tra lại tổng số lượng sau khi cộng dồn
+        // Nếu tổng số lượng trong giỏ > tồn kho -> Phải rollback (trả lại số lượng cũ)
+        if (cartItem.quantity > variant.stock) {
+            // Rollback: Trừ đi số vừa cộng
+            cartItem = await Cart.findByIdAndUpdate(
+                cartItem._id, 
+                { $inc: { quantity: -qtyToAdd } },
+                { new: true }
+            );
+            return res.status(400).json({ success: false, message: `Tổng số lượng trong giỏ vượt quá tồn kho (chỉ còn ${variant.stock})` });
         }
-        
-        // Trả về item đã được cập nhật/tạo mới (đã "enrich")
+
+        // 4. Trả về kết quả enrich (để Frontend hiển thị ngay)
         const enrichedItem = {
             _id: cartItem._id,
             productId: product._id,
-            productStringId: product.productId, // String ID (VD: "monitor04")
+            productStringId: product.productId,
             productName: product.productName,
             image: product.images[0] || null,
             variantId: variant.variantId,
@@ -141,18 +157,16 @@ exports.addToCart = async (req, res) => {
         res.status(201).json({ success: true, item: enrichedItem });
 
     } catch (error) {
+        console.error("Add to cart error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
-
-// ... (Các hàm updateCartItem, removeCartItem, clearCart của fen giữ nguyên...)
-// ... (Nhưng tui sẽ sửa updateCartItem để nó dùng _id của cartModel)
 
 exports.updateCartItem = async (req, res) => {
     try {
         const { cartItemId } = req.params; // 👈 Đây là _id của Cart item
         const { quantity } = req.body;
-        const accountId = req.user.id;
+        const accountId = req.user._id || req.user.id;
 
         const newQuantity = parseInt(quantity);
 
@@ -191,7 +205,7 @@ exports.updateCartItem = async (req, res) => {
 exports.removeCartItem = async (req, res) => {
     try {
         const { cartItemId } = req.params; // 👈 Đây là _id của Cart item
-        const accountId = req.user.id;
+        const accountId = req.user._id || req.user.id;
 
         const result = await Cart.deleteOne({ _id: cartItemId, accountId: accountId });
 
@@ -207,7 +221,9 @@ exports.removeCartItem = async (req, res) => {
 
 exports.clearCart = async (req, res) => {
     try {
-        await Cart.deleteMany({ accountId: req.user.id });
+        const userId = req.user._id || req.user.id;
+        await Cart.deleteMany({ accountId: userId });
+        console.log('🗑️ Cleared cart for user:', userId);
         res.status(200).json({ success: true, message: 'Giỏ hàng đã được xóa sạch.' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

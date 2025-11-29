@@ -10,6 +10,8 @@ const orderRoutes = require('./orderRoutes');
 const authRoutes = require('./authRoutes');
 const discountRoutes = require('./discountRoutes');
 const adminRoutes = require('./adminRoutes');
+const paymentRoutes = require('./paymentRoutes');
+const categoryRoutes = require('./categoryRoutes');
 
 // ===========================================
 // === LOGGING: ĐỂ XEM REQUEST ĐÃ VÀO ROUTE.JS CHƯA ===
@@ -26,6 +28,8 @@ router.use('/cart', cartRoutes);
 router.use('/products', productRoutes);
 router.use('/orders', orderRoutes);
 router.use('/discounts', discountRoutes);
+router.use('/categories', categoryRoutes);
 router.use('/admin', adminRoutes);
+router.use('/payment', paymentRoutes); // 👈 Mount payment routes
 
 module.exports = router;

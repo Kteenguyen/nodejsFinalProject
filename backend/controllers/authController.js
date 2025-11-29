@@ -23,15 +23,14 @@ const generateToken = (id) => {
 };
 const isProduction = process.env.NODE_ENV === 'production';
 const getCookieOptions = () => {
-    // ❗ CHÚ THÍCH: Cấu hình này rất tốt!
-    // 'sameSite: none' và 'secure: true' là BẮT BUỘC
-    // nếu API và Client của bạn chạy trên 2 domain khác nhau (ví dụ: api.com và app.com)
+    // ❗ CHÚ THÍCH: Cấu hình cookie cho HTTP localhost
     const options = {
         httpOnly: true,
-        secure: isProduction, // Tự động true khi deploy
+        secure: false, // false cho HTTP
         maxAge: 24 * 60 * 60 * 1000, // 1 ngày
         path: '/',
-        sameSite: isProduction ? 'none' : 'lax' // Giữ nguyên
+        sameSite: 'lax', // lax cho localhost
+        domain: undefined // Không set domain để cookie hoạt động cross-port (3000 ↔ 3001)
     };
     return options;
 };
@@ -48,7 +47,10 @@ const sendTokenResponse = (user, statusCode, res, message) => {
     const token = generateToken(user._id);
 
     // ❗ SỬA LỖI 2: Tên cookie phải là 'jwt' để nhất quán với hàm checkSession
-    res.cookie('jwt', token, getCookieOptions());
+    const cookieOptions = getCookieOptions();
+    console.log('🍪 [AUTH] Setting cookie with options:', cookieOptions);
+    res.cookie('jwt', token, cookieOptions);
+    console.log('✅ [AUTH] Cookie set successfully for user:', user.email);
 
     // 4. TRẢ VỀ JSON CHỨA USER (Chuẩn hóa)
     // Client (React AuthContext) sẽ nhận được 'user' từ đây
@@ -317,18 +319,27 @@ exports.facebookLogin = asyncHandler(async (req, res) => {
 // === CÁC HÀM KHÁC (KHÔNG THAY ĐỔI NHIỀU) ===
 // =============================================================
 
-// --- HÀM CHECK SESSION (Giữ nguyên) ---
-// ❗ CHÚ THÍCH: Hàm này đã hoàn hảo. Đây là 'getMe' của chúng ta.
+// --- HÀM CHECK SESSION ---
+// Kiểm tra token từ cookie HOẶC Authorization header
 exports.checkSession = asyncHandler(async (req, res) => {
-    const token = req.cookies.jwt; // 👈 Tên 'jwt' đã nhất quán
+    // Lấy token từ cookie hoặc Authorization header
+    let token = req.cookies.jwt;
+    
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+        }
+    }
+    
     if (!token) {
         return res.status(200).json({ isAuthenticated: false, user: null });
     }
+    
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.id).select('-password');
         if (user) {
-            // ❗ CHÚ THÍCH: Client sẽ nhận được user object đầy đủ ở đây
             return res.status(200).json({ isAuthenticated: true, user: user });
         } else {
             return res.status(200).json({ isAuthenticated: false, user: null });

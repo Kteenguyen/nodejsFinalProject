@@ -3,6 +3,10 @@ const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productControllers');
 const { protect, admin } = require('../middleware/authMiddleware');
+const { uploadPaymentProof } = require('../config/cloudinaryPayment');
+
+// Debug endpoint
+router.get('/debug-images', productController.debugImages);
 
 async function loadProduct(req, res, next) {
   try {
@@ -54,6 +58,9 @@ router.get('/collections/bestsellers', productController.getBestSellers);
 router.get('/collections/new', productController.getNewProducts);
 router.get('/category/:categoryId', productController.getProductsByCategory);
 router.post('/batch', productController.batchProductLines);
+
+// Upload image endpoint
+router.post('/upload-image', uploadPaymentProof.single('image'), productController.uploadImage);
 
 // Chi tiết
 router.get('/:slug', productController.getProductDetails);

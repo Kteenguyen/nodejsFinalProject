@@ -1,6 +1,7 @@
 // backend/controllers/productControllers.js
 const { v4: uuidv4 } = require('uuid');
 const Product = require('../models/productModel');
+const { cloudinary } = require('../config/cloudinaryPayment');
 
 // Trợ giúp: tìm theo productId (slug) hoặc _id Mongo
 async function findBySlugOrId(slug) {
@@ -47,7 +48,7 @@ exports.getProducts = async (req, res) => {
     } = req.query;
 
     const match = { status: 'available' };
-    
+
     // multi-category: categoryId=laptop,monitor
     if (categoryId) {
       const arr = String(categoryId).split(',').map(s => s.trim()).filter(Boolean);
@@ -55,7 +56,7 @@ exports.getProducts = async (req, res) => {
         ? { $in: arr }
         : arr[0];
     }
-    
+
     if (isNew === 'true') match.isNewProduct = true;
     if (bestSeller === 'true') match.isBestSeller = true;
 
@@ -93,8 +94,8 @@ exports.getProducts = async (req, res) => {
 
     // sort mặc định
     const sortStage = (() => {
-      if (sortBy === 'name')   return { productName: (sortOrder === 'desc' ? -1 : 1) };
-      if (sortBy === 'price')  return { minPrice: (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'name') return { productName: (sortOrder === 'desc' ? -1 : 1) };
+      if (sortBy === 'price') return { minPrice: (sortOrder === 'desc' ? -1 : 1) };
       if (sortBy === 'oldest') return { createdAt: 1 };
       return { createdAt: -1 }; // newest
     })();
@@ -115,7 +116,7 @@ exports.getProducts = async (req, res) => {
               0
             ]
           },
-          totalStock: { $sum: '$variants.stock' }
+          totalStock: { $sum: '$variants.stock' } // Đã có sẵn, giữ nguyên
         }
       },
 
@@ -135,12 +136,22 @@ exports.getProducts = async (req, res) => {
             { $limit: limit },
             {
               $project: {
+                _id: 1, // Thêm _id để frontend có thể dùng
                 productId: 1,
                 productName: 1,
                 name: '$productName',
                 brand: 1,
                 category: 1,
-                images: { $slice: ['$images', 1] },
+                // Trả về ảnh đầu tiên dưới dạng string, xử lý trường hợp array rỗng
+                image: {
+                  $cond: {
+                    if: { $gt: [{ $size: { $ifNull: ['$images', []] } }, 0] },
+                    then: { $arrayElemAt: ['$images', 0] },
+                    else: null
+                  }
+                },
+                images: { $slice: ['$images', 1] }, // Giữ array cho compatibility
+                variants: 1, // Thêm variants để frontend biết stock của từng variant
                 minPrice: 1,
                 lowestPrice: '$minPrice',
                 averageRating: { $round: ['$avgStars', 2] },
@@ -148,7 +159,7 @@ exports.getProducts = async (req, res) => {
                 isNewProduct: 1,
                 isBestSeller: 1,
                 createdAt: 1,
-                totalStock: 1
+                totalStock: 1 // Gửi về FE
               },
             },
           ],
@@ -177,6 +188,29 @@ exports.getProducts = async (req, res) => {
 };
 
 /** Chi tiết */
+// Debug endpoint để test image
+exports.debugImages = async (req, res) => {
+  try {
+    const Product = require('../models/productModel');
+    const product = await Product.findOne().select('productName productId images').lean();
+    
+    return res.json({
+      success: true,
+      debug: {
+        productName: product.productName,
+        productId: product.productId,
+        images: product.images,
+        imagesType: typeof product.images,
+        isArray: Array.isArray(product.images),
+        length: product.images?.length,
+        firstImage: product.images?.[0]
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 exports.getProductDetails = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -204,7 +238,7 @@ exports.getBrandsList = async (_req, res) => {
   try {
     const brands = await Product.distinct('brand', { brand: { $nin: [null, ''] } });
     // loại null/undefined, trim & unique mềm
-    const list = [...new Set(brands.map(b => String(b).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+    const list = [...new Set(brands.map(b => String(b).trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
     res.json({ success: true, brands: list });
   } catch (e) {
     res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
@@ -217,19 +251,23 @@ exports.getCategoriesList = async (_req, res) => {
     const rows = await Product.aggregate([
       // 1. Chỉ lấy sản phẩm có categoryId
       { $match: { 'category.categoryId': { $exists: true, $ne: '' } } },
-      
+
       // 2. Gom nhóm
-      { $group: { 
-          _id: '$category.categoryId', 
+      {
+        $group: {
+          _id: '$category.categoryId',
           categoryName: { $first: '$category.categoryName' }
-      }},
-      
+        }
+      },
+
       // 3. Format lại kết quả trả về
       { $project: { _id: 0, categoryId: '$_id', categoryName: { $ifNull: ['$categoryName', ''] } } },
       { $sort: { categoryName: 1 } }
     ]);
+    console.log('📂 Categories fetched from DB:', JSON.stringify(rows, null, 2));
     res.json({ success: true, categories: rows });
   } catch (e) {
+    console.error('❌ Error getting categories:', e);
     res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };
@@ -273,8 +311,25 @@ exports.getBestSellers = async (_req, res) => {
   try {
     const items = await Product.aggregate([
       { $match: { isBestSeller: true, status: 'available' } },
-      { $addFields: { minPrice: { $min: '$variants.price' } } },
-      { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice' } },
+      // 👇 SỬA: Thêm tính totalStock
+      {
+        $addFields: {
+          minPrice: { $min: '$variants.price' },
+          totalStock: { $sum: '$variants.stock' }
+        }
+      },
+      // 👇 SỬA: Thêm totalStock vào project
+      {
+        $project: {
+          productId: 1,
+          productName: 1,
+          name: '$productName',
+          brand: 1,
+          images: { $slice: ['$images', 1] },
+          lowestPrice: '$minPrice',
+          totalStock: 1 // <-- Quan trọng
+        }
+      },
       { $limit: 20 },
     ]);
     res.json({ success: true, products: items });
@@ -287,8 +342,25 @@ exports.getNewProducts = async (_req, res) => {
   try {
     const items = await Product.aggregate([
       { $match: { isNewProduct: true, status: 'available' } },
-      { $addFields: { minPrice: { $min: '$variants.price' } } },
-      { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice' } },
+      // 👇 SỬA: Thêm tính totalStock
+      {
+        $addFields: {
+          minPrice: { $min: '$variants.price' },
+          totalStock: { $sum: '$variants.stock' }
+        }
+      },
+      // 👇 SỬA: Thêm totalStock vào project
+      {
+        $project: {
+          productId: 1,
+          productName: 1,
+          name: '$productName',
+          brand: 1,
+          images: { $slice: ['$images', 1] },
+          lowestPrice: '$minPrice',
+          totalStock: 1 // <-- Quan trọng
+        }
+      },
       { $limit: 20 },
     ]);
     res.json({ success: true, products: items });
@@ -301,36 +373,54 @@ exports.getProductsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const { page = 1, limit = 12, sortBy = 'newest', sortOrder = 'desc' } = req.query;
-    
+
     const pageNum = Math.max(parseInt(page) || 1, 1);
     const limitNum = Math.min(parseInt(limit) || 12, 60);
     const skip = (pageNum - 1) * limitNum;
-    
+
     // Determine sort stage
     let sortStage = { createdAt: -1 }; // default: newest
     if (sortBy === 'name') sortStage = { productName: sortOrder === 'desc' ? -1 : 1 };
     if (sortBy === 'price') sortStage = { minPrice: sortOrder === 'desc' ? -1 : 1 };
     if (sortBy === 'oldest') sortStage = { createdAt: 1 };
-    
+
     // Count total documents
     const [items, totalCount] = await Promise.all([
       Product.aggregate([
         { $match: { 'category.categoryId': categoryId, status: 'available' } },
-        { $addFields: { minPrice: { $min: '$variants.price' } } },
+        // 👇 SỬA: Tính tổng tồn kho
+        {
+          $addFields: {
+            minPrice: { $min: '$variants.price' },
+            totalStock: { $sum: '$variants.stock' }
+          }
+        },
         { $sort: sortStage },
         { $skip: skip },
         { $limit: limitNum },
-        { $project: { productId: 1, productName: 1, name: '$productName', brand: 1, images: { $slice: ['$images', 1] }, lowestPrice: '$minPrice', minPrice: 1 } },
+        // 👇 SỬA: Trả về totalStock
+        {
+          $project: {
+            productId: 1,
+            productName: 1,
+            name: '$productName',
+            brand: 1,
+            images: { $slice: ['$images', 1] },
+            lowestPrice: '$minPrice',
+            minPrice: 1,
+            totalStock: 1
+          }
+        },
       ]),
       Product.countDocuments({ 'category.categoryId': categoryId, status: 'available' })
     ]);
-    
+
     const totalPages = Math.max(Math.ceil(totalCount / limitNum), 1);
-    
+
     console.log(`📂 Category ${categoryId}: ${items.length} items on page ${pageNum}/${totalPages}`);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       products: items,
       totalProducts: totalCount,
       totalPages,
@@ -359,6 +449,8 @@ exports.createProduct = async (req, res) => {
       variantId: v.variantId || uuidv4(),
       name: v.name,
       price: v.price,
+      oldPrice: v.oldPrice || 0,
+      discount: Number(v.discount) || 0,
       stock: v.stock ?? 0,
     }));
 
@@ -401,6 +493,8 @@ exports.updateProduct = async (req, res) => {
         variantId: v.variantId || uuidv4(),
         name: v.name,
         price: v.price,
+        oldPrice: v.oldPrice || 0,
+        discount: Number(v.discount) || 0,
         stock: v.stock ?? 0,
       }));
     }
@@ -441,6 +535,18 @@ exports.addComment = async (req, res) => {
     product.comments.push({ name: (name || 'Guest').trim(), comment: comment.trim() });
     await product.save();
 
+    // === REALTIME UPDATE ===
+    const io = req.app.get('socketio');
+    if (io) {
+      io.emit('new_activity', {
+        type: 'comment',
+        productSlug: slug,
+        productId: product.productId, // Gửi cả 2 cho chắc
+        mongoId: product._id.toString()
+      });
+    }
+    // =======================
+
     return res.json({ success: true, comments: product.comments });
   } catch (e) {
     return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
@@ -470,11 +576,50 @@ exports.rateProduct = async (req, res) => {
       product.ratings.push({ user: req.user._id, stars });
     }
 
+    // === REALTIME UPDATE ===
+    const io = req.app.get('socketio');
+    if (io) {
+      io.emit('new_activity', {
+        type: 'rating',
+        productSlug: slug,
+        productId: product.productId,
+        mongoId: product._id.toString()
+      });
+    }
+
     product.recomputeRating();
     await product.save();
 
     return res.json({ success: true, avgRating: product.avgRating, ratingsCount: product.ratingsCount });
   } catch (e) {
     return res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
+  }
+};
+
+// Upload image to Cloudinary
+exports.uploadImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Không có file được tải lên' 
+      });
+    }
+
+    // Cloudinary URL from multer-storage-cloudinary
+    const imageUrl = req.file.path;
+
+    res.json({ 
+      success: true, 
+      imageUrl,
+      message: 'Upload ảnh thành công' 
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Lỗi khi upload ảnh', 
+      error: error.message 
+    });
   }
 };
