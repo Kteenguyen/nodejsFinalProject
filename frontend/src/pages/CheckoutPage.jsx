@@ -39,26 +39,23 @@ export default function CheckoutPage() {
     });
 
     // --- TÍNH TOÁN TIỀN (Realtime) ---
-    const { subTotal, shippingFee, discountVNPAY, couponDiscount, pointDiscount, finalTotal } = useMemo(() => {
+    const { subTotal, shippingFee, couponDiscount, pointDiscount, finalTotal } = useMemo(() => {
         // 1. Tổng tiền hàng
         const sub = cartItems.reduce((acc, item) => acc + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
         
         // 2. Phí ship
         const ship = shippingMethod === 'express' ? 50000 : 30000;
         
-        // 3. Giảm giá VNPAY (5%)
-        const discVNPAY = paymentMethod === 'vnpay' ? sub * 0.05 : 0; 
-
-        // 4. Giảm giá Coupon (% trên tổng đơn hàng)
+        // 3. Giảm giá Coupon (% trên tổng đơn hàng)
         let discCoupon = 0;
         if (appliedCoupon) {
             discCoupon = (sub * appliedCoupon.percent) / 100;
         }
 
-        // Số tiền còn lại sau khi trừ VNPAY và Coupon (để tính giới hạn dùng điểm)
-        const amountBeforePoints = sub + ship - discVNPAY - discCoupon;
+        // Số tiền còn lại sau khi trừ Coupon (để tính giới hạn dùng điểm)
+        const amountBeforePoints = sub + ship - discCoupon;
 
-        // 5. Giảm giá Điểm thưởng (1 điểm = 1000đ)
+        // 4. Giảm giá Điểm thưởng (1 điểm = 1000đ)
         let discPoint = 0;
         if (usePoints && user?.loyaltyPoints > 0) {
             const maxPointValue = user.loyaltyPoints * 1000;
@@ -66,18 +63,17 @@ export default function CheckoutPage() {
             discPoint = Math.min(maxPointValue, Math.max(0, amountBeforePoints));
         }
 
-        // 6. Tổng kết
+        // 5. Tổng kết
         const final = Math.max(0, amountBeforePoints - discPoint);
         
         return { 
             subTotal: sub, 
             shippingFee: ship, 
-            discountVNPAY: discVNPAY, 
             couponDiscount: discCoupon,
             pointDiscount: discPoint, 
             finalTotal: final 
         };
-    }, [cartItems, shippingMethod, paymentMethod, appliedCoupon, usePoints, user]);
+    }, [cartItems, shippingMethod, appliedCoupon, usePoints, user]);
 
     // --- XỬ LÝ MÃ GIẢM GIÁ ---
     const handleApplyCoupon = async () => {
@@ -150,7 +146,7 @@ export default function CheckoutPage() {
                 // Gửi thông tin giảm giá lên
                 discount: {
                     code: appliedCoupon ? appliedCoupon.code : "",
-                    amount: (couponDiscount || 0) + (discountVNPAY || 0)
+                    amount: (couponDiscount || 0)
                 },
                 
                 // Gửi số điểm muốn dùng (Backend sẽ trừ)
@@ -175,29 +171,7 @@ export default function CheckoutPage() {
                     );
                 }
                 
-                if (paymentMethod === 'vnpay') {
-                    // VNPay payment - Tạo URL thanh toán và redirect
-                    try {
-                        const vnpayRes = await OrderController.createVnpayUrl({
-                            orderId: newOrderId,
-                            amount: finalTotal,
-                            language: 'vn'
-                        });
-
-                        if (vnpayRes?.paymentUrl) {
-                            toast.info("Đang chuyển đến VNPay...");
-                            clearCart();
-                            // Redirect sang trang thanh toán VNPay
-                            window.location.href = vnpayRes.paymentUrl;
-                            return; // Dừng execution
-                        } else {
-                            toast.error("Không thể tạo link thanh toán VNPay");
-                        }
-                    } catch (vnpayError) {
-                        console.error('VNPay error:', vnpayError);
-                        toast.error("Lỗi thanh toán VNPay: " + (vnpayError.message || "Vui lòng thử lại"));
-                    }
-                } else if (paymentMethod === 'banking') {
+                if (paymentMethod === 'banking') {
                     // Chuyển khoản ngân hàng
                     toast.success("Đặt hàng thành công!");
                     clearCart();
@@ -315,7 +289,7 @@ export default function CheckoutPage() {
                                     {user.loyaltyPoints > 0 ? (
                                         <label className="flex items-center gap-2 cursor-pointer select-none">
                                             <input type="checkbox" checked={usePoints} onChange={(e) => setUsePoints(e.target.checked)} className="rounded accent-yellow-600 w-4 h-4 cursor-pointer" />
-                                            <span className="text-sm text-gray-700">Dùng điểm thanh toán (-{Math.min(user.loyaltyPoints * 1000, subTotal + shippingFee - discountVNPAY - couponDiscount).toLocaleString()}đ)</span>
+                                            <span className="text-sm text-gray-700">Dùng điểm thanh toán (-{Math.min(user.loyaltyPoints * 1000, subTotal + shippingFee - couponDiscount).toLocaleString()}đ)</span>
                                         </label>
                                     ) : (
                                         <p className="text-xs text-gray-500">
@@ -329,14 +303,13 @@ export default function CheckoutPage() {
                             <div className="border-t pt-4 space-y-2 text-sm text-gray-600">
                                 <div className="flex justify-between"><span>Tạm tính</span><span>{subTotal.toLocaleString()}đ</span></div>
                                 <div className="flex justify-between"><span>Phí vận chuyển</span><span>{shippingFee.toLocaleString()}đ</span></div>
-                                {discountVNPAY > 0 && <div className="flex justify-between text-green-600"><span>Giảm giá VNPAY</span><span>-{discountVNPAY.toLocaleString()}đ</span></div>}
                                 {couponDiscount > 0 && <div className="flex justify-between text-green-600"><span>Mã giảm giá</span><span>-{couponDiscount.toLocaleString()}đ</span></div>}
                                 {pointDiscount > 0 && <div className="flex justify-between text-yellow-600 font-bold"><span>Điểm thưởng</span><span>-{pointDiscount.toLocaleString()}đ</span></div>}
                                 <div className="flex justify-between text-lg font-bold text-red-600 pt-3 border-t mt-2"><span>Tổng cộng</span><span>{finalTotal.toLocaleString()}đ</span></div>
                             </div>
 
                             <button onClick={handlePlaceOrder} disabled={loading || isEditing} className={`w-full mt-6 py-3.5 rounded-xl font-bold text-white text-lg shadow-lg flex items-center justify-center gap-2 transition-all ${loading || isEditing ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 shadow-red-200'}`}>
-                                {loading ? 'Đang xử lý...' : (isEditing ? 'VUI LÒNG XÁC NHẬN ĐỊA CHỈ' : (paymentMethod==='vnpay'?'THANH TOÁN VNPAY':'ĐẶT HÀNG NGAY'))}
+                                {loading ? 'Đang xử lý...' : (isEditing ? 'VUI LÒNG XÁC NHẬN ĐỊA CHỈ' : 'ĐẶT HÀNG NGAY')}
                             </button>
                             {isEditing && (
                                 <p className="text-xs text-center text-orange-600 mt-2">⚠️ Bạn cần xác nhận địa chỉ giao hàng trước khi đặt hàng</p>

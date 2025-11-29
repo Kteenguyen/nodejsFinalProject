@@ -55,26 +55,8 @@ const createOrder = async (orderData) => {
         throw error;
     }
 };
-// 2. Tạo URL thanh toán VNPAY
-const createVnpayUrl = async ({ orderId, amount, bankCode = '', language = 'vn' }) => {
-    try {
-        console.log('📤 Creating VNPay URL:', { orderId, amount, bankCode, language });
-        const response = await api.post('/payment/create_payment_url', {
-            orderId,
-            amount,
-            bankCode,
-            language
-        });
-        console.log('✅ VNPay URL response:', response.data);
-        return response.data;
-    } catch (error) {
-        console.error("❌ Lỗi tạo VNPAY URL:", error);
-        console.error("❌ Error details:", error.response?.data);
-        throw error;
-    }
-};
 
-// 3. Kiểm tra mã giảm giá
+// 2. Kiểm tra mã giảm giá
 const validateCoupon = async (code, orderTotal) => {
     try {
         const response = await api.get(`/discounts/validate?code=${code}`);
@@ -101,7 +83,6 @@ export const OrderController = {
     getOrderDetail,
     updateOrderStatus,
     createOrder,
-    createVnpayUrl,
     validateCoupon,
     checkOrderStatus
 };

@@ -16,31 +16,11 @@ export default function OrderSuccessPage() {
     // 1. Lấy thông tin từ URL
     const responseCode = searchParams.get('code'); 
     const orderId = searchParams.get('orderId');
-    const paymentMethod = searchParams.get('method'); // vnpay, banking, cod
+    const paymentMethod = searchParams.get('method'); // banking, cod
     
     // Check mã (00 = thành công, banking = chuyển khoản)
     const isSuccess = responseCode === '00' || responseCode === 'banking' || !responseCode;
     const isBanking = responseCode === 'banking';
-    const isVNPay = paymentMethod === 'vnpay' || responseCode === '00';
-    
-    // Map VNPay error codes
-    const vnpayErrors = {
-        '07': 'Giao dịch bị nghi ngờ gian lận',
-        '09': 'Thẻ chưa đăng ký Internet Banking',
-        '10': 'Xác thực thông tin không đúng quá 3 lần',
-        '11': 'Đã hết thời gian thanh toán',
-        '12': 'Thẻ bị khóa',
-        '13': 'Sai mật khẩu xác thực',
-        '24': 'Khách hàng hủy giao dịch',
-        '51': 'Tài khoản không đủ số dư',
-        '65': 'Tài khoản vượt quá hạn mức giao dịch trong ngày',
-        '75': 'Ngân hàng đang bảo trì',
-        '79': 'Nhập sai mật khẩu quá số lần quy định',
-        '97': 'Chữ ký không hợp lệ',
-        '99': 'Lỗi không xác định'
-    };
-
-    const errorMessage = vnpayErrors[responseCode] || 'Giao dịch không thành công';
 
     // Thông tin ngân hàng
     const bankInfo = {
@@ -139,12 +119,11 @@ export default function OrderSuccessPage() {
                         ? (
                             <>
                                 Cảm ơn bạn đã mua hàng. Mã đơn hàng: <strong className="text-gray-800">#{orderId}</strong>
-                                {isVNPay && <div className="mt-2 text-green-600 font-medium">✓ Đã thanh toán qua VNPay</div>}
                             </>
                         )
                         : (
                             <>
-                                {errorMessage}
+                                Đơn hàng không thành công
                                 {orderId && <div className="mt-2">Mã đơn hàng: <strong>#{orderId}</strong></div>}
                             </>
                         )
