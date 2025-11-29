@@ -73,5 +73,16 @@ const admin = (req, res, next) => {
   res.status(403);
   throw new Error('Không có quyền Admin.');
 };
-
-module.exports = { protect, admin };
+function getTokenFromReq(req) {
+    // 1. Ưu tiên lấy từ Cookie
+    if (req.cookies && req.cookies.jwt) {
+        return req.cookies.jwt;
+    }
+    // 2. Lấy từ Header (Bearer token)
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.split(' ')[1];
+    }
+    return null;
+}
+module.exports = {getTokenFromReq, protect, admin };

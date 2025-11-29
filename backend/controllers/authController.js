@@ -317,83 +317,135 @@ exports.facebookLogin = asyncHandler(async (req, res) => {
 // === CÁC HÀM KHÁC (KHÔNG THAY ĐỔI NHIỀU) ===
 // =============================================================
 
-// --- HÀM CHECK SESSION (Giữ nguyên) ---
-// ❗ CHÚ THÍCH: Hàm này đã hoàn hảo. Đây là 'getMe' của chúng ta.
-exports.checkSession = asyncHandler(async (req, res) => {
-    const token = req.cookies.jwt; // 👈 Tên 'jwt' đã nhất quán
-    if (!token) {
-        return res.status(200).json({ isAuthenticated: false, user: null });
+
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: 'Email không tồn tại trong hệ thống.' });
+        }
+
+        // 🛡️ BỔ SUNG: Kiểm tra tài khoản Social
+        // Nếu provider chứa 'google' hoặc 'facebook' VÀ user không có password (thuần social)
+        // Hoặc đơn giản là cứ dính social là nhắc nhở.
+        const isSocial = user.provider.some(p => p === 'google' || p === 'facebook');
+        
+        if (isSocial) {
+            const providers = user.provider.filter(p => p !== 'local').join(' hoặc ');
+            // Backend trả về lỗi 400 kèm thông báo cụ thể
+            // Frontend sẽ bắt lỗi này và hiện Toast
+            return res.status(400).json({ 
+                message: `Tài khoản này được đăng ký bằng ${providers}. Vui lòng đăng nhập bằng ${providers}!` 
+            });
+        }
+
+        // --- SỬA LỖI: Tự tạo token thủ công (Thay thế hàm bị lỗi) ---
+        const resetToken = crypto.randomBytes(20).toString('hex');
+        // Hash token để lưu vào DB
+        user.passwordResetToken = crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+        // Set thời gian hết hạn (10 phút)
+        user.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+        await user.save({ validateBeforeSave: false });
+        // Tạo URL (Lưu ý: Phải trỏ về FRONTEND localhost:3000)
+        const frontendHost = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const resetURL = `${frontendHost}/reset-password/${resetToken}`;
+        const message = `
+            Bạn nhận được email này vì có yêu cầu đặt lại mật khẩu.
+            Vui lòng bấm vào link dưới đây:
+            
+            ${resetURL}
+            
+            Link hết hạn sau 10 phút.
+        `;
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: 'Khôi phục mật khẩu PhoneWorld',
+                message
+            });
+
+            res.status(200).json({ success: true, message: 'Email đã được gửi!' });
+        } catch (err) {
+            console.error("Lỗi gửi mail:", err);
+            user.passwordResetToken = undefined;
+            user.passwordResetExpires = undefined;
+            await user.save({ validateBeforeSave: false });
+            return res.status(500).json({ message: 'Không thể gửi email. Vui lòng thử lại.' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server: ' + error.message });
     }
+};
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.body; // 👈 Chỉ nhận password, không cần confirmPassword
+
+        // Validate cơ bản
+        if (!password) {
+            return res.status(400).json({ message: "Vui lòng nhập mật khẩu mới." });
+        }
+
+        // 1. Hash token từ URL để tìm user
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        // 2. Tìm user có token đó và chưa hết hạn
+        const user = await User.findOne({
+            passwordResetToken: hashedToken,
+            passwordResetExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Link khôi phục không hợp lệ hoặc đã hết hạn.' });
+        }
+
+        // 3. Hash mật khẩu mới (Thủ công để an toàn tuyệt đối)
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // 4. Cập nhật trực tiếp vào DB (Bỏ qua pre-save hook để tránh lỗi hash kép)
+        await User.findByIdAndUpdate(
+            user._id,
+            {
+                password: hashedPassword,
+                passwordResetToken: undefined, // Xóa token sau khi dùng
+                passwordResetExpires: undefined
+            },
+            { new: true }
+        );
+
+        console.log(`✅ Reset mật khẩu thành công cho: ${user.email}`);
+        res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công! Hãy đăng nhập ngay.' });
+
+    } catch (error) {
+        console.error("Reset Password Error:", error);
+        res.status(500).json({ message: 'Lỗi server khi đặt lại mật khẩu.' });
+    }
+};
+
+// 2. CHECK SESSION (ĐỂ KHÔNG BỊ LỖI JSON NỮA)
+exports.checkSession = asyncHandler(async (req, res) => {
+    const token = req.cookies.jwt;
+    if (!token) return res.status(200).json({ isAuthenticated: false, user: null });
+    
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.id).select('-password');
         if (user) {
-            // ❗ CHÚ THÍCH: Client sẽ nhận được user object đầy đủ ở đây
-            return res.status(200).json({ isAuthenticated: true, user: user });
-        } else {
-            return res.status(200).json({ isAuthenticated: false, user: null });
+            return res.status(200).json({ isAuthenticated: true, user });
         }
+        return res.status(200).json({ isAuthenticated: false, user: null });
     } catch (error) {
+        // Nếu token lỗi (do rác), trả về chưa login chứ đừng crash server
         return res.status(200).json({ isAuthenticated: false, user: null });
     }
 });
-
-// --- HÀM FORGOT/RESET PASSWORD (Giữ nguyên) ---
-exports.forgotPassword = async (req, res) => {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-
-    if (!user) {
-        return res.status(404).json({ message: 'Không tìm thấy email này trong hệ thống.' });
-    }
-
-    // 1. Tạo Token (Giữ nguyên logic cũ)
-    const resetToken = crypto.randomBytes(20).toString('hex');
-    
-    // Hash token để lưu vào DB
-    user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 phút
-
-    await user.save({ validateBeforeSave: false });
-
-    // 2. Tạo Link Reset (QUAN TRỌNG: Phải trỏ về Frontend - Port 3000)
-    // req.get('host') thường là backend (3001), ta cần sửa cứng hoặc dùng biến môi trường
-    const frontendHost = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const resetURL = `${frontendHost}/reset-password/${resetToken}`;
-
-    const message = `
-        Xin chào ${user.name || 'Bạn'},
-        
-        Bạn nhận được email này vì có yêu cầu đặt lại mật khẩu cho tài khoản PhoneWorld.
-        Vui lòng bấm vào link dưới đây để đặt lại mật khẩu:
-
-        ${resetURL}
-
-        Link này sẽ hết hạn sau 10 phút.
-        Nếu bạn không yêu cầu, hãy bỏ qua email này.
-    `;
-
-    try {
-        // 3. Gửi Email Thật
-        await sendEmail({
-            email: user.email,
-            subject: 'Khôi phục mật khẩu - PhoneWorld',
-            message
-        });
-
-        res.status(200).json({ success: true, message: `Đã gửi email tới ${user.email}. Vui lòng kiểm tra hộp thư!` });
-
-    } catch (err) {
-        console.error("Lỗi gửi email:", err);
-        
-        // Reset lại token trong DB nếu gửi mail lỗi
-        user.passwordResetToken = undefined;
-        user.passwordResetExpires = undefined;
-        await user.save({ validateBeforeSave: false });
-
-        res.status(500).json({ message: 'Không thể gửi email. Vui lòng thử lại sau.' });
-    }
-};
 exports.changePassword = async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
@@ -451,49 +503,7 @@ exports.changePassword = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server: ' + error.message });
     }
 };
-exports.resetPassword = async (req, res) => {
-    try {
-        // 1. Lấy token từ URL và hash lại để so sánh với DB
-        const resetToken = req.params.token;
-        const hashedToken = crypto
-            .createHash('sha256')
-            .update(resetToken)
-            .digest('hex');
 
-        // 2. Tìm user có token đó và token CHƯA hết hạn ($gt: greater than)
-        const user = await User.findOne({
-            passwordResetToken: hashedToken,
-            passwordResetExpires: { $gt: Date.now() }
-        });
-
-        if (!user) {
-            return res.status(400).json({ message: 'Token không hợp lệ hoặc đã hết hạn.' });
-        }
-
-        // 3. Hash mật khẩu mới (Thủ công để an toàn tuyệt đối)
-        const { password } = req.body;
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        // 4. Cập nhật vào DB (Và xóa token cũ đi)
-        await User.findByIdAndUpdate(
-            user._id,
-            {
-                password: hashedPassword,
-                passwordResetToken: undefined, // Xóa token
-                passwordResetExpires: undefined // Xóa hạn dùng
-            },
-            { new: true }
-        );
-
-        console.log(`✅ Reset mật khẩu thành công cho: ${user.email}`);
-        res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công! Hãy đăng nhập ngay.' });
-
-    } catch (error) {
-        console.error("Reset Password Error:", error);
-        res.status(500).json({ message: 'Lỗi server khi đặt lại mật khẩu.' });
-    }
-};
 exports.emergencyReset = async (req, res) => {
     try {
         const salt = await bcrypt.genSalt(10);

@@ -45,20 +45,7 @@ export const AuthController = {
             throw new Error(error.response?.data?.message || "Đăng nhập Facebook thất bại");
         }
     },
-    changePassword: async (oldPassword, newPassword) => {
-        try {
-            // Gọi endpoint /change-password chúng ta vừa tạo
-            const response = await api.put("/auth/change-password", {
-                oldPassword,
-                newPassword
-            });
-            return response.data;
-        } catch (error) {
-            // Bắt lỗi từ backend (ví dụ: Sai mật khẩu cũ)
-            const message = error.response?.data?.message || "Đổi mật khẩu thất bại";
-            throw new Error(message);
-        }
-    },
+
     logout: async () => {
         try {
             const response = await api.post("/auth/logout");
@@ -99,21 +86,51 @@ export const AuthController = {
         try {
             const res = await api.post('/auth/forgot-password', { email });
             toast.success(res.data.message);
-            return true;
+            // Trả về object kết quả thành công
+            return { success: true };
         } catch (e) {
-            toast.error(e.response?.data?.message || "Lỗi");
-            return false;
+            // Lấy data lỗi từ backend
+            const errorData = e.response?.data;
+
+            // Kiểm tra xem có phải lỗi do tài khoản Social không (dựa vào flag isSocial từ backend)
+            if (errorData && errorData.isSocial) {
+                // Trả về kết quả đặc biệt để component xử lý chuyển hướng
+                return {
+                    success: false,
+                    isSocial: true,
+                    message: errorData.message
+                };
+            }
+
+            // Các lỗi khác (404, 500...)
+            toast.error(errorData?.message || "Lỗi gửi yêu cầu khôi phục mật khẩu.");
+            return { success: false, isSocial: false };
+        }
+    },
+    resetPassword: async (token, password) => {
+        try {
+            // SAI: await api.put(url, password); -> Backend nhận được chuỗi, không đọc được
+            // ĐÚNG: Gói vào object
+            const response = await api.put(`/auth/reset-password/${token}`, {
+                password: password
+            });
+            return response.data;
+        } catch (error) {
+            const message = error.response?.data?.message || "Đặt lại mật khẩu thất bại.";
+            throw new Error(message);
         }
     },
 
-    resetPassword: async (token, data) => {
+    changePassword: async (oldPassword, newPassword) => {
         try {
-            const res = await api.put(`/auth/reset-password/${token}`, data);
-            toast.success(res.data.message);
-            return true;
-        } catch (e) {
-            toast.error(e.response?.data?.message || "Lỗi");
-            return false;
+            const response = await api.put("/auth/change-password", {
+                oldPassword,
+                newPassword
+            });
+            return response.data;
+        } catch (error) {
+            const message = error.response?.data?.message || "Đổi mật khẩu thất bại";
+            throw new Error(message);
         }
-    }
+    },
 };
