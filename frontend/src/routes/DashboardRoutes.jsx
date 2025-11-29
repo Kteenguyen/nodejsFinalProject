@@ -12,6 +12,8 @@ import DiscountManagement from "../pages/DiscountManagement";
 import AdminManagement from "../pages/AdminManagement";
 import CategoriesManagement from "../pages/CategoriesManagement";
 import OrderDetailPage from "../pages/OrderDetailPage";
+import AdminNotifications from "../pages/AdminNotifications";
+import NotificationDetailPage from "../pages/NotificationDetailPage";
 
 export default function DashboardRoutes() {
   return (
@@ -39,6 +41,10 @@ export default function DashboardRoutes() {
 
         {/* 2. Chi tiết đơn hàng (Lưu ý: path tương đối, không có /admin ở đầu) */}
         <Route path="orders/:id" element={<AdminOrderDetail />} />
+
+        {/* --- THÔNG BÁO --- */}
+        <Route path="notifications" element={<AdminNotifications />} />
+        <Route path="notifications/:type/:id" element={<NotificationDetailPage />} />
 
         {/* --- CỤM DISCOUNT (QUAN TRỌNG) --- */}
         <Route path="discounts" element={<DiscountManagement />} />

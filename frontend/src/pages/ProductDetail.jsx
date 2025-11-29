@@ -149,7 +149,7 @@ export default function ProductDetail() {
   const images = useMemo(() => {
     const arr = (Array.isArray(product?.images) ? product.images : []).filter(Boolean);
     const conv = arr.map(img => ProductController.getImageUrl(img));
-    while (conv.length < 1) conv.push("/img/placeholder.png");
+    while (conv.length < 1) conv.push("/img/default.png");
     return conv.slice(0, 8);
   }, [product]);
 

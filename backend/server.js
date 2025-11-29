@@ -1,5 +1,6 @@
 // backend/server.js
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const cookieParser = require('cookie-parser');
 const express = require('express');
@@ -8,15 +9,14 @@ const siteRoutes = require('./routes/route');
 const { connectDB } = require('./config/dbConnection');
 const paymentRoutes = require('./routes/paymentRoutes');
 
-// --- HTTP & SOCKET.IO (Đổi từ HTTPS sang HTTP để tránh mixed content) ---
-const http = require('http');
-const { Server } = require('socket.io'); // Import Socket.io
+// --- HTTPS & SOCKET.IO ---
+const https = require('https');
+const { Server } = require('socket.io');
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
 
 // --- CORS ---
-// Lưu ý: Cần config này để Socket.io hoạt động không bị chặn
 const corsOptions = {
   origin: ["http://localhost:3000", "https://localhost:3000"],
   credentials: true,
@@ -33,15 +33,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 connectDB();
 
-// --- TẠO HTTP SERVER ---
-const server = http.createServer(app);
+// --- TẠO HTTPS SERVER ---
+const httpsOptions = {
+    key: fs.readFileSync(path.join(__dirname, 'key.pem')),
+    cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
+};
+const server = https.createServer(httpsOptions, app);
 
 // --- KHỞI TẠO SOCKET.IO ---
 const io = new Server(server, {
-    cors: corsOptions // Dùng chung config CORS với Express
+    cors: corsOptions
 });
 
-// Lắng nghe kết nối (Optional)
+// Lắng nghe kết nối
 io.on('connection', (socket) => {
     console.log('⚡ Client connected:', socket.id);
     socket.on('disconnect', () => console.log('Client disconnected:', socket.id));

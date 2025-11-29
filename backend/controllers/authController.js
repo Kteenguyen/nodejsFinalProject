@@ -46,11 +46,9 @@ const sendTokenResponse = (user, statusCode, res, message) => {
     // Chúng ta sẽ gọi generateToken(user._id) cho đúng.
     const token = generateToken(user._id);
 
-    // ❗ SỬA LỖI 2: Tên cookie phải là 'jwt' để nhất quán với hàm checkSession
-    const cookieOptions = getCookieOptions();
-    console.log('🍪 [AUTH] Setting cookie with options:', cookieOptions);
-    res.cookie('jwt', token, cookieOptions);
-    console.log('✅ [AUTH] Cookie set successfully for user:', user.email);
+    // ❗ QUAN TRỌNG: Không dùng cookie để hỗ trợ multi-tab authentication
+    // Mỗi tab sẽ lưu token riêng trong sessionStorage và gửi qua Authorization header
+    console.log('✅ [AUTH] Token generated for user:', user.email);
 
     // 4. TRẢ VỀ JSON CHỨA USER (Chuẩn hóa)
     // Client (React AuthContext) sẽ nhận được 'user' từ đây
@@ -430,14 +428,12 @@ exports.resetPassword = async (req, res) => {
 };
 // Kiểm tra token từ cookie HOẶC Authorization header
 exports.checkSession = asyncHandler(async (req, res) => {
-    // Lấy token từ cookie hoặc Authorization header
-    let token = req.cookies.jwt;
-    
-    if (!token) {
-        const authHeader = req.headers.authorization;
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.substring(7);
-        }
+    // ❗ CHỈ LẤY TOKEN TỪ AUTHORIZATION HEADER để hỗ trợ multi-tab
+    // Không dùng cookie vì cookie được share giữa tất cả các tab
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
     }
     
     if (!token) {
@@ -532,15 +528,9 @@ exports.emergencyReset = async (req, res) => {
 // --- HÀM LOGOUT (ĐÃ NÂNG CẤP) ---
 exports.logout = async (req, res) => {
     try {
-        // ❗ SỬA LỖI: Tên cookie là 'jwt' chứ không phải 'token'
-        // Và thêm các options (sameSite, path) để xóa cho chắc chắn
-        res.cookie('jwt', 'none', {
-            expires: new Date(Date.now() + 10 * 1000), // Hết hạn 10s
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none', // 👈 Thêm
-            path: '/'          // 👈 Thêm
-        });
+        // ❗ Không cần xóa cookie vì không dùng cookie nữa
+        // Client sẽ tự xóa token từ sessionStorage
+        console.log('✅ [AUTH] Logout successful');
         res.status(200).json({ success: true, message: 'Đăng xuất thành công' });
     } catch (error) {
         console.error('Lỗi khi đăng xuất:', error);

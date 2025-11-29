@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { OrderController } from "../controllers/OrderController";
+import { ProductController } from "../controllers/productController";
 import api from "../services/api";
 
 const fmtVND = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -133,8 +134,21 @@ export default function AdminOrderDetail() {
                   {order.items?.map((item, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{item.name}</div>
-                        {item.variantId && <div className="text-xs text-gray-500">Mã: {item.variantId}</div>}
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={ProductController.getImageUrl(item.productId?.images?.[0] || item.image)}
+                            alt={item.productId?.name || item.name}
+                            className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/img/default.png';
+                            }}
+                          />
+                          <div>
+                            <div className="font-medium text-gray-900">{item.name}</div>
+                            {item.variantId && <div className="text-xs text-gray-500">Mã: {item.variantId}</div>}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right">{fmtVND(item.price)}</td>
                       <td className="px-6 py-4 text-center">{item.quantity}</td>

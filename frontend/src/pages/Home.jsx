@@ -6,7 +6,7 @@ import ProductCard from '../components/Home/ProductCard';
 import {
     ArrowRight, Zap, TrendingUp, Monitor, HardDrive, Laptop,
     Smartphone, Speaker, Gamepad2, Keyboard, ChevronRight,
-    Truck, ShieldCheck, Headphones, Mail, CheckCircle
+    Truck, ShieldCheck, Headphones, Mail, CheckCircle, Grid
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -24,12 +24,14 @@ const QUICK_CATEGORIES = [
     { name: 'Âm thanh', icon: <Speaker size={24} />, id: 'audio' },
     { name: 'Gaming', icon: <Gamepad2 size={24} />, id: 'gaming' },
     { name: 'Phụ kiện', icon: <Keyboard size={24} />, id: 'accessory' },
+    { name: 'Xem thêm', icon: <Grid size={24} />, id: 'all' },
 ];
 
 export default function Home() {
     const [newProducts, setNewProducts] = useState([]);
     const [bestSellers, setBestSellers] = useState([]);
     const [dynamicCategories, setDynamicCategories] = useState([]);
+    const [relatedProducts, setRelatedProducts] = useState([]); // Sản phẩm khác
     const [loading, setLoading] = useState(true);
 
     // State cho Form đăng ký khuyến mãi
@@ -56,6 +58,11 @@ export default function Home() {
 
                 setNewProducts(resNew || []);
                 setBestSellers(resBest || []);
+
+                // Lấy thêm sản phẩm khác (tất cả sản phẩm)
+                const allProducts = await ProductController.getProducts({ limit: 12, page: 1 });
+                console.log('🔍 Related products loaded:', allProducts?.products?.length);
+                setRelatedProducts(allProducts?.products || []);
 
                 if (categoriesList?.length > 0) {
                     const prioritizedCats = categoriesList.filter(c =>
@@ -192,16 +199,37 @@ export default function Home() {
                         </div>
                     </div>
 
-                    {/* QUICK CATEGORIES */}
-                    <div className="mt-10 flex flex-wrap justify-center md:justify-between gap-6 px-2">
-                        {QUICK_CATEGORIES.map((cat, idx) => (
-                            <Link to={`/products?categoryId=${cat.id}`} key={idx} className="flex flex-col items-center gap-3 group cursor-pointer min-w-[80px]">
-                                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm group-hover:shadow-lg group-hover:-translate-y-1 border border-gray-200">
-                                    {cat.icon}
-                                </div>
-                                <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">{cat.name}</span>
-                            </Link>
-                        ))}
+                    {/* QUICK CATEGORIES - Cải thiện giao diện */}
+                    <div className="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">Danh mục sản phẩm</h3>
+                        <div className="flex flex-wrap justify-center gap-4">
+                            {QUICK_CATEGORIES.map((cat, idx) => {
+                                // Nút "Xem thêm" đặc biệt
+                                const isViewAll = cat.id === 'all';
+                                return (
+                                    <Link 
+                                        to={isViewAll ? '/products' : `/products?categoryId=${cat.id}`}
+                                        key={idx} 
+                                        className={`flex flex-col items-center gap-2 group cursor-pointer min-w-[100px] p-4 rounded-xl hover:bg-blue-50 transition-all ${
+                                            isViewAll ? 'bg-gradient-to-br from-orange-50 to-orange-100' : ''
+                                        }`}
+                                    >
+                                        <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-md group-hover:shadow-xl group-hover:scale-110 border-2 ${
+                                            isViewAll 
+                                                ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white border-orange-400 group-hover:from-orange-600 group-hover:to-orange-700' 
+                                                : 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-100 group-hover:from-blue-600 group-hover:to-blue-700 group-hover:text-white group-hover:border-blue-600'
+                                        }`}>
+                                            {cat.icon}
+                                        </div>
+                                        <span className={`text-sm font-semibold transition-colors text-center ${
+                                            isViewAll 
+                                                ? 'text-orange-600 group-hover:text-orange-700' 
+                                                : 'text-gray-700 group-hover:text-blue-600'
+                                        }`}>{cat.name}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -253,7 +281,16 @@ export default function Home() {
                 />
             ))}
 
-            {/* 6. NEWSLETTER & FOOTER PROMOTION (Đã phục hồi chức năng) */}
+            {/* 6. SẢN PHẨM KHÁC / CÓ THỂ BẠN QUAN TÂM */}
+            <SectionBlock
+                title="Các sản phẩm khác"
+                icon={<Grid size={24} />}
+                products={relatedProducts}
+                linkTo="/products"
+                bannerImg="https://images.unsplash.com/photo-1526738549149-8e07eca6c147?q=80&w=2070&auto=format&fit=crop"
+            />
+
+            {/* 7. NEWSLETTER & FOOTER PROMOTION (Đã phục hồi chức năng) */}
             <div className="bg-gradient-to-r from-gray-900 to-blue-900 text-white py-16 mt-12 relative overflow-hidden">
                 {/* Background Pattern */}
                 <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>

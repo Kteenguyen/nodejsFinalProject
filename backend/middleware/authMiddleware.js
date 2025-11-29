@@ -3,12 +3,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const asyncHandler = require('express-async-handler');
 
-// Lấy token từ cookie 'jwt' hoặc header Authorization: Bearer <token>
+// ❗ CHỈ LẤY TOKEN TỪ AUTHORIZATION HEADER để hỗ trợ multi-tab
+// Không dùng cookie vì cookie được share giữa tất cả các tab
 function getTokenFromReq(req) {
-  // Ưu tiên cookie HttpOnly
-  if (req.cookies && req.cookies.jwt) return req.cookies.jwt;
-
-  // Fallback: Authorization header (Bearer)
+  // Chỉ lấy từ Authorization header (Bearer)
   const auth = req.headers.authorization || req.headers.Authorization;
   if (auth && typeof auth === 'string' && auth.startsWith('Bearer ')) {
     return auth.slice(7).trim();
@@ -20,14 +18,13 @@ const protect = asyncHandler(async (req, res, next) => {
   const token = getTokenFromReq(req);
   
   // Debug log
-  console.log('🔐 [AUTH MIDDLEWARE] Checking token...');
-  console.log('   Cookie jwt:', req.cookies?.jwt ? 'EXISTS' : 'MISSING');
+  console.log('🔐 [AUTH MIDDLEWARE] Checking token from Authorization header...');
   console.log('   Authorization header:', req.headers.authorization ? 'EXISTS' : 'MISSING');
   console.log('   Token found:', token ? 'YES' : 'NO');
 
   if (!token) {
     res.status(401);
-    throw new Error('Không được ủy quyền: thiếu token (cookie jwt hoặc Bearer).');
+    throw new Error('Không được ủy quyền: thiếu token trong Authorization header.');
   }
 
   try {

@@ -1,22 +1,26 @@
 // frontend/src/services/api.js
 import axios from 'axios';
 
-// 1. Lấy URL từ biến môi trường (Logic của https.js cũ)
-// Nếu không có biến môi trường thì fallback về localhost
-export const API_BASE_URL = 
-  (typeof process !== "undefined" && process.env.REACT_APP_API_BASE) || 
-  'http://localhost:3001/api';
+// 1. Force lấy protocol hiện tại mỗi lần gọi (không cache)
+const getBaseUrl = () => {
+    const protocol = window.location.protocol; // 'http:' hoặc 'https:'
+    return `${protocol}//localhost:3001/api`;
+};
 
+const getBackendUrl = () => {
+    const protocol = window.location.protocol;
+    return `${protocol}//localhost:3001`;
+};
+
+export const API_BASE_URL = getBaseUrl();
 export const API_BASE = API_BASE_URL;
-
-// Backend server URL (không có /api) - dùng cho static files như images
-export const BACKEND_URL = API_BASE_URL.replace('/api', '');
+export const BACKEND_URL = getBackendUrl();
 
 // Helper: Chuyển đổi đường dẫn ảnh tương đối thành URL đầy đủ
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '/img/placeholder.png';
   if (imagePath.startsWith('http')) return imagePath;
-  if (imagePath.startsWith('/images')) return `${BACKEND_URL}${imagePath}`;
+  if (imagePath.startsWith('/images')) return `${getBackendUrl()}${imagePath}`;
   return imagePath;
 };
 
@@ -36,12 +40,12 @@ const api = axios.create({
 // Interceptor cho request: Tự động thêm token vào header (nếu có)
 api.interceptors.request.use(
     (config) => {
-        // Ưu tiên lấy token từ localStorage (nếu có)
-        const token = localStorage.getItem('token');
+        // Lấy token từ sessionStorage (mỗi tab riêng biệt)
+        const token = sessionStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
-        // Nếu không có token trong localStorage, backend sẽ tự động đọc từ cookie
+        // Nếu không có token trong sessionStorage, backend sẽ tự động đọc từ cookie
         // do đã set withCredentials: true
         return config;
     },

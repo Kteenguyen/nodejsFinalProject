@@ -255,7 +255,7 @@ const rateProduct = async (productIdOrSlug, ratingData) => {
 function getImageUrl(src) {
     if (!src) {
         console.log('❌ No image source provided, returning placeholder');
-        return "/images/placeholder.png";
+        return "/img/default.png";
     }
     
     if (src.startsWith('http')) {
@@ -263,9 +263,11 @@ function getImageUrl(src) {
         return src;
     }
     
-    const BASE_URL = process.env.REACT_APP_API_URL || "https://localhost:3001";
+    // Tự động sử dụng protocol của trang hiện tại
+    const protocol = window.location.protocol; // http: hoặc https:
+    const BASE_URL = `${protocol}//localhost:3001`;
     const fullUrl = `${BASE_URL}${src.startsWith("/") ? "" : "/"}${src}`;
-    console.log('🔄 Converted relative path to full URL:', { src, BASE_URL, fullUrl });
+    console.log('🔄 Converted relative path to full URL:', { src, protocol, BASE_URL, fullUrl });
     return fullUrl;
 }
 

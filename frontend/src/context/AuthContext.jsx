@@ -14,17 +14,18 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * ❗ NÂNG CẤP 2: useEffect chạy 1 LẦN KHI APP LOAD
-     * Nhiệm vụ: Kiểm tra token trong localStorage và gọi API để lấy user info
+     * Nhiệm vụ: Kiểm tra token trong sessionStorage và gọi API để lấy user info
+     * 🔄 Sử dụng sessionStorage để mỗi tab có session riêng biệt
      */
     useEffect(() => {
         const checkUserStatus = async () => {
             try {
                 console.log('🔍 AuthContext: Checking session...');
                 
-                // Kiểm tra token trong localStorage
-                const token = localStorage.getItem('token');
+                // Kiểm tra token trong sessionStorage (mỗi tab riêng biệt)
+                const token = sessionStorage.getItem('token');
                 if (!token) {
-                    console.log('❌ AuthContext: No token in localStorage');
+                    console.log('❌ AuthContext: No token in sessionStorage');
                     setUser(null);
                     setIsLoading(false);
                     return;
@@ -43,14 +44,14 @@ export const AuthProvider = ({ children }) => {
                     console.log('❌ AuthContext: No authenticated user');
                     setUser(null);
                     // Token không hợp lệ, xóa đi
-                    localStorage.removeItem('token');
+                    sessionStorage.removeItem('token');
                 }
 
             } catch (error) {
                 // Token hết hạn hoặc không hợp lệ
                 console.error('⚠️ AuthContext: Error checking session:', error);
                 setUser(null);
-                localStorage.removeItem('token');
+                sessionStorage.removeItem('token');
             } finally {
                 // Báo là đã load xong, cho phép app render
                 setIsLoading(false);
@@ -62,8 +63,8 @@ export const AuthProvider = ({ children }) => {
 
     /**
      * ❗ NÂNG CẤP 3: Hàm login (Đơn giản hóa)
-     * Giờ chỉ cần set state (không cần localStorage)
-     * Backend đã tự set cookie
+     * Giờ chỉ cần set state (sessionStorage được quản lý bởi AuthController)
+     * 🔄 Mỗi tab có session riêng biệt
      */
     const login = (userInfo) => {
         setUser(userInfo);
