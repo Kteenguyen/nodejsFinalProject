@@ -1,18 +1,17 @@
 // frontend/src/components/common/UserDetail.jsx
-import React, { useState, useEffect, useCallback } from 'react'; // 👈 1. Import useCallback
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, Save, ChevronRight, Calendar as CalendarIcon,
-    Award, Gift, Coins
+    Gift, Coins
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 import { UserController } from '../../controllers/userController';
-import { OrderController } from '../../controllers/OrderController';
 import { useAuth } from '../../context/AuthContext';
 
 import Calendar from './Calendar';
-import OrderHistory from '../Order/OrderHistory';
+// Đã xóa import OrderHistory và OrderController vì không dùng nữa
 
 // === HÀM TÍNH TUỔI ===
 const calculateAge = (dobString) => {
@@ -45,7 +44,7 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
     const isModal = context === 'admin';
     const isAdmin = context === 'admin';
 
-    const { setUser: setAuthUser, user: authUser } = useAuth();
+    const { setUser: setAuthUser } = useAuth();
 
     const [formData, setFormData] = useState({
         name: '',
@@ -58,43 +57,8 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [orders, setOrders] = useState([]);
-    const [loadingOrders, setLoadingOrders] = useState(false);
 
-    // 👈 2. DI CHUYỂN LÊN TRƯỚC useEffect VÀ DÙNG useCallback
-    const fetchUserOrders = useCallback(async () => {
-        if (!user?._id || !authUser) return;
-
-        setLoadingOrders(true);
-        try {
-            let orderData = [];
-
-            if (context === 'admin' && authUser.role === 'admin') {
-                const allOrders = await OrderController.getAllOrdersForAdmin();
-                if (Array.isArray(allOrders)) {
-                    orderData = allOrders.filter(order =>
-                        order.accountId === user._id || order.user === user._id
-                    );
-                }
-            }
-            else {
-                orderData = await OrderController.getMyOrders();
-            }
-
-            if (Array.isArray(orderData)) {
-                setOrders(orderData.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-            } else {
-                setOrders([]);
-            }
-
-        } catch (error) {
-            console.error("Lỗi tải lịch sử đơn hàng:", error);
-        } finally {
-            setLoadingOrders(false);
-        }
-    }, [user, context, authUser]); // 👈 Dependencies của hàm này
-
-    // 👈 3. CẬP NHẬT useEffect
+    // --- CẬP NHẬT useEffect (Bỏ phần fetch đơn hàng) ---
     useEffect(() => {
         if (user) {
             setFormData({
@@ -106,11 +70,8 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                 points: user.points || 0,
             });
             setIsEditing(false);
-
-            // Gọi hàm tải đơn hàng
-            fetchUserOrders();
         }
-    }, [user, fetchUserOrders]); // 👈 Thêm fetchUserOrders vào dependency array
+    }, [user]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -157,100 +118,84 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
 
     const tier = getMemberTier(formData.points);
 
+    // --- SỬA LAYOUT: Bỏ Grid chia cột, để Form full width ---
     const FormContent = () => (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-
-                <div className={`p-4 rounded-xl border flex items-center justify-between ${tier.color}`}>
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-white/50 flex items-center justify-center text-2xl shadow-sm">
-                            {tier.icon}
-                        </div>
-                        <div>
-                            <p className="text-xs uppercase font-bold opacity-70 tracking-wider">Hạng thành viên</p>
-                            <h3 className="text-lg font-bold">{tier.name} Member</h3>
-                        </div>
+        <div className="space-y-6"> {/* Bỏ grid cols */}
+            
+            {/* Thẻ Hạng thành viên */}
+            <div className={`p-4 rounded-xl border flex items-center justify-between ${tier.color}`}>
+                <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-white/50 flex items-center justify-center text-2xl shadow-sm">
+                        {tier.icon}
                     </div>
-                    <div className="text-right hidden sm:block">
-                        <div className="flex items-center gap-1 justify-end font-medium">
-                            <Gift size={16} />
-                            <span>Ưu đãi của bạn</span>
-                        </div>
-                        <p className="text-sm opacity-80">Tích điểm để nhận thêm quà</p>
+                    <div>
+                        <p className="text-xs uppercase font-bold opacity-70 tracking-wider">Hạng thành viên</p>
+                        <h3 className="text-lg font-bold">{tier.name} Member</h3>
                     </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-text-secondary">Họ và tên</label>
-                        <input
-                            type="text" name="name" value={formData.name} onChange={handleChange} disabled={!isEditing}
-                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
-                        />
+                <div className="text-right hidden sm:block">
+                    <div className="flex items-center gap-1 justify-end font-medium">
+                        <Gift size={16} />
+                        <span>Ưu đãi của bạn</span>
                     </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-text-secondary">Email</label>
-                        <input type="email" value={formData.email} disabled={true} className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-100 text-text-secondary cursor-not-allowed" />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-text-secondary">Số điện thoại</label>
-                        <input
-                            type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} disabled={!isEditing}
-                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
-                        />
-                    </div>
-
-                    <Calendar
-                        value={formData.dateOfBirth}
-                        onChange={(newDate) => setFormData(prev => ({ ...prev, dateOfBirth: newDate }))}
-                        disabled={!isEditing}
-                        rightContent={calendarRightContent}
-                    />
-
-                    {/* <div className="space-y-2">
-                        <label className="text-sm font-medium text-text-secondary">Giới tính</label>
-                        <select
-                            name="gender" value={formData.gender} onChange={handleChange} disabled={!isEditing}
-                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary appearance-none' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
-                        >
-                            <option value="male">Nam</option>
-                            <option value="female">Nữ</option>
-                            <option value="other">Khác</option>
-                        </select>
-                    </div> */}
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                            <Coins size={16} className="text-yellow-500" />
-                            Điểm tích lũy
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="number"
-                                name="points"
-                                value={formData.points}
-                                onChange={handleChange}
-                                disabled={!(isAdmin && isEditing)}
-                                className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none
-                                    ${!(isAdmin && isEditing)
-                                        ? 'bg-gray-50 border-gray-200 text-text-secondary cursor-not-allowed'
-                                        : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
-                                    }
-                                `}
-                            />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">
-                                điểm
-                            </div>
-                        </div>
-                    </div>
-
+                    <p className="text-sm opacity-80">Tích điểm để nhận thêm quà</p>
                 </div>
             </div>
 
-            <div className="lg:col-span-1">
-                <OrderHistory orders={orders} isLoading={loadingOrders} />
+            {/* Các trường nhập liệu */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-text-secondary">Họ và tên</label>
+                    <input
+                        type="text" name="name" value={formData.name} onChange={handleChange} disabled={!isEditing}
+                        className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-text-secondary">Email</label>
+                    <input type="email" value={formData.email} disabled={true} className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-100 text-text-secondary cursor-not-allowed" />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-text-secondary">Số điện thoại</label>
+                    <input
+                        type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} disabled={!isEditing}
+                        className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none ${!isEditing ? 'bg-gray-50 border-gray-200 text-text-secondary' : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'}`}
+                    />
+                </div>
+
+                <Calendar
+                    value={formData.dateOfBirth}
+                    onChange={(newDate) => setFormData(prev => ({ ...prev, dateOfBirth: newDate }))}
+                    disabled={!isEditing}
+                    rightContent={calendarRightContent}
+                />
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
+                        <Coins size={16} className="text-yellow-500" />
+                        Điểm tích lũy
+                    </label>
+                    <div className="relative">
+                        <input
+                            type="number"
+                            name="points"
+                            value={formData.points}
+                            onChange={handleChange}
+                            disabled={!(isAdmin && isEditing)}
+                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none
+                                ${!(isAdmin && isEditing)
+                                    ? 'bg-gray-50 border-gray-200 text-text-secondary cursor-not-allowed'
+                                    : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
+                                }
+                            `}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">
+                            điểm
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -259,7 +204,9 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
         <div className="flex items-center justify-end gap-4 mt-8 pt-6 border-t border-gray-100">
             {!isEditing ? (
                 <>
-                    <button onClick={() => onClose()} className="px-6 py-2.5 rounded-lg border border-gray-300 text-text-secondary hover:bg-gray-50 transition-colors font-medium">Đóng</button>
+                    {/* Chỉ hiện nút Đóng nếu là Modal */}
+                    {isModal && <button onClick={() => onClose()} className="px-6 py-2.5 rounded-lg border border-gray-300 text-text-secondary hover:bg-gray-50 transition-colors font-medium">Đóng</button>}
+                    
                     <button onClick={() => setIsEditing(true)} className="px-6 py-2.5 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors font-medium shadow-md hover:shadow-lg transform active:scale-95 duration-200">Chỉnh sửa</button>
                 </>
             ) : (
@@ -286,7 +233,7 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
         <AnimatePresence>
             {user && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-                    <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="bg-surface w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+                    <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }} onClick={(e) => e.stopPropagation()} className="bg-surface w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold text-lg">{formData.name.charAt(0).toUpperCase()}</div>

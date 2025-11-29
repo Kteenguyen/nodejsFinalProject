@@ -1,4 +1,10 @@
 // frontend/src/index.js
+const resizeObserverLoopErr = 'ResizeObserver loop completed with undelivered notifications';
+window.addEventListener('error', (e) => {
+    if (e.message && e.message.includes(resizeObserverLoopErr)) {
+        e.stopImmediatePropagation();
+    }
+});
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/index.css';

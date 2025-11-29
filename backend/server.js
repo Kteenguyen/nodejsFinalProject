@@ -1,74 +1,73 @@
-// backend/server.js (ĐÃ NÂNG CẤP LÊN HTTPS)
-
+// backend/server.js
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const cookieParser = require('cookie-parser');
 const express = require('express');
 const cors = require('cors');
-const siteRoutes = require('./routes/route'); // Đảm bảo đúng tên file routes chính của fen
-const { connectDB } = require('./config/dbConnection'); // Đảm bảo đúng tên file db connection
+const siteRoutes = require('./routes/route'); 
+const { connectDB } = require('./config/dbConnection');
+const paymentRoutes = require('./routes/paymentRoutes');
 
-// --- 1. IMPORT CÁC MODULE CẦN THIẾT CHO HTTPS ---
-const https = require('https');
-const fs = require('fs'); // File System
+// --- HTTP & SOCKET.IO (Đổi từ HTTPS sang HTTP để tránh mixed content) ---
+const http = require('http');
+const { Server } = require('socket.io'); // Import Socket.io
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
 
-// --- 2. ĐỌC FILE CHỨNG CHỈ VÀ KHÓA ---
-// (Đảm bảo file key.pem và cert.pem nằm cùng cấp với server.js)
-const httpsOptions = {
-    key: fs.readFileSync(path.join(__dirname, 'key.pem')),
-    cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
+// --- CORS ---
+// Lưu ý: Cần config này để Socket.io hoạt động không bị chặn
+const corsOptions = {
+  origin: ["http://localhost:3000", "https://localhost:3000"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 };
-// Parsers
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// --- CẤU HÌNH MIDDLEWARE ---
 
-// CORS (QUAN TRỌNG: Phải cho phép cả 2)
-app.use(cors({
-  origin: ["http://localhost:3000","https://localhost:3000"],
-  credentials: true,
-  methods: ["GET","POST","PUT","PATCH","DELETE"],
-  allowedHeaders: ["Content-Type","Authorization"]
-}));
-
-
-
-
-// Phục vụ file tĩnh (Fix lỗi 404 cho ảnh)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- KẾT NỐI DATABASE ---
 connectDB();
 
-// --- CÁC ROUTE CHÍNH ---
-// Đảm bảo tên biến route chính của fen là 'siteRoutes' và nó chứa các route con như /api/auth, /api/users
+// --- TẠO HTTP SERVER ---
+const server = http.createServer(app);
+
+// --- KHỞI TẠO SOCKET.IO ---
+const io = new Server(server, {
+    cors: corsOptions // Dùng chung config CORS với Express
+});
+
+// Lắng nghe kết nối (Optional)
+io.on('connection', (socket) => {
+    console.log('⚡ Client connected:', socket.id);
+    socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
+});
+
+// Gắn io vào app để dùng trong Controller
+app.set('socketio', io);
+
+// --- ROUTES ---
 app.use('/api', siteRoutes);
 
-// --- ERROR HANDLERS ---
-// ... (phần error handlers giữ nguyên như trong hướng dẫn trước) ...
+// Error Handlers
 app.use((req, res, next) => {
-    console.log(`[SERVER.JS 404]: Không tìm thấy route: ${req.originalUrl}`);
-    const error = new Error(`Không tìm thấy - ${req.originalUrl}`);
-    res.status(404);
-    next(error);
+    console.log(`[404]: ${req.originalUrl}`);
+    res.status(404).json({ message: `Not Found - ${req.originalUrl}` });
 });
 
 app.use((err, req, res, next) => {
-    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-    console.error("🚨 [SERVER.JS ERROR HANDLER]: ĐÃ BẮT LỖI TỔNG:", err.message);
-    res.status(statusCode).json({
-        message: err.message,
-        stack: process.env.NODE_ENV === 'production' ? null : err.stack,
-    });
+    const code = res.statusCode === 200 ? 500 : res.statusCode;
+    console.error("ERROR:", err.message);
+    res.status(code).json({ message: err.message });
 });
 
-// --- 3. KHỞI CHẠY SERVER HTTPS THAY VÌ HTTP ---
-https.createServer(httpsOptions, app).listen(port, () => {
-    console.log(`🚀 HTTPS Backend server đang chạy tại: https://localhost:${port}`);
+// --- CHẠY SERVER (Dùng biến 'server' thay vì 'app') ---
+server.listen(port, () => {
+    console.log(`🚀 HTTP Server + Socket.io running on port ${port}`);
 });
 
 module.exports = app;

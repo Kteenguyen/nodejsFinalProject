@@ -81,42 +81,48 @@ export default function PriceRange({
 
   return (
     <div>
-      {/* Inputs định dạng vi-VN */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 flex items-center">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="\d*"
-            value={minInput}
-            onChange={(e) => handleMinText(e.target.value)}
-            onBlur={(e) => setMinInput(fmtVN(unfmtVN(e.target.value)))}
-            className="w-full rounded border px-3 py-1"
-            aria-label="Giá tối thiểu"
-          />
-          <span className="ml-1 text-gray-500">đ</span>
+      {/* Inputs định dạng vi-VN với styling cải thiện */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              value={minInput}
+              onChange={(e) => handleMinText(e.target.value)}
+              onBlur={(e) => setMinInput(fmtVN(unfmtVN(e.target.value)))}
+              className="w-full rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 px-3 py-2 pr-6 text-sm font-medium transition-all outline-none"
+              placeholder="Tối thiểu"
+              aria-label="Giá tối thiểu"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-medium">đ</span>
+          </div>
         </div>
-        <span>–</span>
-        <div className="flex-1 flex items-center">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="\d*"
-            value={maxInput}
-            onChange={(e) => handleMaxText(e.target.value)}
-            onBlur={(e) => setMaxInput(fmtVN(unfmtVN(e.target.value)))}
-            className="w-full rounded border px-3 py-1"
-            aria-label="Giá tối đa"
-          />
-          <span className="ml-1 text-gray-500">đ</span>
+        <span className="text-gray-400 font-bold">–</span>
+        <div className="flex-1">
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              value={maxInput}
+              onChange={(e) => handleMaxText(e.target.value)}
+              onBlur={(e) => setMaxInput(fmtVN(unfmtVN(e.target.value)))}
+              className="w-full rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 px-3 py-2 pr-6 text-sm font-medium transition-all outline-none"
+              placeholder="Tối đa"
+              aria-label="Giá tối đa"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-medium">đ</span>
+          </div>
         </div>
       </div>
 
-      {/* Slider đôi */}
-      <div className="mt-3 range-double">
+      {/* Slider đôi với styling cải thiện */}
+      <div className="mt-5 range-double">
         <div className="range-track" />
         <div
-          className="range-fill"
+          className="range-fill bg-gradient-to-r from-blue-500 to-blue-600"
           style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
         />
         <input
@@ -139,8 +145,9 @@ export default function PriceRange({
         />
       </div>
 
-      <div className="text-xs text-gray-500 mt-1">
-        Tối thiểu: {fmtVN(min)} đ • Tối đa: {fmtVN(max)} đ
+      <div className="flex items-center justify-between text-xs text-gray-500 mt-2 px-1">
+        <span className="bg-gray-100 px-2 py-0.5 rounded">{fmtVN(min)} đ</span>
+        <span className="bg-gray-100 px-2 py-0.5 rounded">{fmtVN(max)} đ</span>
       </div>
     </div>
   );

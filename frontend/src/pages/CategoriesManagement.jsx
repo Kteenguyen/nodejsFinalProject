@@ -31,7 +31,7 @@ const CategoriesManagement = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [formData, setFormData] = useState({
-        name: '', slug: '', description: '', status: 'active', image: ''
+        categoryId: '', name: '', slug: '', description: '', status: 'active', image: '', displayOrder: 0
     });
 
     // --- EFFECT ---
@@ -47,13 +47,25 @@ const CategoriesManagement = () => {
     };
 
     // --- HANDLERS ---
+    const generateCategoryId = () => {
+        // Tạo ID ngẫu nhiên: prefix + timestamp + random
+        const timestamp = Date.now().toString(36); // Convert to base36
+        const random = Math.random().toString(36).substring(2, 6); // 4 ký tự random
+        return `cat_${timestamp}${random}`;
+    };
+
     const handleNameChange = (e) => {
         const name = e.target.value;
         const slug = name.toLowerCase()
             .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
             .replace(/ /g, '-').replace(/[^\w-]+/g, '');
-
-        setFormData(prev => ({ ...prev, name, slug: !editingCategory ? slug : prev.slug }));
+        
+        // Giữ nguyên categoryId nếu đã có, không tự động thay đổi
+        setFormData(prev => ({ 
+            ...prev, 
+            name, 
+            slug: !editingCategory ? slug : prev.slug
+        }));
     };
 
     const handleOpenModal = (category = null) => {
@@ -62,7 +74,17 @@ const CategoriesManagement = () => {
             setFormData(category);
         } else {
             setEditingCategory(null);
-            setFormData({ name: '', slug: '', description: '', status: 'active', image: '' });
+            // Tự động tạo categoryId ngẫu nhiên khi mở modal tạo mới
+            const newCategoryId = generateCategoryId();
+            setFormData({ 
+                categoryId: newCategoryId, 
+                name: '', 
+                slug: '', 
+                description: '', 
+                status: 'active', 
+                image: '', 
+                displayOrder: 0 
+            });
         }
         setIsModalOpen(true);
     };
@@ -260,9 +282,40 @@ const CategoriesManagement = () => {
 
                             <form onSubmit={handleSubmit} className="p-6 space-y-4">
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                                        <span>Mã danh mục <span className="text-red-500">*</span></span>
+                                        {!editingCategory && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, categoryId: generateCategoryId() })}
+                                                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Tạo lại
+                                            </button>
+                                        )}
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        value={formData.categoryId} 
+                                        onChange={(e) => setFormData({ ...formData, categoryId: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })}
+                                        disabled={!!editingCategory}
+                                        className={`w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition ${editingCategory ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'font-mono text-sm'}`}
+                                        placeholder="cat_xxxxx (tự động)" 
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {editingCategory 
+                                            ? 'Mã danh mục không thể thay đổi sau khi tạo.' 
+                                            : 'Mã tự động tạo. Bạn có thể sửa hoặc nhấn "Tạo lại" để tạo mã mới.'}
+                                    </p>
+                                </div>
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên danh mục <span className="text-red-500">*</span></label>
                                     <input type="text" required value={formData.name} onChange={handleNameChange}
-                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" placeholder="Ví dụ: iPhone" />
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" placeholder="Ví dụ: Laptop" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Đường dẫn (Slug)</label>

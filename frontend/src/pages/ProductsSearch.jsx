@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import Filters from "../components/catalog/Filters";
 import SortBar from "../components/catalog/SortBar";
 import { ProductController } from '../controllers/productController';
@@ -9,12 +9,33 @@ function ProductCard({ p }) {
   const name = p.name || p.productName || "(Không tên)";
   const price = p.lowestPrice ?? p.minPrice ?? p.price ?? 0;
   const img = (Array.isArray(p.images) && p.images[0]) || "/img/placeholder.png";
+  const detailId = p.productId || p._id || "";
+  
   return (
-    <div className="bg-white rounded-lg shadow p-3">
-      <img src={img} alt={name} className="w-full aspect-square object-cover rounded" />
-      <div className="mt-2 font-semibold line-clamp-2">{name}</div>
-      <div className="text-indigo-600">{currency(price)}</div>
-    </div>
+    <Link 
+      to={`/products/${detailId}`} 
+      className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
+    >
+      <div className="relative overflow-hidden bg-gray-50">
+        <img 
+          src={img} 
+          alt={name} 
+          className="w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-300" 
+        />
+        <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity" />
+      </div>
+      <div className="p-4">
+        <h3 className="font-semibold text-gray-800 line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors">
+          {name}
+        </h3>
+        <div className="flex items-center justify-between">
+          <span className="text-lg font-bold text-blue-600">{currency(price)}</span>
+          <span className="text-sm text-gray-500 group-hover:text-blue-600 transition-colors">
+            Xem chi tiết →
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -24,6 +45,7 @@ export default function ProductsSearch() {
 
   const [products, setProducts] = useState([]);
   const [total, setTotal]       = useState(0);
+  const [loading, setLoading]   = useState(false);
 
   const [brands, setBrands]         = useState([]);
   const [categories, setCategories] = useState([]);
@@ -39,12 +61,16 @@ export default function ProductsSearch() {
   useEffect(() => {
     (async () => {
       try {
-        const brandsRes = await fetch('/api/products/brands', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
-        const categoriesRes = await fetch('/api/products/categories', { credentials: 'include' }).then(r => r.json()).catch(() => ({}));
-        setBrands(brandsRes?.data || brandsRes?.brands || []);
-        setCategories(categoriesRes?.data || categoriesRes?.categories || []);
+        console.log('🔄 Fetching brands and categories...');
+        const brandsData = await ProductController.getBrands();
+        const categoriesData = await ProductController.getCategories();
+        console.log('🏷️ Brands loaded:', brandsData, 'Length:', brandsData?.length);
+        console.log('📂 Categories loaded:', categoriesData, 'Length:', categoriesData?.length);
+        setBrands(brandsData || []);
+        setCategories(categoriesData || []);
+        console.log('✅ State updated - Brands:', brandsData?.length, 'Categories:', categoriesData?.length);
       } catch (e) {
-        console.error("Load facets failed:", e);
+        console.error("❌ Load facets failed:", e);
       }
     })();
   }, []);
@@ -52,56 +78,147 @@ export default function ProductsSearch() {
   useEffect(() => { setPage(1); }, [keyword]);
 
   async function load() {
-    const params = {
-      page, 
-      limit, 
-      sort,
-      search: keyword || undefined,
-      category: filters.categoryId || undefined,
-      brand: (filters.brand || []).join(",") || undefined,
-      minPrice: filters.minPrice || undefined,
-      maxPrice: filters.maxPrice || undefined,
-      ratingMin: filters.minRating || undefined,
-    };
-    const j = await ProductController.getProducts(params);
-    const items = j?.products || j?.data || j?.items || [];
-    setProducts(items);
-    setTotal(j?.pagination?.totalProducts || j?.total || items.length);
+    setLoading(true);
+    try {
+      const params = {
+        page, 
+        limit, 
+        sort,
+        search: keyword || undefined,
+        category: filters.categoryId || undefined,
+        brand: (filters.brand || []).join(",") || undefined,
+        minPrice: filters.minPrice || undefined,
+        maxPrice: filters.maxPrice || undefined,
+        ratingMin: filters.minRating || undefined,
+      };
+      const j = await ProductController.getProducts(params);
+      const items = j?.products || j?.data || j?.items || [];
+      setProducts(items);
+      setTotal(j?.pagination?.totalProducts || j?.total || items.length);
+    } catch (error) {
+      console.error("Load products failed:", error);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    load().catch(console.error);
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, sort, keyword, JSON.stringify(filters)]);
 
   const totalPages = Math.max(Math.ceil(total / limit), 1);
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <h1 className="text-2xl font-bold mb-3">Kết quả tìm kiếm {keyword ? `cho "${keyword}"` : ""}</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto p-4 md:p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            {keyword ? (
+              <>
+                Kết quả tìm kiếm cho <span className="text-blue-600">"{keyword}"</span>
+              </>
+            ) : (
+              "Tất cả sản phẩm"
+            )}
+          </h1>
+          <p className="text-gray-600">
+            {total > 0 ? `Tìm thấy ${total} sản phẩm` : "Không có sản phẩm nào"}
+          </p>
+        </div>
 
-      <Filters
-        brands={brands}
-        categories={categories}
-        initial={filters}
-        onApply={(f)=>{ setPage(1); setFilters(f); }}
-        onReset={()=>{ setPage(1); setFilters({ brand: [], minPrice: "", maxPrice: "", categoryId: "", minRating: 0, inStock:false, isNew:false, bestSeller:false }); }}
-      />
+        {/* Filters */}
+        <Filters
+          brands={brands}
+          categories={categories}
+          initial={filters}
+          onApply={(f)=>{ setPage(1); setFilters(f); }}
+          onReset={()=>{ setPage(1); setFilters({ brand: [], minPrice: "", maxPrice: "", categoryId: "", minRating: 0, inStock:false, isNew:false, bestSeller:false }); }}
+        />
 
-      <SortBar value={sort} onChange={(v)=>{ setPage(1); setSort(v); }} />
+        {/* Sort Bar */}
+        <SortBar value={sort} onChange={(v)=>{ setPage(1); setSort(v); }} />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {products.map((p) => (
-          <ProductCard key={p._id || p.productId || p.code} p={p} />
-        ))}
-      </div>
+        {/* Products Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20">
+            <svg className="mx-auto h-24 w-24 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">Không tìm thấy sản phẩm</h3>
+            <p className="text-gray-500 mb-6">Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm</p>
+            <button 
+              onClick={() => {
+                setPage(1);
+                setFilters({ brand: [], minPrice: "", maxPrice: "", categoryId: "", minRating: 0, inStock:false, isNew:false, bestSeller:false });
+              }}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Xóa tất cả bộ lọc
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+              {products.map((p) => (
+                <ProductCard key={p._id || p.productId || p.code} p={p} />
+              ))}
+            </div>
 
-      <div className="flex items-center justify-center gap-2 mt-6">
-        <button className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={()=>setPage(p=>Math.max(1, p-1))} disabled={page<=1}>Trang trước</button>
-        <div className="text-sm text-gray-600">Trang {page}/{totalPages}</div>
-        <button className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={()=>setPage(p=>Math.min(totalPages, p+1))} disabled={page>=totalPages}>Trang sau</button>
+            {/* Pagination */}
+            <div className="flex items-center justify-center gap-2 mt-10">
+              <button 
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+                onClick={()=>setPage(p=>Math.max(1, p-1))} 
+                disabled={page<=1}
+              >
+                ← Trước
+              </button>
+              
+              <div className="flex items-center gap-2">
+                {[...Array(Math.min(totalPages, 5))].map((_, idx) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = idx + 1;
+                  } else if (page <= 3) {
+                    pageNum = idx + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + idx;
+                  } else {
+                    pageNum = page - 2 + idx;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                        page === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button 
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
+                onClick={()=>setPage(p=>Math.min(totalPages, p+1))} 
+                disabled={page>=totalPages}
+              >
+                Sau →
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { OrderController } from "../controllers/OrderController";
+import api from "../services/api";
 
 const fmtVND = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 const fmtDate = (d) => new Date(d).toLocaleString('vi-VN');
@@ -191,6 +192,38 @@ export default function AdminOrderDetail() {
                    )}
                  </div>
               </div>
+
+              {/* Ảnh chứng từ chuyển khoản */}
+              {order.paymentMethod === 'banking' && order.paymentProof?.imageUrl && (
+                <div className="mt-4 pt-3 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-gray-700">Chứng từ chuyển khoản:</span>
+                    {order.paymentProof.verifiedAt && (
+                      <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                        ✓ Đã xác nhận
+                      </span>
+                    )}
+                  </div>
+                  <a 
+                    href={order.paymentProof.imageUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block max-w-md mx-auto"
+                  >
+                    <img 
+                      src={order.paymentProof.imageUrl} 
+                      alt="Chứng từ chuyển khoản" 
+                      className="w-full max-h-96 object-contain rounded-lg border hover:opacity-90 transition cursor-pointer bg-gray-50"
+                    />
+                  </a>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Upload lúc: {new Date(order.paymentProof.uploadedAt).toLocaleString('vi-VN')}
+                  </p>
+                  <p className="text-xs text-gray-400 text-center mt-1">
+                    (Click ảnh để xem full size)
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -203,6 +236,34 @@ export default function AdminOrderDetail() {
             <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
               <span>⚙️</span> Xử lý đơn hàng
             </h3>
+
+            {/* Xác nhận thanh toán (nếu chưa thanh toán và có ảnh chứng từ) */}
+            {!order.isPaid && order.paymentProof?.imageUrl && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <button
+                  onClick={async () => {
+                    if (window.confirm('Xác nhận đã nhận được thanh toán?')) {
+                      try {
+                        await api.post(`/orders/${id}/confirm-payment`);
+                        toast.success('Đã xác nhận thanh toán!');
+                        // Reload order
+                        const updatedOrder = await OrderController.getOrderDetail(id);
+                        if (updatedOrder) {
+                          setOrder(updatedOrder);
+                        }
+                      } catch (err) {
+                        console.error('Confirm payment error:', err);
+                        toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
+                      }
+                    }
+                  }}
+                  className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium flex items-center justify-center gap-2"
+                >
+                  <span>✓</span> Xác nhận đã thanh toán
+                </button>
+              </div>
+            )}
+
             <div className="mb-4">
                 <label className="block text-sm text-gray-600 mb-2 font-medium">Cập nhật trạng thái:</label>
                 <select 

@@ -11,6 +11,7 @@ import AdminOrderDetail from "../pages/AdminOrderDetail";
 import DiscountManagement from "../pages/DiscountManagement";
 import AdminManagement from "../pages/AdminManagement";
 import CategoriesManagement from "../pages/CategoriesManagement";
+import OrderDetailPage from "../pages/OrderDetailPage";
 
 export default function DashboardRoutes() {
   return (
@@ -26,7 +27,6 @@ export default function DashboardRoutes() {
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
         <Route path="categories" element={<CategoriesManagement />} />
-
 
         {/* --- QUẢN LÝ SẢN PHẨM --- */}
         <Route path="products" element={<ProductManagement />} />
