@@ -1,223 +1,9 @@
-// frontend/src/components/Profile/ManageAddresses.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserController } from '../../controllers/userController';
 import { FaPlus, FaEdit, FaTrash, FaStar } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
-
-// === (Component AddressForm) ===
-// (Component này render bên trong ManageAddresses, nên không cần bọc nền)
-const AddressForm = ({ initialData, onSubmit, onCancel }) => {
-    const [formData, setFormData] = useState(
-        initialData || {
-            fullName: '', phoneNumber: '', address: '',
-            ward: '', district: '', city: '', isDefault: false
-        }
-    );
-    // (Các state cho GHN API)
-    const [provinces, setProvinces] = useState([]);
-    const [districts, setDistricts] = useState([]);
-    const [wards, setWards] = useState([]);
-    
-    // NÂNG CẤP: Giữ state cho ID để điều khiển dropdown
-    const [selectedProvinceId, setSelectedProvinceId] = useState(null);
-    const [selectedDistrictId, setSelectedDistrictId] = useState(null);
-
-    // (Logic Load Tỉnh/Thành)
-    const loadProvinces = useCallback(async () => {
-        try {
-            const data = await UserController.getProvinces();
-            setProvinces(data);
-            return data; // Trả về data để xử lý logic Edit
-        } catch (error) {
-            console.error("Lỗi load tỉnh thành:", error);
-            // NÂNG CẤP: Thêm toast error
-            toast.error("Lỗi khi tải danh sách Tỉnh/Thành.");
-        }
-    }, []);
-
-    // (Logic Load Quận/Huyện)
-    const loadDistricts = useCallback(async (provinceId) => {
-        try {
-            const data = await UserController.getDistricts(provinceId);
-            setDistricts(data);
-            setWards([]); // Reset xã
-            return data; // Trả về data
-        } catch (error) {
-            console.error("Lỗi load quận huyện:", error);
-            // NÂNG CẤP: Thêm toast error
-            toast.error("Lỗi khi tải danh sách Quận/Huyện.");
-        }
-    }, []);
-
-    // (Logic Load Xã/Phường)
-    const loadWards = useCallback(async (districtId) => {
-        try {
-            const data = await UserController.getWards(districtId);
-            setWards(data);
-        } catch (error) {
-            console.error("Lỗi load xã phường:", error);
-            // NÂNG CẤP: Thêm toast error
-            toast.error("Lỗi khi tải danh sách Xã/Phường.");
-        }
-    }, []);
-
-    /**
-     * NÂNG CẤP: Thêm logic xử lý khi "Edit" (initialData)
-     * Tự động load và chọn các dropdown khi form được mở
-     */
-    useEffect(() => {
-        const setupEditForm = async () => {
-            // 1. Luôn load tỉnh
-            const allProvinces = await loadProvinces();
-
-            // 2. Nếu là form Edit và đã có Tỉnh
-            if (initialData && allProvinces) {
-                // 3. Tìm ID Tỉnh từ tên
-                const currentProvince = allProvinces.find(p => p.ProvinceName === initialData.city);
-                if (currentProvince) {
-                    setSelectedProvinceId(currentProvince.ProvinceID);
-
-                    // 4. Load Quận
-                    const allDistricts = await loadDistricts(currentProvince.ProvinceID);
-                    if (allDistricts) {
-                        // 5. Tìm ID Quận từ tên
-                        const currentDistrict = allDistricts.find(d => d.DistrictName === initialData.district);
-                        if (currentDistrict) {
-                            setSelectedDistrictId(currentDistrict.DistrictID);
-                            // 6. Load Xã
-                            await loadWards(currentDistrict.DistrictID);
-                            // (Tên xã đã có sẵn trong formData.ward từ initialData)
-                        }
-                    }
-                }
-            }
-        };
-        setupEditForm();
-        // Thêm các dependencies để đảm bảo hàm chạy đúng
-    }, [initialData, loadProvinces, loadDistricts, loadWards]);
-
-    // (Các hàm HandleChange, HandleSubmit cho Form)
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-    };
-
-    const handleProvinceChange = (e) => {
-        const provinceId = e.target.value;
-        // Lấy tên Tỉnh từ text của option
-        const provinceName = provinceId ? e.target.options[e.target.selectedIndex].text : "";
-        setSelectedProvinceId(provinceId);
-        setFormData(prev => ({ ...prev, city: provinceName, district: '', ward: '' }));
-        if (provinceId) {
-            loadDistricts(provinceId);
-        } else {
-            setDistricts([]);
-            setWards([]);
-        }
-    };
-
-    const handleDistrictChange = (e) => {
-        const districtId = e.target.value;
-        // Lấy tên Quận từ text của option
-        const districtName = districtId ? e.target.options[e.target.selectedIndex].text : "";
-        setSelectedDistrictId(districtId);
-        setFormData(prev => ({ ...prev, district: districtName, ward: '' }));
-        if (districtId) {
-            loadWards(districtId);
-        } else {
-            setWards([]);
-        }
-    };
-
-    const handleWardChange = (e) => {
-        // Lấy tên Xã từ text của option
-        const wardName = e.target.value ? e.target.options[e.target.selectedIndex].text : "";
-        setFormData(prev => ({ ...prev, ward: wardName }));
-    };
-
-    const localHandleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(formData);
-    };
-
-    return (
-        <form onSubmit={localHandleSubmit} className="space-y-4">
-            <h2 className="text-lg font-medium text-text-primary mb-4">
-                {initialData ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới'}
-            </h2>
-
-            {/* (Hàng 1: Tên, SĐT) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="label-field">Họ và tên</label>
-                    <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required className="input-field" />
-                </div>
-                <div>
-                    <label className="label-field">Số điện thoại</label>
-                    <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required className="input-field" />
-                </div>
-            </div>
-
-            {/* (Hàng 2: Tỉnh, Quận, Xã) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label className="label-field">Tỉnh/Thành phố</label>
-                    {/* NÂNG CẤP: value dùng selectedProvinceId */}
-                    <select value={selectedProvinceId || ''} onChange={handleProvinceChange} required className="input-field">
-                        <option value="">Chọn Tỉnh/Thành</option>
-                        {provinces.map(p => <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="label-field">Quận/Huyện</label>
-                    {/* NÂNG CẤP: value dùng selectedDistrictId */}
-                    <select value={selectedDistrictId || ''} onChange={handleDistrictChange} required className="input-field" disabled={!districts.length}>
-                        <option value="">Chọn Quận/Huyện</option>
-                        {districts.map(d => <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="label-field">Xã/Phường</label>
-                    {/* NÂNG CẤP: value dùng formData.ward (vì đây là tên) */}
-                    <select name="ward" value={formData.ward} onChange={handleWardChange} required className="input-field" disabled={!wards.length}>
-                        <option value="">Chọn Xã/Phường</option>
-                        {/* NÂNG CẤP: value là WardName để khớp với formData */}
-                        {wards.map(w => <option key={w.WardCode} value={w.WardName}>{w.WardName}</option>)}
-                    </select>
-                </div>
-            </div>
-
-            {/* (Hàng 3: Địa chỉ cụ thể) */}
-            <div>
-                <label className="label-field">Địa chỉ cụ thể (Số nhà, tên đường...)</label>
-                <input type="text" name="address" value={formData.address} onChange={handleChange} required className="input-field" />
-            </div>
-
-            {/* (Hàng 4: Checkbox) */}
-            <div className="flex items-center">
-                <input type="checkbox" name="isDefault" checked={formData.isDefault} onChange={handleChange} id="isDefault" className="h-4 w-4 text-accent border-gray-300 rounded focus:ring-accent-hover" />
-                <label htmlFor="isDefault" className="ml-2 block text-sm text-text-primary">Đặt làm địa chỉ mặc định</label>
-            </div>
-
-            {/* (Hàng 5: Nút bấm) */}
-            <div className="flex gap-4">
-                <motion.button
-                    type="submit"
-                    className="btn-accent-profile"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    Lưu địa chỉ
-                </motion.button>
-                <button type="button" onClick={onCancel} className="btn-secondary-profile">
-                    Hủy
-                </button>
-            </div>
-        </form>
-    );
-};
-// =============================
+import AddressForm from '../common/AddressForm'; // 👈 Import component vừa tách
 
 const ManageAddresses = () => {
     const [addresses, setAddresses] = useState([]);
@@ -233,7 +19,6 @@ const ManageAddresses = () => {
             setAddresses(data.addresses || []);
         } catch (error) {
             console.error("Lỗi load địa chỉ:", error);
-            // NÂNG CẤP: Thêm toast error
             toast.error("Không thể tải danh sách địa chỉ.");
         }
         setIsLoading(false);
@@ -243,10 +28,21 @@ const ManageAddresses = () => {
         loadAddresses();
     }, [loadAddresses]);
 
-    // (Xử lý Edit, Delete, Add New)
+    // --- CÁC HÀM XỬ LÝ SỰ KIỆN ---
+
+    const handleAddNew = () => {
+        setEditingAddress(null);
+        setIsFormOpen(true);
+    };
+
     const handleEdit = (address) => {
         setEditingAddress(address);
         setIsFormOpen(true);
+    };
+
+    const handleCancelForm = () => {
+        setIsFormOpen(false);
+        setEditingAddress(null);
     };
 
     const handleDelete = async (addressId) => {
@@ -254,37 +50,34 @@ const ManageAddresses = () => {
             try {
                 await UserController.deleteAddress(addressId);
                 toast.success("Đã xóa địa chỉ.");
-                loadAddresses(); // Tải lại
+                loadAddresses(); // Tải lại list
             } catch (error) {
                 console.error("Lỗi xóa địa chỉ:", error);
-                // NÂNG CẤP: Thêm toast error
                 toast.error(error.message || "Xóa địa chỉ thất bại.");
             }
         }
     };
 
     const handleSetDefault = async (addressId) => {
+        // Logic đặt mặc định thường là update địa chỉ đó với isDefault = true
+        // Backend sẽ tự động set các cái khác thành false
         try {
-            await UserController.setDefaultAddress(addressId);
+            const target = addresses.find(a => a._id === addressId);
+            if (!target) return;
+            
+            const payload = { ...target, isDefault: true };
+            // Loại bỏ _id để tránh lỗi nếu backend k cần
+            delete payload._id; 
+
+            await UserController.updateAddress(addressId, payload);
             toast.success("Đã đặt làm địa chỉ mặc định.");
-            loadAddresses(); // Tải lại
+            loadAddresses();
         } catch (error) {
-            console.error("Lỗi đặt mặc định:", error);
-            toast.error(error.message || "Đặt mặc định thất bại.");
+            toast.error("Lỗi khi đặt mặc định.");
         }
     };
 
-    const handleAddNew = () => {
-        setEditingAddress(null);
-        setIsFormOpen(true);
-    };
-
-    const handleCancelForm = () => {
-        setIsFormOpen(false);
-        setEditingAddress(null); // Đảm bảo reset khi hủy
-    }
-
-    // (Xử lý Submit Form)
+    // (Xử lý Submit Form từ AddressForm gửi lên)
     const handleSubmit = async (formData) => {
         try {
             if (editingAddress) {
@@ -301,96 +94,133 @@ const ManageAddresses = () => {
             loadAddresses(); // Tải lại
         } catch (error) {
             console.error("Lỗi lưu địa chỉ:", error);
-            // NÂNG CẤP: Thêm toast error
             toast.error(error.message || "Lưu địa chỉ thất bại.");
         }
     };
 
-
     return (
-        // === BỌC NỀN TRẮNG (GIỐNG USERDETAIL) ===
-        <div className="bg-surface rounded-lg shadow-md p-6">
-            {isFormOpen ? (
-                // 1. Giao diện Form
-                <AddressForm
-                    initialData={editingAddress}
-                    onSubmit={handleSubmit}
-                    onCancel={handleCancelForm} // Dùng hàm hủy mới
-                />
-            ) : (
-                // 2. Giao diện Danh sách
-                <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-medium text-text-primary">Địa chỉ của tôi</h2>
-                        <motion.button
-                            onClick={handleAddNew}
-                            className="btn-accent-profile flex items-center gap-2"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                        >
-                            <FaPlus size={12} /> Thêm địa chỉ mới
-                        </motion.button>
-                    </div>
+        <div className="bg-surface rounded-lg shadow-md p-6 min-h-[400px]">
+            <AnimatePresence mode="wait">
+                {isFormOpen ? (
+                    // 1. Giao diện Form (Sử dụng component tách rời)
+                    <motion.div
+                        key="form"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <AddressForm
+                            initialData={editingAddress}
+                            onSubmit={handleSubmit}
+                            onCancel={handleCancelForm}
+                        />
+                    </motion.div>
+                ) : (
+                    // 2. Giao diện Danh sách
+                    <motion.div
+                        key="list"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <div className="flex justify-between items-center mb-6 border-b pb-4 border-gray-100">
+                            <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                                Địa chỉ nhận hàng
+                                <span className="text-sm font-normal text-text-secondary">({addresses.length})</span>
+                            </h2>
+                            <motion.button
+                                onClick={handleAddNew}
+                                className="btn-accent-profile flex items-center gap-2 px-4 py-2"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <FaPlus size={12} /> Thêm địa chỉ mới
+                            </motion.button>
+                        </div>
 
-                    {/* Danh sách địa chỉ */}
-                    {isLoading ? (
-                        <p className="text-text-secondary">Đang tải địa chỉ...</p>
-                    ) : (
-                        <div className="space-y-4">
-                            {addresses.length === 0 ? (
-                                <p className="text-text-secondary">Bạn chưa có địa chỉ nào.</p>
-                            ) : (
-                                addresses.map(addr => (
-                                    <div key={addr._id} className="flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-colors">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-medium text-text-primary">{addr.fullName}</h3>
-                                                <span className="text-gray-400">|</span>
-                                                <span className="text-text-secondary">{addr.phoneNumber}</span>
-                                                {addr.isDefault && (
-                                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Mặc định</span>
-                                                )}
-                                            </div>
-                                            <p className="text-text-secondary text-sm">{addr.address}</p>
-                                            <p className="text-text-secondary text-sm">{addr.ward}, {addr.district}, {addr.city}</p>
-                                            
-                                            {/* Nút hành động */}
-                                            <div className="flex gap-3 mt-3">
-                                                <button
-                                                    onClick={() => handleEdit(addr)}
-                                                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                                                >
-                                                    Sửa
-                                                </button>
-                                                {!addr.isDefault && (
-                                                    <>
+                        {/* Danh sách địa chỉ */}
+                        {isLoading ? (
+                            <div className="flex justify-center py-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {addresses.length === 0 ? (
+                                    <div className="text-center py-8 text-text-secondary bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                        <p>Bạn chưa có địa chỉ nào.</p>
+                                        <button onClick={handleAddNew} className="text-accent hover:underline mt-2 text-sm">Thêm ngay</button>
+                                    </div>
+                                ) : (
+                                    addresses.map(addr => (
+                                        <motion.div 
+                                            key={addr._id} 
+                                            layout
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`relative p-4 border rounded-lg transition-all duration-200 
+                                                ${addr.isDefault ? 'border-accent bg-blue-50/30 shadow-sm' : 'border-gray-200 hover:border-accent/50 hover:bg-gray-50'}
+                                            `}
+                                        >
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                <div className="space-y-1 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h3 className="font-bold text-text-primary">{addr.fullName}</h3>
                                                         <span className="text-gray-300">|</span>
+                                                        <p className="text-text-secondary font-medium">{addr.phoneNumber}</p>
+                                                        {addr.isDefault && (
+                                                            <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20 flex items-center gap-1">
+                                                                <FaStar size={10} /> Mặc định
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-text-secondary leading-relaxed">
+                                                        {addr.address}<br/>
+                                                        {addr.ward}, {addr.district}, {addr.city}
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center gap-3 md:border-l md:pl-4 md:border-gray-200 self-end md:self-center">
+                                                    {!addr.isDefault && (
                                                         <button
                                                             onClick={() => handleSetDefault(addr._id)}
-                                                            className="text-sm text-orange-600 hover:text-orange-800 hover:underline"
+                                                            className="text-xs font-medium text-gray-500 hover:text-accent underline decoration-dotted"
+                                                            title="Đặt làm địa chỉ mặc định"
                                                         >
-                                                            Đặt làm mặc định
+                                                            Đặt mặc định
                                                         </button>
-                                                    </>
-                                                )}
-                                                <span className="text-gray-300">|</span>
-                                                <button
-                                                    onClick={() => handleDelete(addr._id)}
-                                                    className="text-sm text-red-600 hover:text-red-800 hover:underline"
-                                                >
-                                                    Xóa
-                                                </button>
+                                                    )}
+                                                    
+                                                    <div className="flex gap-2">
+                                                        <motion.button
+                                                            onClick={() => handleEdit(addr)}
+                                                            className="p-2 text-blue-500 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors"
+                                                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                            title="Chỉnh sửa"
+                                                        >
+                                                            <FaEdit size={14} />
+                                                        </motion.button>
+                                                        <motion.button
+                                                            onClick={() => handleDelete(addr._id)}
+                                                            className="p-2 text-red-500 bg-red-50 rounded-full hover:bg-red-100 transition-colors"
+                                                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                            title="Xóa"
+                                                        >
+                                                            <FaTrash size={14} />
+                                                        </motion.button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
+                                        </motion.div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
-        // ======================================
     );
 };
 
