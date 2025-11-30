@@ -69,6 +69,7 @@ export default function CheckoutPage() {
             }
         };
         fetchAddresses();
+        // eslint-disable-next-line
     }, [user]);
 
     // Hàm chọn địa chỉ đã lưu
