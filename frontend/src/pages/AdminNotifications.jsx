@@ -11,7 +11,16 @@ const AdminNotifications = () => {
     const [filter, setFilter] = useState('all'); // all, orders, users, products
     const navigate = useNavigate();
 
+<<<<<<< HEAD
     const fetchNotifications = useCallback(async () => {
+=======
+    useEffect(() => {
+        fetchNotifications();
+        // eslint-disable-next-line
+    }, []);
+
+    const fetchNotifications = async () => {
+>>>>>>> 85c9c5fa39ad89b2f1078e3655d76f5d44f2a1db
         try {
             setLoading(true);
             const allNotifications = [];

@@ -85,11 +85,13 @@ export default function DashboardAdvanced() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line
   }, [period, status, customRange]);
 
   // --- 3. GỌI LẠI FETCHSTATS KHI PERIOD HOẶC STATUS THAY ĐỔI ---
   useEffect(() => {
     fetchStats();
+    // eslint-disable-next-line
   }, [period, status]);
 
   const handleCustomFilter = () => {

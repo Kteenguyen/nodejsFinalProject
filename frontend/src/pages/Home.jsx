@@ -80,6 +80,7 @@ export default function Home() {
             }
         };
         fetchData();
+        // eslint-disable-next-line
     }, []);
 
     // --- XỬ LÝ ĐĂNG KÝ EMAIL ---

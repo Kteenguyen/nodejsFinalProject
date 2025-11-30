@@ -13,6 +13,7 @@ const NotificationDetailPage = () => {
 
     useEffect(() => {
         fetchDetail();
+        // eslint-disable-next-line
     }, [type, id]);
 
     const fetchDetail = async () => {
