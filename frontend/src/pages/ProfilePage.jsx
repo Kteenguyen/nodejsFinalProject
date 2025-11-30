@@ -1,7 +1,7 @@
 // frontend/src/pages/ProfilePage.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { FaUser, FaLock, FaMapMarkerAlt, FaCamera, FaShoppingBag } from 'react-icons/fa';
+import { FaUser, FaLock, FaMapMarkerAlt, FaCamera, FaShoppingBag, FaGift } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import OrderHistory from '../components/Order/OrderHistory';
 
@@ -18,7 +18,8 @@ const TABS = {
     PROFILE: 'profile',
     PASSWORD: 'password',
     ADDRESSES: 'addresses',
-    ORDERS: 'orders' // <--- MỚI
+    ORDERS: 'orders', // <--- MỚI
+    VOUCHERS: 'vouchers' // <--- Đổi điểm
 };
 
 const LoadingSpinner = () => (
@@ -140,6 +141,23 @@ const ProfilePage = () => {
                         <OrderHistory />
                     </div>
                 );
+            case TABS.VOUCHERS:
+                return (
+                    <div className="bg-surface p-6 rounded-lg shadow-md min-h-[400px]">
+                        <h3 className="text-xl font-semibold text-text-primary mb-6 pb-2 border-b border-gray-100 flex items-center">
+                            <FaGift className="mr-2 text-orange-500" />
+                            Đổi điểm thưởng
+                        </h3>
+                        <div className="text-center py-8">
+                            <a 
+                                href="/redeem-vouchers" 
+                                className="inline-block bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors"
+                            >
+                                Xem tất cả voucher khả dụng →
+                            </a>
+                        </div>
+                    </div>
+                );
             
             default: return null;
         }
@@ -245,6 +263,7 @@ const ProfilePage = () => {
                                 <TabButton tabKey={TABS.PASSWORD} icon={<FaLock />} label="Đổi mật khẩu" />
                                 <TabButton tabKey={TABS.ADDRESSES} icon={<FaMapMarkerAlt />} label="Địa chỉ" />
                                 <TabButton tabKey={TABS.ORDERS} icon={<FaShoppingBag />} label="Đơn mua" />
+                                <TabButton tabKey={TABS.VOUCHERS} icon={<FaGift />} label="Đổi điểm" />
                             </nav>
                         </div>
                     </aside>

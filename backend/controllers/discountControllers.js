@@ -9,16 +9,32 @@ async function generateUuid() {
 exports.validateCode = async (req, res) => {
     try {
         const { code } = req.query;
-        if (!code) return res.status(400).json({ message: 'code required' });
+        if (!code) return res.status(400).json({ valid: false, message: 'Vui lòng nhập mã giảm giá' });
 
         const discount = await Discount.findOne({ discountCode: code.toUpperCase() });
         if (!discount) return res.status(404).json({ valid: false, message: 'Mã không tồn tại' });
 
+        // Kiểm tra số lượt sử dụng
         if (discount.uses >= discount.maxUses) {
             return res.status(400).json({ valid: false, message: 'Mã đã hết lượt sử dụng' });
         }
 
-        return res.status(200).json({ valid: true, percent: discount.percent, uses: discount.uses, maxUses: discount.maxUses });
+        // Kiểm tra thời gian hiệu lực
+        const now = new Date();
+        if (discount.startDate && new Date(discount.startDate) > now) {
+            return res.status(400).json({ valid: false, message: 'Mã chưa có hiệu lực' });
+        }
+        if (discount.endDate && new Date(discount.endDate) < now) {
+            return res.status(400).json({ valid: false, message: 'Mã đã hết hạn' });
+        }
+
+        return res.status(200).json({ 
+            valid: true, 
+            percent: discount.percent, 
+            uses: discount.uses, 
+            maxUses: discount.maxUses,
+            discountName: discount.discountName
+        });
     } catch (error) {
         return res.status(500).json({ valid: false, message: error.message });
     }
@@ -31,8 +47,24 @@ exports.validateCode = async (req, res) => {
 // Quản trị viên: tạo mã giảm giá
 exports.createCode = async (req, res) => {
     try {
-        const { discountName, percent, maxUses = 1, discountCode } = req.body;
-        if (!discountName || typeof percent === 'undefined') return res.status(400).json({ message: 'Missing fields' });
+        const { 
+            discountName, 
+            percent, 
+            maxUses = 1, 
+            discountCode,
+            startDate,
+            endDate,
+            conditionType,
+            conditionValue,
+            productIds,
+            isStackable,
+            isRedeemable,
+            pointsCost
+        } = req.body;
+        
+        if (!discountName || typeof percent === 'undefined') {
+            return res.status(400).json({ success: false, message: 'Missing fields' });
+        }
 
         // thực thi maxUses <= 10
         const finalMax = Math.min(parseInt(maxUses) || 1, 10);
@@ -41,19 +73,30 @@ exports.createCode = async (req, res) => {
 
         // xác thực đơn giản: 5 ký tự chữ và số
         if (!/^[A-Z0-9]{5}$/.test(code)) {
-            return res.status(400).json({ message: 'discountCode must be 5 alphanumeric characters (A-Z,0-9)' });
+            return res.status(400).json({ success: false, message: 'discountCode must be 5 alphanumeric characters (A-Z,0-9)' });
         }
 
         const existing = await Discount.findOne({ discountCode: code });
-        if (existing) return res.status(409).json({ message: 'Mã đã tồn tại' });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Mã đã tồn tại' });
+        }
 
         const discount = new Discount({
             discountID: await generateUuid(),
             discountCode: code,
             discountName,
             percent,
-            maxUses: finalMax
+            maxUses: finalMax,
+            startDate: startDate || undefined,
+            endDate: endDate || undefined,
+            conditionType: conditionType || 'all',
+            conditionValue: conditionValue || '',
+            productIds: productIds || [],
+            isStackable: isStackable || false,
+            isRedeemable: isRedeemable || false,
+            pointsCost: pointsCost || 0
         });
+        
         await discount.save();
         return res.status(201).json({ success: true, discount });
     } catch (error) {
@@ -104,6 +147,66 @@ exports.getCodeDetails = async (req, res) => {
         }
         
         return res.status(200).json({ success: true, discount });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// (CHỨC NĂNG MỚI) Quản trị viên: Cập nhật mã giảm giá
+exports.updateCode = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { discountName, discountCode, percent, maxUses, startDate, endDate, conditionType, conditionValue, productIds, isStackable, isRedeemable, pointsCost } = req.body;
+
+        const discount = await Discount.findById(id);
+        if (!discount) {
+            return res.status(404).json({ success: false, message: 'Mã giảm giá không tồn tại' });
+        }
+
+        // Nếu đổi mã code, kiểm tra trùng (loại trừ chính nó)
+        if (discountCode && discountCode.toUpperCase() !== discount.discountCode) {
+            const existing = await Discount.findOne({ 
+                discountCode: discountCode.toUpperCase(),
+                _id: { $ne: id } // Loại trừ chính discount đang sửa
+            });
+            if (existing) {
+                return res.status(409).json({ success: false, message: 'Mã đã tồn tại' });
+            }
+            discount.discountCode = discountCode.toUpperCase();
+        }
+
+        // Cập nhật các trường khác
+        if (discountName !== undefined) discount.discountName = discountName;
+        if (percent !== undefined) discount.percent = percent;
+        if (maxUses !== undefined) discount.maxUses = maxUses;
+        if (startDate !== undefined) discount.startDate = startDate;
+        if (endDate !== undefined) discount.endDate = endDate;
+        if (conditionType !== undefined) discount.conditionType = conditionType;
+        if (conditionValue !== undefined) discount.conditionValue = conditionValue;
+        if (productIds !== undefined) discount.productIds = productIds;
+        if (isStackable !== undefined) discount.isStackable = isStackable;
+        if (isRedeemable !== undefined) discount.isRedeemable = isRedeemable;
+        if (pointsCost !== undefined) discount.pointsCost = pointsCost;
+
+        await discount.save();
+        return res.status(200).json({ success: true, discount });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// (CHỨC NĂNG MỚI) Quản trị viên: Xóa mã giảm giá
+exports.deleteCode = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const discount = await Discount.findById(id);
+        if (!discount) {
+            return res.status(404).json({ success: false, message: 'Mã giảm giá không tồn tại' });
+        }
+
+        await discount.deleteOne();
+        return res.status(200).json({ success: true, message: 'Đã xóa mã giảm giá' });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

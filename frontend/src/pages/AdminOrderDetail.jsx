@@ -322,7 +322,9 @@ export default function AdminOrderDetail() {
                 {order.accountId && (
                     <div className="bg-blue-50 p-2 rounded border border-blue-100 mt-2">
                         <div className="text-xs text-blue-500 font-bold uppercase">Tài khoản thành viên</div>
-                        <div className="text-xs text-gray-600 font-mono break-all">{order.accountId}</div>
+                        <div className="text-xs text-gray-600 font-mono break-all">
+                            {typeof order.accountId === 'object' ? order.accountId._id || order.accountId.id : order.accountId}
+                        </div>
                     </div>
                 )}
             </div>

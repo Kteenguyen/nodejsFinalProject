@@ -81,6 +81,7 @@ export const AuthProvider = ({ children }) => {
             console.error("Lỗi khi gọi API logout:", error);
         } finally {
             setUser(null); // Xóa user khỏi state
+            localStorage.removeItem('cart'); // Xóa giỏ hàng khi logout
         }
     };
 

@@ -9,7 +9,8 @@ const siteRoutes = require('./routes/route');
 const { connectDB } = require('./config/dbConnection');
 const paymentRoutes = require('./routes/paymentRoutes');
 
-// --- HTTPS & SOCKET.IO ---
+// --- HTTP/HTTPS & SOCKET.IO ---
+const http = require('http');
 const https = require('https');
 const { Server } = require('socket.io');
 
@@ -18,7 +19,7 @@ const port = Number(process.env.PORT) || 3001;
 
 // --- CORS ---
 const corsOptions = {
-  origin: ["http://localhost:3000", "https://localhost:3000"],
+    origin: ["https://localhost:3000", "http://localhost:3000"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"]
@@ -33,12 +34,34 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 connectDB();
 
-// --- TẠO HTTPS SERVER ---
-const httpsOptions = {
-    key: fs.readFileSync(path.join(__dirname, 'key.pem')),
-    cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
-};
-const server = https.createServer(httpsOptions, app);
+// --- CREATE SERVER (HTTPS nếu có cert, fallback HTTP) ---
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || path.join(__dirname, 'cert.pem');
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, 'key.pem');
+
+let server;
+let serverProtocol = 'http';
+
+const certExists = fs.existsSync(SSL_CERT_PATH) && fs.existsSync(SSL_KEY_PATH);
+
+if (certExists) {
+    const httpsOptions = {
+        cert: fs.readFileSync(SSL_CERT_PATH),
+        key: fs.readFileSync(SSL_KEY_PATH)
+    };
+    server = https.createServer(httpsOptions, app);
+    serverProtocol = 'https';
+    console.log('✅ HTTPS server enabled. Certificates loaded.');
+
+    const httpFallbackPort = Number(process.env.HTTP_PORT || 0);
+    if (httpFallbackPort) {
+        http.createServer(app).listen(httpFallbackPort, () => {
+            console.log(`ℹ️  HTTP fallback server running on http://localhost:${httpFallbackPort}`);
+        });
+    }
+} else {
+    console.warn('⚠️  SSL certificates not found. Running in HTTP mode.');
+    server = http.createServer(app);
+}
 
 // --- KHỞI TẠO SOCKET.IO ---
 const io = new Server(server, {
@@ -69,9 +92,9 @@ app.use((err, req, res, next) => {
     res.status(code).json({ message: err.message });
 });
 
-// --- CHẠY SERVER (Dùng biến 'server' thay vì 'app') ---
+// --- CHẠY SERVER ---
 server.listen(port, () => {
-    console.log(`🚀 HTTP Server + Socket.io running on port ${port}`);
+    console.log(`🚀 ${serverProtocol.toUpperCase()} Server + Socket.io running on ${serverProtocol}://localhost:${port}`);
 });
 
 module.exports = app;

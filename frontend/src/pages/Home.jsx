@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ProductController } from '../controllers/productController';
 import ProductCard from '../components/Home/ProductCard';
+import FlashSaleSection from '../components/FlashSale/FlashSaleSection';
 import {
     ArrowRight, Zap, TrendingUp, Monitor, HardDrive, Laptop,
     Smartphone, Speaker, Gamepad2, Keyboard, ChevronRight,
@@ -248,6 +249,11 @@ export default function Home() {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* FLASH SALE SECTION */}
+            <div className="container mx-auto px-4 mb-8">
+                <FlashSaleSection />
             </div>
 
             {/* 3. KHỐI SẢN PHẨM MỚI (Kèm Banner Quảng Cáo đã sửa link) */}

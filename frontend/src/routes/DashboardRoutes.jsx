@@ -14,6 +14,8 @@ import CategoriesManagement from "../pages/CategoriesManagement";
 import OrderDetailPage from "../pages/OrderDetailPage";
 import AdminNotifications from "../pages/AdminNotifications";
 import NotificationDetailPage from "../pages/NotificationDetailPage";
+import LoyaltyRewardsManagement from "../pages/LoyaltyRewardsManagement";
+import AdminFlashSaleManagement from "../pages/AdminFlashSaleManagement";
 
 export default function DashboardRoutes() {
   return (
@@ -48,6 +50,12 @@ export default function DashboardRoutes() {
 
         {/* --- CỤM DISCOUNT (QUAN TRỌNG) --- */}
         <Route path="discounts" element={<DiscountManagement />} />
+        
+        {/* --- QUÀ ĐỔI ĐIỂM --- */}
+        <Route path="loyalty-rewards" element={<LoyaltyRewardsManagement />} />
+
+        {/* --- FLASH SALE --- */}
+        <Route path="flash-sales" element={<AdminFlashSaleManagement />} />
 
         {/* --- FALLBACK (CHỐNG LỖI LẶP) --- */}
         {/* Nếu đường dẫn sai, buộc quay về trang chủ Dashboard tuyệt đối */}

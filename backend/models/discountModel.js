@@ -4,12 +4,33 @@ const discountSchema = new mongoose.Schema({
     discountID: { type: String, required: true, unique: true },
     discountCode: { type: String, required: true, unique: true, uppercase: true },
     discountName: { type: String, required: true },
-    percent: { type: Number, required: true, min: 0, max: 100 }, // Đổi tên từ percentDiscount và thêm ràng buộc
-    maxUses: { type: Number, required: true, min: 1, max: 10 }, // Thêm trường giới hạn sử dụng
-    uses: { type: Number, default: 0 }, // Thêm trường đếm số lần đã sử dụng
-    appliedOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }] // Thêm trường để lưu danh sách đơn hàng đã áp dụng
+    percent: { type: Number, required: true, min: 0, max: 100 },
+    maxUses: { type: Number, required: true, min: 1, max: 10 },
+    uses: { type: Number, default: 0 },
+    appliedOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    
+    // Thời gian áp dụng
+    startDate: { type: Date },
+    endDate: { type: Date },
+    
+    // Điều kiện áp dụng
+    conditionType: { 
+        type: String, 
+        enum: ['all', 'min_bill', 'freeship', 'flash_sale', 'customer_group', 'category', 'payment_method'],
+        default: 'all'
+    },
+    conditionValue: { type: String, default: '' },
+    productIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    
+    // Tính năng bổ sung
+    isStackable: { type: Boolean, default: false }, // Có thể cộng dồn với mã khác
+    
+    // Loyalty Points (Đổi điểm)
+    pointsCost: { type: Number, default: 0 },
+    isRedeemable: { type: Boolean, default: false },
+    redeemedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, {
-    timestamps: true // Tự động thêm createdAt và updatedAt, đáp ứng yêu cầu xem "creation time"
+    timestamps: true
 });
 
 module.exports = mongoose.model('Discount', discountSchema);

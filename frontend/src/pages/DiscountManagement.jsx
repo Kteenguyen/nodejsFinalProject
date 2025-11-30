@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { 
     Plus, Trash2, Ticket, Percent, Filter, X, ChevronDown, 
-    Zap, Search, Package, CheckSquare, Truck, Users, CreditCard, Layers, Image as ImageIcon
+    Zap, Search, Package, CheckSquare, Truck, Users, CreditCard, Layers, Image as ImageIcon, Gift, Pencil
 } from "lucide-react";
 
 import api from "../services/api";
@@ -23,6 +23,7 @@ export default function DiscountManagement() {
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [editingDiscount, setEditingDiscount] = useState(null); // ID của discount đang sửa
   
   // --- STATE FLASH SALE (TÌM KIẾM & CHỌN SP) ---
   const [productSearchTerm, setProductSearchTerm] = useState("");
@@ -42,7 +43,9 @@ export default function DiscountManagement() {
     conditionType: "all", 
     conditionValue: "",
     productIds: [],
-    isStackable: false 
+    isStackable: false,
+    isRedeemable: false, // Có thể đổi bằng điểm không
+    pointsCost: "" // Số điểm cần để đổi
   });
 
   // --- 1. LOAD DỮ LIỆU ---
@@ -129,22 +132,79 @@ export default function DiscountManagement() {
 
     try {
       setCreating(true);
-      const res = await api.post("/discounts", formData);
-      if (res.data.success) {
-        toast.success("Tạo mã thành công!");
-        setShowModal(false);
-        fetchDiscounts();
-        setFormData({
-            discountName: "", discountCode: "", percent: "", maxUses: "1",
-            startDate: "", endDate: "", conditionType: "all", conditionValue: "", productIds: [], isStackable: false
-        });
-        setSelectedProducts([]);
-        setCurrentPage(1);
+      
+      // Kiểm tra là TẠO MỚI hay CẬP NHẬT
+      let res;
+      if (editingDiscount) {
+        // CẬP NHẬT mã cũ
+        res = await api.put(`/discounts/${editingDiscount}`, formData);
+        if (res.data.success) {
+          toast.success("Cập nhật mã thành công!");
+          // Cập nhật lại trong list
+          setDiscounts(prev => prev.map(d => d._id === editingDiscount ? res.data.discount : d));
+        }
+      } else {
+        // TẠO mã mới
+        res = await api.post("/discounts", formData);
+        if (res.data.success) {
+          toast.success("Tạo mã thành công!");
+          // Thêm mã mới vào đầu list
+          setDiscounts(prev => [res.data.discount, ...prev]);
+        }
       }
+      
+      // Đóng modal và reset form
+      setShowModal(false);
+      setFormData({
+          discountName: "", discountCode: "", percent: "", maxUses: "1",
+          startDate: "", endDate: "", conditionType: "all", conditionValue: "", productIds: [], isStackable: false,
+          isRedeemable: false, pointsCost: ""
+      });
+      setSelectedProducts([]);
+      setEditingDiscount(null);
+      setCurrentPage(1);
+      
     } catch (err) {
-      toast.error(err.response?.data?.message || "Lỗi khi tạo mã");
+      toast.error(err.response?.data?.message || (editingDiscount ? "Lỗi khi cập nhật mã" : "Lỗi khi tạo mã"));
     } finally {
       setCreating(false);
+    }
+  };
+
+  // --- 4. SỬA MÃ ---
+  const handleEdit = (discount) => {
+    setEditingDiscount(discount._id);
+    setFormData({
+      discountName: discount.discountName || "",
+      discountCode: discount.discountCode || "",
+      percent: discount.percent || "",
+      maxUses: discount.maxUses || "1",
+      startDate: discount.startDate || "",
+      endDate: discount.endDate || "",
+      conditionType: discount.conditionType || "all",
+      conditionValue: discount.conditionValue || "",
+      productIds: discount.productIds || [],
+      isStackable: discount.isStackable || false,
+      isRedeemable: discount.isRedeemable || false,
+      pointsCost: discount.pointsCost || ""
+    });
+    // Load selected products nếu có
+    if (discount.productIds && discount.productIds.length > 0) {
+      // Tìm thông tin sản phẩm từ API hoặc cache
+      fetchProductsByIds(discount.productIds);
+    }
+    setShowModal(true);
+  };
+
+  // Helper: Fetch products by IDs for editing
+  const fetchProductsByIds = async (productIds) => {
+    try {
+      const promises = productIds.map(id => api.get(`/products/${id}`));
+      const results = await Promise.all(promises);
+      const products = results.map(res => res.data.product || res.data).filter(Boolean);
+      setSelectedProducts(products);
+    } catch (err) {
+      console.error("Lỗi tải sản phẩm:", err);
     }
   };
 
@@ -157,13 +217,34 @@ export default function DiscountManagement() {
     } catch (err) { toast.error("Lỗi xóa mã"); }
   };
 
-  // --- 4. PAGINATION ---
+  // --- 5. RESET FORM ---
+  const resetForm = () => {
+    setFormData({
+      discountName: "",
+      discountCode: "",
+      percent: "",
+      maxUses: "1",
+      startDate: "",
+      endDate: "",
+      conditionType: "all",
+      conditionValue: "",
+      productIds: [],
+      isStackable: false,
+      isRedeemable: false,
+      pointsCost: ""
+    });
+    setSelectedProducts([]);
+    setProductSearchTerm("");
+    setEditingDiscount(null);
+  };
+
+  // --- 6. PAGINATION ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentDiscounts = discounts.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(discounts.length / itemsPerPage);
 
-  // --- 5. COMPONENT DROPDOWN TÁI SỬ DỤNG ---
+  // --- 7. COMPONENT DROPDOWN TÁI SỬ DỤNG ---
   const Dropdown = ({ options, placeholder, icon: Icon, color = "text-gray-500", value, onChange }) => (
     <div className="relative">
         <select
@@ -181,7 +262,7 @@ export default function DiscountManagement() {
     </div>
   );
 
-  // --- 6. RENDER NỘI DUNG ĐIỀU KIỆN (FLASH SALE LAYOUT) ---
+  // --- 8. RENDER NỘI DUNG ĐIỀU KIỆN (FLASH SALE LAYOUT) ---
   const renderConditionContent = () => {
     const MONEY_OPTIONS = [
         { value: 0, label: "Mọi đơn hàng (0đ)" },
@@ -356,7 +437,7 @@ export default function DiscountManagement() {
           <h1 className="text-2xl font-bold text-gray-800">Quản lý Mã giảm giá</h1>
           <p className="text-sm text-gray-500">Tạo voucher, Flash sale & Khuyến mãi vận chuyển</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200">
+        <button onClick={() => { resetForm(); setShowModal(true); }} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200">
           <Plus size={20} /> Tạo mã mới
         </button>
       </div>
@@ -401,7 +482,14 @@ export default function DiscountManagement() {
                             </div>
                         )}
                     </div>
-                    <button onClick={() => handleDelete(item._id)} className="absolute bottom-4 right-4 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition opacity-0 group-hover:opacity-100"><Trash2 size={18} /></button>
+                    <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                        <button onClick={() => handleEdit(item)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition" title="Chỉnh sửa">
+                            <Pencil size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(item._id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition" title="Xóa">
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
                 </div>
              ))}
           </div>
@@ -416,8 +504,10 @@ export default function DiscountManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className={`bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up flex flex-col max-h-[95vh] ${formData.conditionType === 'flash_sale' ? 'w-full max-w-4xl' : 'w-full max-w-2xl'}`}>
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
-                <h2 className="text-lg font-bold text-gray-800">Tạo mã giảm giá mới</h2>
-                <button onClick={() => setShowModal(false)} className="p-2 text-gray-400 hover:bg-gray-200 rounded-full"><X size={20} /></button>
+                <h2 className="text-lg font-bold text-gray-800">
+                    {editingDiscount ? "Chỉnh sửa mã giảm giá" : "Tạo mã giảm giá mới"}
+                </h2>
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="p-2 text-gray-400 hover:bg-gray-200 rounded-full"><X size={20} /></button>
             </div>
 
             <form onSubmit={handleCreate} className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
@@ -473,6 +563,40 @@ export default function DiscountManagement() {
                             Cho phép áp dụng cộng dồn với mã khác?
                         </label>
                     </div>
+
+                    {/* CHECKBOX ĐỔI ĐIỂM */}
+                    <div className="space-y-3 pt-3 border-t border-gray-200/50">
+                        <div className="flex items-center gap-3">
+                            <div className="relative flex items-center">
+                                <input 
+                                    type="checkbox" id="redeemable"
+                                    className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-orange-600 checked:bg-orange-600 hover:shadow-sm"
+                                    checked={formData.isRedeemable}
+                                    onChange={(e) => setFormData({...formData, isRedeemable: e.target.checked})}
+                                />
+                                <CheckSquare className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100" size={14} />
+                            </div>
+                            <label htmlFor="redeemable" className="cursor-pointer text-sm text-gray-700 select-none flex items-center gap-2 font-medium">
+                                <Gift size={16} className="text-orange-600"/>
+                                Có thể đổi bằng điểm thưởng?
+                            </label>
+                        </div>
+                        
+                        {formData.isRedeemable && (
+                            <div className="ml-8">
+                                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Số điểm cần</label>
+                                <input 
+                                    type="number" 
+                                    min="1"
+                                    placeholder="Nhập số điểm cần để đổi voucher này"
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                    value={formData.pointsCost}
+                                    onChange={(e) => setFormData({...formData, pointsCost: e.target.value})}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Ví dụ: 100 điểm = Voucher giảm {formData.percent}%</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -482,8 +606,10 @@ export default function DiscountManagement() {
             </form>
             
             <div className="p-4 border-t border-gray-100 flex gap-3 flex-shrink-0 bg-white">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition">Hủy bỏ</button>
-                <button type="submit" onClick={handleCreate} disabled={creating} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-70 transition shadow-lg shadow-blue-200">{creating ? "Đang xử lý..." : "Xác nhận tạo"}</button>
+                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition">Hủy bỏ</button>
+                <button type="submit" onClick={handleCreate} disabled={creating} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-70 transition shadow-lg shadow-blue-200">
+                    {creating ? "Đang xử lý..." : (editingDiscount ? "Cập nhật" : "Xác nhận tạo")}
+                </button>
             </div>
           </div>
         </div>

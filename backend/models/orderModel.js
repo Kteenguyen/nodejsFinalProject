@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
     orderId: { type: String, required: true, unique: true },
-    accountId: { type: String, ref: 'User' },
+    accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     guestInfo: {
         name: { type: String },
         email: { type: String }

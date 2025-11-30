@@ -121,10 +121,17 @@ exports.createOrder = async (req, res) => {
         }
       }
 
-      // 4. Tạo Order Object
+      // 4. Tính điểm thưởng TRƯỚC khi tạo order
+      // Tính điểm thưởng: 10% tổng tiền đơn hàng (1 điểm = 1.000đ)
       const discountAmount = discount?.amount || 0;
       const totalPrice = itemsPrice + tax + shippingPrice - discountAmount;
+      
+      if (accountId) {
+        pointsEarned = Math.floor(totalPrice * 0.1 / 1000);
+        console.log(`🎁 Tính ${pointsEarned} điểm thưởng (10% của ${totalPrice.toLocaleString()}đ)`);
+      }
 
+      // 5. Tạo Order với đầy đủ thông tin loyalty points
       const order = new Order({
         orderId: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         items: orderItems,
@@ -140,16 +147,16 @@ exports.createOrder = async (req, res) => {
         },
         totalPrice: totalPrice,
         loyaltyPoints: {
-          pointsUsed: 0,
-          pointsEarned: 0
+          pointsUsed: pointsUsed,
+          pointsEarned: pointsEarned
         },
-        accountId: accountId ? accountId.toString() : null,
+        accountId: accountId || null,
         guestInfo: guestInfo,
         isPaid: paymentMethod === 'PayPal',
         status: 'Pending'
       });
 
-      console.log('📦 Creating order with accountId:', accountId ? accountId.toString() : null);
+      console.log('📦 Creating order with accountId:', accountId ? accountId : null);
       const createdOrder = await order.save({ session });
 
       // XÓA GIỎ HÀNG SAU KHI ĐẶT HÀNG THÀNH CÔNG
@@ -157,22 +164,6 @@ exports.createOrder = async (req, res) => {
         const Cart = require('../models/cartModel');
         await Cart.deleteMany({ accountId: accountId }, { session });
         console.log('🗑️ Đã xóa giỏ hàng của user:', accountId);
-      }
-
-      // B. TÍNH ĐIỂM THƯỞNG: 10% tổng tiền đơn hàng (sau khi trừ discount)
-      // Quy tắc: 10% của totalPrice = số điểm (1 điểm = 1.000 VND)
-      // Ví dụ: Đơn 1.000.000 VND -> 100 điểm (= 100.000 VND giá trị)
-      // LƯU Ý: Điểm sẽ KHÔNG được cộng ngay, chỉ hiển thị. Chỉ cộng khi đơn hàng được thanh toán thành công
-      if (accountId) {
-        pointsEarned = Math.floor(totalPrice * 0.1 / 1000); // 10% tổng tiền / 1000
-        console.log(`🎁 Tính ${pointsEarned} điểm thưởng cho đơn hàng (10% của ${totalPrice.toLocaleString()}đ) - Chưa cộng vào tài khoản`);
-        
-        // Lưu thông tin điểm vào order
-        createdOrder.loyaltyPoints = {
-          pointsUsed: pointsUsed,
-          pointsEarned: pointsEarned
-        };
-        await createdOrder.save({ session });
       }
 
       // 5. Gửi email nếu tạo tài khoản mới
@@ -564,6 +555,32 @@ exports.updateOrderStatus = async (req, res) => {
           product.countInStock += item.quantity;
           product.sold = Math.max((product.sold || 0) - item.quantity, 0);
           await product.save();
+        }
+      }
+    }
+
+    // CỘNG ĐIỂM THƯỞNG KHI ĐƠN HÀNG HOÀN THÀNH
+    if (status === 'Delivered' && oldStatus !== 'Delivered' && order.accountId) {
+      const pointsEarned = order.loyaltyPoints?.pointsEarned || 0;
+      if (pointsEarned > 0) {
+        const user = await User.findById(order.accountId);
+        if (user) {
+          user.loyaltyPoints = (user.loyaltyPoints || 0) + pointsEarned;
+          await user.save();
+          console.log(`🎁 Đã cộng ${pointsEarned} điểm cho user ${user.email}`);
+        }
+      }
+    }
+
+    // HOÀN ĐIỂM NẾU ĐƠN HÀNG BỊ HUỶ
+    if (status === 'Cancelled' && oldStatus !== 'Cancelled' && order.accountId) {
+      const pointsUsed = order.loyaltyPoints?.pointsUsed || 0;
+      if (pointsUsed > 0) {
+        const user = await User.findById(order.accountId);
+        if (user) {
+          user.loyaltyPoints = (user.loyaltyPoints || 0) + pointsUsed;
+          await user.save();
+          console.log(`↩️ Đã hoàn ${pointsUsed} điểm cho user ${user.email} (đơn hủy)`);
         }
       }
     }

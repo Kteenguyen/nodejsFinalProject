@@ -95,6 +95,8 @@ export const CartProvider = ({ children }) => {
             } else {
                 setCartItems([]);
             }
+            // Xóa localStorage sau khi fetch thành công từ DB
+            localStorage.removeItem('cart');
         } catch (error) {
             console.error("Lỗi tải giỏ hàng từ DB:", error);
             setCartItems([]);
@@ -112,6 +114,8 @@ export const CartProvider = ({ children }) => {
                     quantity: itemToAdd.quantity
                 });
                 setCartItems(prevItems => mergeItem(prevItems, response.data.item));
+                // Xóa localStorage để tránh sync lại
+                localStorage.removeItem('cart');
             } catch (error) {
                 console.error("Lỗi thêm vào giỏ hàng DB:", error);
                 toast.error(error.response?.data?.message || "Lỗi khi thêm vào giỏ hàng");
@@ -135,6 +139,8 @@ export const CartProvider = ({ children }) => {
 
             try {
                 await api.delete(`/cart/${itemToRemove._id}`);
+                // Xóa localStorage để tránh sync lại
+                localStorage.removeItem('cart');
             } catch (error) {
                 console.error("Lỗi xóa item DB:", error);
                 toast.error("Lỗi khi xóa sản phẩm.");
@@ -158,6 +164,8 @@ export const CartProvider = ({ children }) => {
 
             try {
                 await api.put(`/cart/${itemToUpdate._id}`, { quantity: newQuantity });
+                // Xóa localStorage để tránh sync lại
+                localStorage.removeItem('cart');
             } catch (error) {
                 console.error("Lỗi cập nhật số lượng DB:", error);
                 toast.error(error.response?.data?.message || "Lỗi cập nhật số lượng.");

@@ -11,6 +11,8 @@ const authRoutes = require('./authRoutes');
 const discountRoutes = require('./discountRoutes');
 const adminRoutes = require('./adminRoutes');
 const categoryRoutes = require('./categoryRoutes');
+const loyaltyRoutes = require('./loyaltyRoutes');
+const flashSaleRoutes = require('./flashSaleRoutes');
 
 // ===========================================
 // === LOGGING: ĐỂ XEM REQUEST ĐÃ VÀO ROUTE.JS CHƯA ===
@@ -29,5 +31,7 @@ router.use('/orders', orderRoutes);
 router.use('/discounts', discountRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/admin', adminRoutes);
+router.use('/loyalty', loyaltyRoutes);
+router.use('/flash-sales', flashSaleRoutes);
 
 module.exports = router;

@@ -25,6 +25,8 @@ import OrderSuccessPage from '../pages/OrderSuccessPage';
 import PaymentReturnPage from '../pages/PaymentReturnPage';
 import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
+import RedeemVouchersPage from '../pages/RedeemVouchersPage';
+import FlashSalePage from '../pages/FlashSalePage';
 
 function App() {
   const location = useLocation();
@@ -87,6 +89,7 @@ function App() {
         <Route path="/category/:categoryId" element={<CategoryRoute />} />{/* #16 (ordering trong component) */}
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/flash-sale" element={<FlashSalePage />} />
         <Route path="/profile" element={<ProfilePage />} />
         {/* Auth */}
         <Route path="/login" element={<Login />} />
@@ -106,6 +109,8 @@ function App() {
         <Route path="/payment-return" element={<PaymentReturnPage />} />
         {/* 5. Order Success (Bọc ProtectedRoute) */}
         <Route path="/order-success" element={<OrderSuccessPage />} />
+        {/* 6. Đổi điểm thưởng (Bọc ProtectedRoute) */}
+        <Route path="/redeem-vouchers" element={<ProtectedRoute><RedeemVouchersPage /></ProtectedRoute>} />
         {/* Admin */}
         <Route path="/admin/*" element={<DashboardRoutes />} />
       </Routes>

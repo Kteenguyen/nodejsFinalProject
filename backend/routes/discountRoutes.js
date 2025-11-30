@@ -20,9 +20,17 @@ router.post('/', protect, admin, discountCtrl.createCode);
 // GET /api/discounts
 router.get('/', protect, admin, discountCtrl.getAllCodes);
 
-// Route để admin xem chi tiết một mã giảm giá
-// GET /api/discounts/DISCOUNTCODE
-router.get('/:code', protect, admin, discountCtrl.getCodeDetails);
+// Route để admin xem chi tiết một mã giảm giá theo CODE
+// GET /api/discounts/code/DISCOUNTCODE
+router.get('/code/:code', protect, admin, discountCtrl.getCodeDetails);
+
+// Route để admin cập nhật mã giảm giá theo ID
+// PUT /api/discounts/:id
+router.put('/:id', protect, admin, discountCtrl.updateCode);
+
+// Route để admin xóa mã giảm giá theo ID
+// DELETE /api/discounts/:id
+router.delete('/:id', protect, admin, discountCtrl.deleteCode);
 
 
 module.exports = router;
