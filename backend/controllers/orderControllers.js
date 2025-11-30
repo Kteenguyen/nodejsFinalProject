@@ -4,6 +4,7 @@ const Order = require('../models/orderModel');
 const Product = require('../models/productModel');
 const Comment = require('../models/commentModel');
 const User = require('../models/userModel');
+const Notification = require('../models/notificationModel');
 const sendEmail = require('../utils/sendEmail');
 const asyncHandler = require('express-async-handler');
 
@@ -177,6 +178,21 @@ exports.createOrder = async (req, res) => {
          } catch (err) {
              console.log("Lỗi gửi email password (không ảnh hưởng đơn hàng):", err.message);
          }
+      }
+
+      // 6. TẠO THÔNG BÁO CHO USER
+      if (accountId) {
+        try {
+          await Notification.createOrderNotification(
+            accountId,
+            createdOrder._id,
+            'Đặt hàng thành công',
+            `Đơn hàng ${createdOrder.orderId || createdOrder._id} của bạn đã được tiếp nhận. Tổng tiền: ${totalPrice.toLocaleString('vi-VN')}đ`
+          );
+          console.log('🔔 Đã tạo thông báo đơn hàng cho user:', accountId);
+        } catch (err) {
+          console.log("Lỗi tạo notification (không ảnh hưởng đơn hàng):", err.message);
+        }
       }
 
       if (useTxn) await session.commitTransaction();
@@ -591,6 +607,35 @@ exports.updateOrderStatus = async (req, res) => {
     const pushHistory = { statusHistory: { status: status || 'Updated', updatedAt: new Date() } };
 
     let updatedOrder = await Order.findOneAndUpdate(query, { $set, $push: pushHistory }, { new: true });
+
+    // TẠO THÔNG BÁO KHI CẬP NHẬT TRẠNG THÁI
+    if (status && order.accountId && status !== oldStatus) {
+      try {
+        const statusMessages = {
+          'Confirmed': 'Đơn hàng đã được xác nhận và đang được chuẩn bị.',
+          'Shipping': 'Đơn hàng đang được vận chuyển đến bạn.',
+          'Delivered': 'Đơn hàng đã được giao thành công. Cảm ơn bạn đã mua hàng!',
+          'Cancelled': 'Đơn hàng đã bị hủy. Nếu có thắc mắc, vui lòng liên hệ hỗ trợ.'
+        };
+        const statusTitles = {
+          'Confirmed': 'Đơn hàng đã xác nhận',
+          'Shipping': 'Đơn hàng đang giao',
+          'Delivered': 'Giao hàng thành công',
+          'Cancelled': 'Đơn hàng đã hủy'
+        };
+        if (statusMessages[status]) {
+          await Notification.createOrderNotification(
+            order.accountId,
+            order._id,
+            statusTitles[status],
+            `${statusMessages[status]} (Mã: ${order.orderId || order._id})`
+          );
+          console.log(`🔔 Đã gửi thông báo cập nhật trạng thái ${status} cho user:`, order.accountId);
+        }
+      } catch (err) {
+        console.log("Lỗi tạo notification cập nhật trạng thái:", err.message);
+      }
+    }
 
     return res.json({ success: true, order: updatedOrder });
   } catch (e) {

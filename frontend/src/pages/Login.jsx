@@ -1,5 +1,5 @@
 // frontend/src/pages/Auth/Login.jsx
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebook } from "react-icons/fa";
@@ -19,6 +19,10 @@ const Login = () => {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Lấy đường dẫn redirect từ state (nếu có)
+    const from = location.state?.from || "/";
 
     /**
          * ❗ NÂNG CẤP 1: Tạo hàm xử lý chung (DRY)
@@ -31,9 +35,9 @@ const Login = () => {
 
         toast.success("Đăng nhập thành công!");
 
-        // 2. Reload trang để AuthContext check lại token và load user
+        // 2. Redirect về trang trước đó (nếu có) hoặc về trang chủ
         setTimeout(() => {
-            window.location.href = "/";
+            window.location.href = from;
         }, 1000);
     };
     /**

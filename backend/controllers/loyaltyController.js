@@ -8,36 +8,48 @@ exports.getRedeemableVouchers = async (req, res) => {
         const now = new Date();
         const userId = req.user._id;
         
+        console.log('🎁 Fetching redeemable vouchers for user:', userId);
+        
+        // Query đơn giản hơn - chỉ cần isRedeemable và pointsCost > 0
         const vouchers = await Discount.find({ 
             isRedeemable: true,
-            pointsCost: { $gt: 0 },
-            // Chỉ lấy voucher còn slot
-            $expr: { $lt: ['$uses', '$maxUses'] },
-            // Chỉ lấy voucher còn hiệu lực hoặc không có giới hạn thời gian
-            $or: [
-                { startDate: { $exists: false } },
-                { startDate: null },
-                { startDate: { $lte: now } }
-            ],
-            $and: [
-                {
-                    $or: [
-                        { endDate: { $exists: false } },
-                        { endDate: null },
-                        { endDate: { $gte: now } }
-                    ]
-                }
-            ]
+            pointsCost: { $gt: 0 }
         }).select('discountCode discountName percent pointsCost maxUses uses redeemedBy startDate endDate');
         
-        // Lọc ra các voucher user chưa đổi
-        const availableVouchers = vouchers.filter(v => !v.redeemedBy.includes(userId));
+        console.log('🎁 Found vouchers:', vouchers.length);
+        
+        // Lọc ra các voucher:
+        // 1. User chưa đổi
+        // 2. Còn slot (uses < maxUses)
+        // 3. Còn hiệu lực (nếu có startDate/endDate)
+        const availableVouchers = vouchers.filter(v => {
+            // User đã đổi rồi
+            if (v.redeemedBy && v.redeemedBy.includes(userId)) {
+                return false;
+            }
+            // Hết slot
+            if (v.uses >= v.maxUses) {
+                return false;
+            }
+            // Chưa đến ngày bắt đầu
+            if (v.startDate && new Date(v.startDate) > now) {
+                return false;
+            }
+            // Đã hết hạn
+            if (v.endDate && new Date(v.endDate) < now) {
+                return false;
+            }
+            return true;
+        });
+        
+        console.log('🎁 Available vouchers after filter:', availableVouchers.length);
         
         res.status(200).json({ 
             success: true, 
             vouchers: availableVouchers
         });
     } catch (error) {
+        console.error('🎁 Error fetching vouchers:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Lỗi khi lấy danh sách voucher',

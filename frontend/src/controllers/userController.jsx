@@ -94,6 +94,16 @@ export const UserController = {
             handleApiError(error, "Lỗi tải địa chỉ.");
         }
     },
+    // Alias cho getMyAddresses (dùng trong CheckoutPage)
+    getShippingAddresses: async () => {
+        try {
+            const response = await api.get('/users/addresses');
+            return response.data?.addresses || response.data || [];
+        } catch (error) {
+            console.error("Lỗi tải địa chỉ:", error);
+            return [];
+        }
+    },
     addAddress: async (data) => {
         try {
             const response = await api.post('/users/addresses', data);
@@ -102,7 +112,7 @@ export const UserController = {
             handleApiError(error, "Lỗi thêm địa chỉ.");
         }
     },
-    updateShippingAddress: async (id, data) => {
+    updateAddress: async (id, data) => {
         try {
             const response = await api.put(`/users/addresses/${id}`, data);
             return response.data;
@@ -116,6 +126,14 @@ export const UserController = {
             return response.data;
         } catch (error) {
             handleApiError(error, "Lỗi xóa địa chỉ.");
+        }
+    },
+    setDefaultAddress: async (id) => {
+        try {
+            const response = await api.put(`/users/addresses/${id}/default`);
+            return response.data;
+        } catch (error) {
+            handleApiError(error, "Lỗi đặt địa chỉ mặc định.");
         }
     },
 

@@ -10,6 +10,7 @@ import ChangePassword from '../components/Profile/ChangePassword';
 import ManageAddresses from '../components/Profile/ManageAddresses';
 import UserDetail from '../components/common/UserDetail';
 import { UserController } from '../controllers/userController';
+import { getAvatarUrl } from '../services/api';
 // CHỈ IMPORT TOAST, KHÔNG IMPORT CONTAINER (Container đã có ở index.js)
 import { toast } from 'react-toastify';
 import Breadcrumb from '../components/common/Breadcrumb';
@@ -34,12 +35,12 @@ const ProfilePage = () => {
 
     const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
     const fileInputRef = useRef(null);
-    const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '/img/male_user.png');
+    const [avatarPreview, setAvatarPreview] = useState(getAvatarUrl(user?.avatar));
 
     // Đồng bộ ảnh khi user context thay đổi
     useEffect(() => {
         if (user?.avatar) {
-            setAvatarPreview(user.avatar);
+            setAvatarPreview(getAvatarUrl(user.avatar));
         }
     }, [user]);
 
@@ -85,7 +86,7 @@ const ProfilePage = () => {
             console.error("Lỗi upload avatar:", error);
             toast.error("Lỗi khi cập nhật ảnh đại diện.");
             // Revert lại ảnh cũ nếu lỗi
-            setAvatarPreview(user?.avatar || '/img/male_user.png');
+            setAvatarPreview(getAvatarUrl(user?.avatar));
         } finally {
             setIsLoadingAvatar(false);
         }

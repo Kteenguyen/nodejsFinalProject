@@ -1,6 +1,9 @@
 // backend/models/flashSaleModel.js
 const mongoose = require('mongoose');
 
+// Time slots theo kiểu Shopee
+const TIME_SLOTS = ['00:00-09:00', '09:00-12:00', '12:00-15:00', '15:00-18:00', '18:00-21:00', '21:00-00:00'];
+
 const flashSaleSchema = new mongoose.Schema({
     name: { 
         type: String, 
@@ -13,7 +16,7 @@ const flashSaleSchema = new mongoose.Schema({
     // Thời gian flash sale
     timeSlot: {
         type: String,
-        enum: ['00:00-02:00', '09:00-12:00', '12:00-14:00', '18:00-21:00', '21:00-23:00'],
+        enum: TIME_SLOTS,
         required: true
     },
     startTime: { 
@@ -126,19 +129,49 @@ flashSaleSchema.methods.updateStatus = function() {
 flashSaleSchema.statics.getActive = function() {
     const now = new Date();
     return this.find({
-        status: 'active',
         startTime: { $lte: now },
         endTime: { $gte: now }
-    }).populate('products.productId');
+    }).populate('products.productId').sort({ startTime: 1 });
 };
 
-// Static: Lấy flash sale sắp diễn ra
+// Static: Lấy flash sale sắp diễn ra (trong 24h tới)
 flashSaleSchema.statics.getUpcoming = function() {
     const now = new Date();
+    const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     return this.find({
-        status: 'upcoming',
-        startTime: { $gt: now }
-    }).sort({ startTime: 1 }).limit(3);
+        startTime: { $gt: now, $lte: next24h }
+    }).populate('products.productId').sort({ startTime: 1 }).limit(5);
+};
+
+// Static: Lấy flash sales cho homepage (active + upcoming gần nhất)
+flashSaleSchema.statics.getForHomepage = async function() {
+    const now = new Date();
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+    
+    // Lấy active
+    const active = await this.find({
+        startTime: { $lte: now },
+        endTime: { $gte: now }
+    }).populate('products.productId').sort({ startTime: 1 });
+    
+    // Lấy upcoming trong ngày
+    const upcomingToday = await this.find({
+        startTime: { $gt: now, $lte: endOfToday }
+    }).populate('products.productId').sort({ startTime: 1 });
+    
+    // Lấy ngày mai
+    const startOfTomorrow = new Date(now);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+    startOfTomorrow.setHours(0, 0, 0, 0);
+    const endOfTomorrow = new Date(startOfTomorrow);
+    endOfTomorrow.setHours(23, 59, 59, 999);
+    
+    const tomorrow = await this.find({
+        startTime: { $gte: startOfTomorrow, $lte: endOfTomorrow }
+    }).populate('products.productId').sort({ startTime: 1 });
+    
+    return { active, upcomingToday, tomorrow };
 };
 
 module.exports = mongoose.model('FlashSale', flashSaleSchema);

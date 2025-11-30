@@ -27,6 +27,7 @@ import AboutPage from '../pages/AboutPage';
 import ContactPage from '../pages/ContactPage';
 import RedeemVouchersPage from '../pages/RedeemVouchersPage';
 import FlashSalePage from '../pages/FlashSalePage';
+import NotificationsPage from '../pages/NotificationsPage';
 
 function App() {
   const location = useLocation();
@@ -111,6 +112,8 @@ function App() {
         <Route path="/order-success" element={<OrderSuccessPage />} />
         {/* 6. Đổi điểm thưởng (Bọc ProtectedRoute) */}
         <Route path="/redeem-vouchers" element={<ProtectedRoute><RedeemVouchersPage /></ProtectedRoute>} />
+        {/* 7. Trang thông báo (Bọc ProtectedRoute) */}
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
         {/* Admin */}
         <Route path="/admin/*" element={<DashboardRoutes />} />
       </Routes>

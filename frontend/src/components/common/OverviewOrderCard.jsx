@@ -1,6 +1,7 @@
 import React from "react";
 import { toast } from "react-toastify";
 import { Package, Calendar, Clock, ChevronRight } from "lucide-react";
+import { getImageUrl } from "../../services/api";
 
 // Helper format tiền tệ VNĐ
 const formatCurrency = (amount) => {
@@ -81,7 +82,7 @@ const OverviewOrderCard = ({ order }) => {
                 {/* Hình ảnh sản phẩm đầu tiên (thumbnail) */}
                 <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                     <img
-                        src={data.items?.[0]?.image || "/img/placeholder-product.png"}
+                        src={getImageUrl(data.items?.[0]?.image)}
                         alt="Product"
                         className="w-full h-full object-cover mix-blend-multiply"
                     />

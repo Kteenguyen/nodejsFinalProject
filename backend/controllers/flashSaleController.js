@@ -118,6 +118,32 @@ exports.getActiveFlashSales = async (req, res) => {
     }
 };
 
+// PUBLIC: Lấy Flash Sale cho Homepage (kiểu Shopee: active + upcoming + tomorrow)
+exports.getFlashSalesForHomepage = async (req, res) => {
+    try {
+        const { active, upcomingToday, tomorrow } = await FlashSale.getForHomepage();
+
+        // Cập nhật status cho tất cả active
+        for (const fs of active) {
+            fs.updateStatus();
+            if (fs.isModified('status')) {
+                await fs.save();
+            }
+        }
+
+        res.json({
+            success: true,
+            active,
+            upcomingToday,
+            tomorrow,
+            // Nếu có active thì ưu tiên hiển thị active, không thì hiển thị upcoming
+            currentSlot: active.length > 0 ? active[0] : (upcomingToday.length > 0 ? upcomingToday[0] : null)
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // PUBLIC: Lấy Flash Sale sắp diễn ra
 exports.getUpcomingFlashSales = async (req, res) => {
     try {

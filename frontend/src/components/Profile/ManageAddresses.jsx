@@ -1,7 +1,7 @@
 // frontend/src/components/Profile/ManageAddresses.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserController } from '../../controllers/userController';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaStar } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 
@@ -263,6 +263,17 @@ const ManageAddresses = () => {
         }
     };
 
+    const handleSetDefault = async (addressId) => {
+        try {
+            await UserController.setDefaultAddress(addressId);
+            toast.success("Đã đặt làm địa chỉ mặc định.");
+            loadAddresses(); // Tải lại
+        } catch (error) {
+            console.error("Lỗi đặt mặc định:", error);
+            toast.error(error.message || "Đặt mặc định thất bại.");
+        }
+    };
+
     const handleAddNew = () => {
         setEditingAddress(null);
         setIsFormOpen(true);
@@ -330,33 +341,46 @@ const ManageAddresses = () => {
                                 <p className="text-text-secondary">Bạn chưa có địa chỉ nào.</p>
                             ) : (
                                 addresses.map(addr => (
-                                    <div key={addr._id} className="flex justify-between items-center p-4 border rounded-lg">
-                                        <div>
-                                            <div className="flex items-center gap-2">
+                                    <div key={addr._id} className="flex justify-between items-start p-4 border rounded-lg hover:border-accent transition-colors">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
                                                 <h3 className="font-medium text-text-primary">{addr.fullName}</h3>
+                                                <span className="text-gray-400">|</span>
+                                                <span className="text-text-secondary">{addr.phoneNumber}</span>
                                                 {addr.isDefault && (
                                                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Mặc định</span>
                                                 )}
                                             </div>
-                                            <p className="text-text-secondary">{addr.phoneNumber}</p>
-                                            <p className="text-text-secondary">{addr.address}, {addr.ward}, {addr.district}, {addr.city}</p>
-                                        </div>
-
-                                        <div className="flex gap-2 flex-shrink-0">
-                                            <motion.button
-                                                onClick={() => handleEdit(addr)}
-                                                className="p-2 text-text-accent hover:text-accent-hover transition-colors"
-                                                whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
-                                            >
-                                                <FaEdit />
-                                            </motion.button>
-                                            <motion.button
-                                                onClick={() => handleDelete(addr._id)}
-                                                className="p-2 text-red-500 hover:text-red-700 transition-colors"
-                                                whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }}
-                                            >
-                                                <FaTrash />
-                                            </motion.button>
+                                            <p className="text-text-secondary text-sm">{addr.address}</p>
+                                            <p className="text-text-secondary text-sm">{addr.ward}, {addr.district}, {addr.city}</p>
+                                            
+                                            {/* Nút hành động */}
+                                            <div className="flex gap-3 mt-3">
+                                                <button
+                                                    onClick={() => handleEdit(addr)}
+                                                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                                                >
+                                                    Sửa
+                                                </button>
+                                                {!addr.isDefault && (
+                                                    <>
+                                                        <span className="text-gray-300">|</span>
+                                                        <button
+                                                            onClick={() => handleSetDefault(addr._id)}
+                                                            className="text-sm text-orange-600 hover:text-orange-800 hover:underline"
+                                                        >
+                                                            Đặt làm mặc định
+                                                        </button>
+                                                    </>
+                                                )}
+                                                <span className="text-gray-300">|</span>
+                                                <button
+                                                    onClick={() => handleDelete(addr._id)}
+                                                    className="text-sm text-red-600 hover:text-red-800 hover:underline"
+                                                >
+                                                    Xóa
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))

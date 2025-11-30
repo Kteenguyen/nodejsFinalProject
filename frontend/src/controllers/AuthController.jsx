@@ -43,6 +43,13 @@ export const AuthController = {
     googleLogin: async (accessToken) => {
         try {
             const response = await api.post("/auth/googleLogin", { accessToken });
+            
+            // Lưu token sau khi đăng nhập Google thành công
+            if (response.data.token) {
+                sessionStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to sessionStorage after Google login');
+            }
+            
             return response.data;
         } catch (error) {
             console.error("Google login failed:", error.response?.data || error.message);
@@ -53,6 +60,13 @@ export const AuthController = {
     facebookLogin: async (accessToken, userID) => {
         try {
             const response = await api.post("/auth/facebookLogin", { accessToken, userID });
+            
+            // Lưu token sau khi đăng nhập Facebook thành công
+            if (response.data.token) {
+                sessionStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to sessionStorage after Facebook login');
+            }
+            
             return response.data;
         } catch (error) {
             console.error("Facebook login failed:", error.response?.data || error.message);

@@ -31,7 +31,7 @@ const mergeItem = (prevItems, itemToAdd) => {
 export const CartProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { isAuthenticated, authLoading } = useAuth();
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
 
     // --- 2. HÀM clearCart (QUAN TRỌNG CHO CHECKOUT) ---
     const clearCart = async () => {
@@ -81,7 +81,12 @@ export const CartProvider = ({ children }) => {
             toast.success('Đã đồng bộ giỏ hàng của bạn!');
         } catch (error) {
             console.error("Lỗi đồng bộ giỏ hàng:", error);
-            // toast.error('Lỗi đồng bộ giỏ hàng.');
+            // Nếu lỗi 401 (chưa xác thực), giữ lại giỏ hàng local và không báo lỗi
+            if (error.response?.status === 401) {
+                console.log("📦 Giữ giỏ hàng local do chưa xác thực đầy đủ");
+                setCartItems(localCart);
+            }
+            // Không hiện toast error để tránh làm phiền user
         } finally {
             setLoading(false);
         }

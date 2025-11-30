@@ -233,31 +233,50 @@ exports.updateShippingAddress = async (req, res) => {
         const { addressId } = req.params;
         const updates = req.body;
 
-        const user = await User.findOne({ userId: req.user.id });
-        const address = user.shippingAddresses.find(addr => addr.addressId === addressId);
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+        
+        // Tìm địa chỉ bằng _id (ObjectId được chuyển thành string)
+        const address = user.shippingAddresses.id(addressId);
 
         if (!address) return res.status(404).json({ message: 'Không tìm thấy địa chỉ.' });
 
-        Object.assign(address, updates); // Cập nhật các trường được cung cấp
+        // Nếu đặt làm mặc định, bỏ mặc định của các địa chỉ khác
+        if (updates.isDefault) {
+            user.shippingAddresses.forEach(addr => {
+                addr.isDefault = false;
+            });
+        }
+
+        // Cập nhật các trường
+        Object.assign(address, updates);
         await user.save();
 
-        res.status(200).json({ message: 'Cập nhật địa chỉ thành công!', addresses: user.shippingAddresses });
+        res.status(200).json({ success: true, message: 'Cập nhật địa chỉ thành công!', addresses: user.shippingAddresses });
 
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error updating address:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
 //Xóa một địa chỉ giao hàng
 exports.deleteAddress = asyncHandler(async (req, res) => {
     const { addressId } = req.params;
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
 
-    user.shippingAddresses.pull(addressId); // Xóa sub-document
+    // Tìm và xóa địa chỉ bằng _id
+    const address = user.shippingAddresses.id(addressId);
+    if (!address) {
+        res.status(404);
+        throw new Error('Không tìm thấy địa chỉ.');
+    }
+    
+    const wasDefault = address.isDefault;
+    address.deleteOne(); // Xóa sub-document
 
     // Kiểm tra nếu địa chỉ mặc định bị xóa, chọn cái đầu tiên làm mặc định mới
-    const defaultAddress = user.shippingAddresses.find(addr => addr.isDefault);
-    if (!defaultAddress && user.shippingAddresses.length > 0) {
+    if (wasDefault && user.shippingAddresses.length > 0) {
         user.shippingAddresses[0].isDefault = true;
     }
 
@@ -269,11 +288,12 @@ exports.deleteAddress = asyncHandler(async (req, res) => {
 exports.setDefaultShippingAddress = async (req, res) => {
     try {
         const { addressId } = req.params;
-        const user = await User.findOne({ userId: req.user.id });
+        const user = await User.findById(req.user._id);
 
+        // Bỏ mặc định tất cả và đặt mặc định cho địa chỉ được chọn
         let addressFound = false;
         user.shippingAddresses.forEach(addr => {
-            if (addr.addressId === addressId) {
+            if (addr._id.toString() === addressId) {
                 addr.isDefault = true;
                 addressFound = true;
             } else {
@@ -281,12 +301,12 @@ exports.setDefaultShippingAddress = async (req, res) => {
             }
         });
 
-        if (!addressFound) return res.status(404).json({ message: 'Không tìm thấy địa chỉ.' });
+        if (!addressFound) return res.status(404).json({ success: false, message: 'Không tìm thấy địa chỉ.' });
 
         await user.save();
-        res.status(200).json({ message: 'Đặt địa chỉ mặc định thành công!', addresses: user.shippingAddresses });
+        res.status(200).json({ success: true, message: 'Đặt địa chỉ mặc định thành công!', addresses: user.shippingAddresses });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 // =============================================================

@@ -1,7 +1,7 @@
 // frontend/src/pages/AdminFlashSaleManagement.jsx
 import React, { useState, useEffect } from 'react';
 import FlashSaleCountdown from '../components/FlashSale/FlashSaleCountdown';
-import api from '../services/api';
+import api, { getImageUrl } from '../services/api';
 
 const AdminFlashSaleManagement = () => {
     const [flashSales, setFlashSales] = useState([]);
@@ -173,9 +173,10 @@ const AdminFlashSaleManagement = () => {
 
         try {
             const token = sessionStorage.getItem('token');
+            const baseUrl = `${window.location.protocol}//localhost:3001/api/flash-sales`;
             const url = editingFlashSale 
-                ? `http://localhost:3001/api/flash-sales/${editingFlashSale._id}`
-                : 'http://localhost:3001/api/flash-sales';
+                ? `${baseUrl}/${editingFlashSale._id}`
+                : baseUrl;
             
             const method = editingFlashSale ? 'PUT' : 'POST';
 
@@ -208,7 +209,8 @@ const AdminFlashSaleManagement = () => {
 
         try {
             const token = sessionStorage.getItem('token');
-            const response = await fetch(`http://localhost:3001/api/flash-sales/${id}`, {
+            const baseUrl = `${window.location.protocol}//localhost:3001/api/flash-sales`;
+            const response = await fetch(`${baseUrl}/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -323,18 +325,18 @@ const AdminFlashSaleManagement = () => {
                                 {flashSale.products.slice(0, 6).map((product) => (
                                     <div key={product._id} className="border rounded-lg p-2">
                                         <img 
-                                            src={product.productId.images?.[0] || '/img/default.png'} 
+                                            src={getImageUrl(product.productId.images?.[0])} 
                                             alt={product.productId.productName}
                                             className="w-full h-24 object-cover rounded mb-2"
                                         />
                                         <p className="text-xs text-gray-700 line-clamp-2 mb-1">
-                                            {product.productId.productName}
+                                            {product.productId?.productName || 'N/A'}
                                         </p>
                                         <p className="text-sm font-bold text-red-600">
-                                            {product.flashPrice.toLocaleString()}₫
+                                            {(product.flashPrice || 0).toLocaleString()}₫
                                         </p>
                                         <p className="text-xs text-gray-400">
-                                            Đã bán: {product.soldCount}/{product.totalStock}
+                                            Đã bán: {product.soldCount || 0}/{product.totalStock || 0}
                                         </p>
                                     </div>
                                 ))}
@@ -465,13 +467,13 @@ const AdminFlashSaleManagement = () => {
                                             >
                                                 <div className="flex gap-3">
                                                     <img 
-                                                        src={product.images?.[0] || '/img/default.png'} 
+                                                        src={getImageUrl(product.images?.[0])} 
                                                         alt={product.productName}
                                                         className="w-16 h-16 object-cover rounded"
                                                     />
                                                     <div className="flex-1">
-                                                        <p className="text-sm font-medium line-clamp-2">{product.productName}</p>
-                                                        <p className="text-sm text-gray-600">{product.price.toLocaleString()}₫</p>
+                                                        <p className="text-sm font-medium line-clamp-2">{product.productName || 'N/A'}</p>
+                                                        <p className="text-sm text-gray-600">{(product.price || 0).toLocaleString()}₫</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -503,7 +505,7 @@ const AdminFlashSaleManagement = () => {
                                             <div key={product.productId} className="bg-white border-2 border-red-300 rounded-lg p-4 shadow-sm">
                                                 <div className="flex gap-4 items-start">
                                                     <img 
-                                                        src={product.productImage || '/img/default.png'} 
+                                                        src={getImageUrl(product.productImage)} 
                                                         alt={product.productName}
                                                         className="w-20 h-20 object-cover rounded border-2 border-gray-200"
                                                     />
@@ -553,10 +555,10 @@ const AdminFlashSaleManagement = () => {
                                                         <div className="mt-3 flex items-center justify-between">
                                                             <div className="text-sm">
                                                                 <span className="font-bold text-red-600 text-lg">
-                                                                    Giảm {Math.round((1 - product.flashPrice / product.originalPrice) * 100)}%
+                                                                    Giảm {product.originalPrice > 0 ? Math.round((1 - (product.flashPrice || 0) / product.originalPrice) * 100) : 0}%
                                                                 </span>
                                                                 <span className="text-gray-600 ml-2">
-                                                                    (Tiết kiệm: {(product.originalPrice - product.flashPrice).toLocaleString()}₫)
+                                                                    (Tiết kiệm: {((product.originalPrice || 0) - (product.flashPrice || 0)).toLocaleString()}₫)
                                                                 </span>
                                                             </div>
                                                             <button

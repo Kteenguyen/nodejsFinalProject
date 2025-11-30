@@ -47,23 +47,31 @@ exports.getProducts = async (req, res) => {
       bestSeller               // optional: true => isBestSeller
     } = req.query;
 
-    const match = { status: 'available' };
+    const baseMatch = {};
+
+    // chỉ lấy sản phẩm đang bán hoặc chưa gán trạng thái (dữ liệu import thủ công)
+    const availabilityFilter = {
+      $or: [
+        { status: { $exists: false } },
+        { status: 'available' }
+      ]
+    };
 
     // multi-category: categoryId=laptop,monitor
     if (categoryId) {
       const arr = String(categoryId).split(',').map(s => s.trim()).filter(Boolean);
-      match['category.categoryId'] = arr.length > 1
+      baseMatch['category.categoryId'] = arr.length > 1
         ? { $in: arr }
         : arr[0];
     }
 
-    if (isNew === 'true') match.isNewProduct = true;
-    if (bestSeller === 'true') match.isBestSeller = true;
+    if (isNew === 'true') baseMatch.isNewProduct = true;
+    if (bestSeller === 'true') baseMatch.isBestSeller = true;
 
     // multi-brand: brand=Asus,MSI
     if (brand) {
       const arr = String(brand).split(',').map(s => s.trim()).filter(Boolean);
-      match.brand = arr.length > 1
+      baseMatch.brand = arr.length > 1
         ? { $in: arr.map(b => new RegExp(`^${b}$`, 'i')) }
         : { $regex: brand, $options: 'i' };
     }
@@ -73,11 +81,11 @@ exports.getProducts = async (req, res) => {
     const useText = hasKeyword && (String(searchMode).toLowerCase() === 'text');
     if (hasKeyword) {
       if (useText) {
-        match.$text = { $search: String(keyword).trim() };
+        baseMatch.$text = { $search: String(keyword).trim() };
       } else {
         const kw = String(keyword).trim()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        match.$or = [
+        baseMatch.$or = [
           { productNameNorm: { $regex: kw, $options: 'i' } },
           { productDescriptionNorm: { $regex: kw, $options: 'i' } },
           { brandNorm: { $regex: kw, $options: 'i' } },
@@ -87,10 +95,14 @@ exports.getProducts = async (req, res) => {
 
     // Lọc theo giá (biến thể)
     if (minPrice || maxPrice) {
-      match['variants.price'] = {};
-      if (minPrice) match['variants.price'].$gte = Number(minPrice);
-      if (maxPrice) match['variants.price'].$lte = Number(maxPrice);
+      baseMatch['variants.price'] = {};
+      if (minPrice) baseMatch['variants.price'].$gte = Number(minPrice);
+      if (maxPrice) baseMatch['variants.price'].$lte = Number(maxPrice);
     }
+
+    const combinedMatch = Object.keys(baseMatch).length
+      ? { $and: [availabilityFilter, baseMatch] }
+      : availabilityFilter;
 
     // sort mặc định
     const sortStage = (() => {
@@ -102,7 +114,7 @@ exports.getProducts = async (req, res) => {
 
     // ===== Pipeline =====
     const pipeline = [
-      { $match: match },
+      { $match: combinedMatch },
       ...(useText ? [{ $addFields: { score: { $meta: 'textScore' } } }] : []),
 
       // Tính minPrice (từ variants), avgStars (từ ratings), totalStock (để lọc còn hàng)

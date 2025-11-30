@@ -20,8 +20,18 @@ export const BACKEND_URL = getBackendUrl();
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '/img/placeholder.png';
   if (imagePath.startsWith('http')) return imagePath;
+  // Ảnh từ backend (bắt đầu bằng /images/) → thêm backend URL
   if (imagePath.startsWith('/images')) return `${getBackendUrl()}${imagePath}`;
   return imagePath;
+};
+
+// Helper: Chuyển đổi avatar path thành URL đầy đủ
+export const getAvatarUrl = (avatarPath) => {
+  if (!avatarPath) return '/img/male_user.png';
+  if (avatarPath.startsWith('http')) return avatarPath;
+  // Avatar từ backend (bắt đầu bằng /images/) → thêm backend URL
+  if (avatarPath.startsWith('/images')) return `${getBackendUrl()}${avatarPath}`;
+  return avatarPath;
 };
 
 // 2. Khởi tạo Axios Instance
@@ -42,8 +52,12 @@ api.interceptors.request.use(
     (config) => {
         // Lấy token từ sessionStorage (mỗi tab riêng biệt)
         const token = sessionStorage.getItem('token');
+        console.log('🔑 API Request - Token in sessionStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            console.log('✅ API Request - Authorization header set');
+        } else {
+            console.warn('⚠️ API Request - No token found, request may fail for protected routes');
         }
         // Nếu không có token trong sessionStorage, backend sẽ tự động đọc từ cookie
         // do đã set withCredentials: true
@@ -62,18 +76,10 @@ api.interceptors.response.use(
     (error) => {
         // Xử lý lỗi chung tại đây (nếu cần)
         if (error.response) {
-            // Chỉ redirect về login nếu là trang login/register bị 401
-            // Không tự động logout ở các trang admin để tránh "bung tài khoản"
             if (error.response.status === 401) {
-                const currentPath = window.location.pathname;
                 console.warn("⚠️ Phiên đăng nhập hết hạn hoặc chưa xác thực.");
-                
-                // Chỉ redirect nếu đang ở trang public cần auth
-                // KHÔNG redirect nếu đang ở trang admin (để hiện lỗi trên UI)
-                if (!currentPath.includes('/admin') && !currentPath.includes('/login')) {
-                    localStorage.removeItem('token');
-                    window.location.href = '/login';
-                }
+                // KHÔNG tự động redirect - để component/context tự xử lý
+                // Việc redirect tự động gây ra lỗi "bung tài khoản" khi cart sync fail
             }
         }
         return Promise.reject(error);

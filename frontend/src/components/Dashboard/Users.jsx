@@ -16,6 +16,7 @@ import Breadcrumb from '../../components/common/Breadcrumb';
 import UserDetail from '../../components/common/UserDetail'; 
 // (Giả sử đường dẫn đến Register.jsx - Sửa nếu cần)
 import Register from '../../pages/Register';
+import { getAvatarUrl } from '../../services/api';
 
 // === CÁC HÀM HELPER (Đã an toàn) ===
 const calculateAge = (dobString) => {
@@ -273,7 +274,7 @@ const Users = () => {
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <img className="h-10 w-10 rounded-full object-cover" src={user.avatar || '/img/male_user.png'} alt={user.name} />
+                                            <img className="h-10 w-10 rounded-full object-cover" src={getAvatarUrl(user.avatar)} alt={user.name} />
                                             <div className="ml-4">
                                                 <div className="text-sm font-medium text-text-primary">{user.name}</div>
                                                 <div className="text-sm text-text-secondary">{user.email}</div>
@@ -330,7 +331,7 @@ const Users = () => {
                             onClick={() => handleRowClick(user, index)} 
                         >
                             <div className="flex items-center mb-4 pb-4 border-b border-gray-200">
-                                <img className="h-10 w-10 rounded-full object-cover" src={user.avatar || '/img/male_user.png'} alt={user.name} />
+                                <img className="h-10 w-10 rounded-full object-cover" src={getAvatarUrl(user.avatar)} alt={user.name} />
                                 <div className="ml-4">
                                     <div className={`text-sm font-medium ${user.isBanned ? 'text-red-700' : 'text-text-primary'}`}>{user.name}</div>
                                     <div className={`text-sm ${user.isBanned ? 'text-red-500' : 'text-text-secondary'}`}>{user.email}</div>

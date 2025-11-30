@@ -39,13 +39,6 @@ export default function Home() {
     const [email, setEmail] = useState("");
     const [isSubscribing, setIsSubscribing] = useState(false);
 
-    // CONFIG ID Danh mục (Thay bằng ID thật của bạn)
-    const CATEGORY_IDS = {
-        LAPTOP: "laptop",
-        MONITOR: "monitor",
-        DRIVE: "ssd"
-    };
-
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -65,18 +58,20 @@ export default function Home() {
                 console.log('🔍 Related products loaded:', allProducts?.products?.length);
                 setRelatedProducts(allProducts?.products || []);
 
+                // Load sản phẩm cho TẤT CẢ danh mục có trong hệ thống
                 if (categoriesList?.length > 0) {
-                    const prioritizedCats = categoriesList.filter(c =>
-                        [CATEGORY_IDS.LAPTOP, CATEGORY_IDS.MONITOR, CATEGORY_IDS.DRIVE].includes(c.categoryId)
-                    );
-
-                    const categoryRequests = prioritizedCats.map(async (cat) => {
+                    const categoryRequests = categoriesList.map(async (cat) => {
                         const res = await ProductController.getProductsByCategory(cat.categoryId, { limit: 8 });
-                        return { id: cat.categoryId, name: cat.categoryName, products: res.products || [] };
+                        return { 
+                            id: cat.categoryId, 
+                            name: cat.categoryName, 
+                            products: res.products || [] 
+                        };
                     });
 
                     const results = await Promise.all(categoryRequests);
-                    setDynamicCategories(results.filter(cat => cat.products.length > 0));
+                    // Chỉ hiển thị danh mục có sản phẩm, giới hạn 5 danh mục đầu
+                    setDynamicCategories(results.filter(cat => cat.products.length > 0).slice(0, 5));
                 }
             } catch (error) {
                 console.error("Lỗi tải trang chủ:", error);
@@ -211,20 +206,22 @@ export default function Home() {
                                     <Link 
                                         to={isViewAll ? '/products' : `/products?categoryId=${cat.id}`}
                                         key={idx} 
-                                        className={`flex flex-col items-center gap-2 group cursor-pointer min-w-[100px] p-4 rounded-xl hover:bg-blue-50 transition-all ${
-                                            isViewAll ? 'bg-gradient-to-br from-orange-50 to-orange-100' : ''
+                                        className={`flex flex-col items-center gap-2 group cursor-pointer min-w-[100px] p-4 rounded-xl transition-all ${
+                                            isViewAll 
+                                                ? 'hover:bg-orange-50' 
+                                                : 'hover:bg-blue-50'
                                         }`}
                                     >
                                         <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-md group-hover:shadow-xl group-hover:scale-110 border-2 ${
                                             isViewAll 
-                                                ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white border-orange-400 group-hover:from-orange-600 group-hover:to-orange-700' 
+                                                ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-orange-500 border-gray-200 group-hover:from-orange-500 group-hover:to-orange-600 group-hover:text-white group-hover:border-orange-400' 
                                                 : 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-100 group-hover:from-blue-600 group-hover:to-blue-700 group-hover:text-white group-hover:border-blue-600'
                                         }`}>
                                             {cat.icon}
                                         </div>
                                         <span className={`text-sm font-semibold transition-colors text-center ${
                                             isViewAll 
-                                                ? 'text-orange-600 group-hover:text-orange-700' 
+                                                ? 'text-gray-700 group-hover:text-orange-600' 
                                                 : 'text-gray-700 group-hover:text-blue-600'
                                         }`}>{cat.name}</span>
                                     </Link>
@@ -275,17 +272,33 @@ export default function Home() {
             />
 
             {/* 5. CÁC DANH MỤC KHÁC */}
-            {dynamicCategories.map((cat, index) => (
-                <SectionBlock
-                    key={cat.id}
-                    title={cat.name}
-                    icon={<Monitor size={24} />}
-                    products={cat.products}
-                    linkTo={`/products?categoryId=${cat.id}`}
-                    // Banner xen kẽ: Chỉ hiện ở danh mục đầu tiên
-                    bannerImg={index === 0 ? "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop" : null}
-                />
-            ))}
+            {dynamicCategories.map((cat, index) => {
+                // Chọn icon phù hợp với từng danh mục
+                const getCategoryIcon = (categoryId) => {
+                    const iconMap = {
+                        'laptop': <Laptop size={24} />,
+                        'phone': <Smartphone size={24} />,
+                        'monitor': <Monitor size={24} />,
+                        'ssd': <HardDrive size={24} />,
+                        'audio': <Speaker size={24} />,
+                        'gaming': <Gamepad2 size={24} />,
+                        'accessory': <Keyboard size={24} />,
+                    };
+                    return iconMap[categoryId] || <Grid size={24} />;
+                };
+                
+                return (
+                    <SectionBlock
+                        key={cat.id}
+                        title={cat.name}
+                        icon={getCategoryIcon(cat.id)}
+                        products={cat.products}
+                        linkTo={`/products?categoryId=${cat.id}`}
+                        // Banner xen kẽ: Chỉ hiện ở danh mục đầu tiên
+                        bannerImg={index === 0 ? "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop" : null}
+                    />
+                );
+            })}
 
             {/* 6. SẢN PHẨM KHÁC / CÓ THỂ BẠN QUAN TÂM */}
             <SectionBlock

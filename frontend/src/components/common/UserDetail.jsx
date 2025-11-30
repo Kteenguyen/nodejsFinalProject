@@ -171,31 +171,6 @@ const UserDetail = ({ user, onClose, onSave, context = 'user', onNext }) => {
                     disabled={!isEditing}
                     rightContent={calendarRightContent}
                 />
-
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-text-secondary flex items-center gap-2">
-                        <Coins size={16} className="text-yellow-500" />
-                        Điểm tích lũy
-                    </label>
-                    <div className="relative">
-                        <input
-                            type="number"
-                            name="points"
-                            value={formData.points}
-                            onChange={handleChange}
-                            disabled={!(isAdmin && isEditing)}
-                            className={`w-full px-4 py-2.5 rounded-lg border transition-all duration-200 outline-none
-                                ${!(isAdmin && isEditing)
-                                    ? 'bg-gray-50 border-gray-200 text-text-secondary cursor-not-allowed'
-                                    : 'bg-white border-gray-300 text-text-primary focus:border-accent focus:ring-2 focus:ring-accent/20'
-                                }
-                            `}
-                        />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">
-                            điểm
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );

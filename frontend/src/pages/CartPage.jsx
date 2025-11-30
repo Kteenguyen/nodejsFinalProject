@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { CartController } from '../controllers/CartController';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTrash, FaPlus, FaMinus, FaShoppingBag } from 'react-icons/fa';
@@ -50,6 +51,7 @@ const CartPage = () => {
     setCartItems
   } = useCart();
 
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -231,7 +233,14 @@ const CartPage = () => {
             </div>
 
             <button
-              onClick={() => navigate('/checkout')}
+              onClick={() => {
+                if (!user) {
+                  toast.warning('Vui lòng đăng nhập để tiến hành thanh toán');
+                  navigate('/login', { state: { from: '/checkout' } });
+                  return;
+                }
+                navigate('/checkout');
+              }}
               className="w-full mt-6 py-3 bg-indigo-600 text-white text-lg font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105"
             >
               Tiến hành Thanh toán

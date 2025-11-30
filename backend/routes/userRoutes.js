@@ -12,6 +12,7 @@ const {
     addAddress,
     updateShippingAddress,
     deleteAddress,
+    setDefaultShippingAddress,
     banUser
 } = require('../controllers/userControllers'); // 👈 Sửa tên file (có S)
 const { protect, admin } = require('../middleware/authMiddleware');
@@ -35,6 +36,9 @@ router.route('/addresses')
 router.route('/addresses/:addressId')
     .put(updateShippingAddress) // PUT /api/users/addresses/:addressId
     .delete(deleteAddress); // DELETE /api/users/addresses/:addressId
+
+router.put('/addresses/:addressId/default', setDefaultShippingAddress); // PUT /api/users/addresses/:addressId/default
+
 router.route('/:id')
     .get(protect, admin, getUserById) // 👈 (GET /api/users/:id)
     .put(protect, admin, updateUserByAdmin); // 👈 (PUT /api/users/:id)

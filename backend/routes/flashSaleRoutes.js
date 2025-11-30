@@ -18,6 +18,9 @@ router.put('/:id', protect, admin, flashSaleCtrl.updateFlashSale);
 router.delete('/:id', protect, admin, flashSaleCtrl.deleteFlashSale);
 
 // PUBLIC ROUTES
+// Lấy flash sales cho homepage (kiểu Shopee: active + upcoming + tomorrow)
+router.get('/homepage', flashSaleCtrl.getFlashSalesForHomepage);
+
 // Lấy flash sales đang diễn ra
 router.get('/active', flashSaleCtrl.getActiveFlashSales);
 

@@ -1,5 +1,5 @@
 // frontend/src/pages/RedeemVouchersPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Gift, Star, Tag, Check, AlertCircle } from 'lucide-react';
 import LoyaltyController from '../controllers/LoyaltyController';
 
@@ -11,11 +11,7 @@ const RedeemVouchersPage = () => {
     const [activeTab, setActiveTab] = useState('available'); // 'available' hoặc 'redeemed'
     const [message, setMessage] = useState({ type: '', text: '' });
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const [pointsData, availableData, redeemedData] = await Promise.all([
@@ -36,7 +32,11 @@ const RedeemVouchersPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     const handleRedeemVoucher = async (voucherId) => {
         try {
@@ -101,20 +101,38 @@ const RedeemVouchersPage = () => {
                         </span>
                     </div>
                     {!isRedeemed && (
+                        <>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Chi phí:</span>
+                                <span className="font-bold text-blue-600 flex items-center">
+                                    <Star className="w-4 h-4 mr-1 fill-current" />
+                                    {voucher.pointsCost} điểm
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Còn lại:</span>
+                                <span className="text-gray-700">
+                                    {(voucher.maxUses || 0) - (voucher.uses || 0)} lượt
+                                </span>
+                            </div>
+                        </>
+                    )}
+                    {isRedeemed && voucher.redeemedAt && (
                         <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Chi phí:</span>
-                            <span className="font-bold text-blue-600 flex items-center">
-                                <Star className="w-4 h-4 mr-1 fill-current" />
-                                {voucher.pointsCost} điểm
+                            <span className="text-gray-600">Ngày đổi:</span>
+                            <span className="text-gray-700">
+                                {new Date(voucher.redeemedAt).toLocaleDateString('vi-VN')}
                             </span>
                         </div>
                     )}
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Đã dùng:</span>
-                        <span className="text-gray-700">
-                            {voucher.uses || 0}/{voucher.maxUses}
-                        </span>
-                    </div>
+                    {voucher.endDate && (
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Hạn sử dụng:</span>
+                            <span className="text-gray-700">
+                                {new Date(voucher.endDate).toLocaleDateString('vi-VN')}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {!isRedeemed && (

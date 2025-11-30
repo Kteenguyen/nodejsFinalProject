@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
     ChevronLeft, LogOut, ClipboardList, Store, Ticket, List, 
-    ChevronRight, Bell, Gift, Zap // Import icon Flash Sale
+    ChevronRight, Gift, Zap // Import icon Flash Sale
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -13,7 +13,6 @@ const statisticsItems = [
 ];
 
 const managementItems = [
-    { label: "Thông báo", icon: Bell, path: "/admin/notifications" },
     { label: "Đơn hàng", icon: ClipboardList, path: "/admin/orders" },
     { label: "Người dùng", icon: Users, path: "/admin/users" },
     { label: "Sản phẩm", icon: ShoppingCart, path: "/admin/products" },
@@ -47,7 +46,7 @@ const SideBar = ({ onToggle }) => {
 
     // --- Xác định loại trang hiện tại ---
     const isStatisticsPage = location.pathname === '/admin/dashboard';
-    const isManagementPage = ['/admin/management', '/admin/notifications', '/admin/orders', '/admin/users', '/admin/products', '/admin/categories', '/admin/discounts', '/admin/loyalty-rewards', '/admin/flash-sales'].some(path => location.pathname.startsWith(path));
+    const isManagementPage = ['/admin/management', '/admin/orders', '/admin/users', '/admin/products', '/admin/categories', '/admin/discounts', '/admin/loyalty-rewards', '/admin/flash-sales'].some(path => location.pathname.startsWith(path));
     const isSettingsPage = location.pathname === '/admin/settings';
 
     const handleLogout = async () => {

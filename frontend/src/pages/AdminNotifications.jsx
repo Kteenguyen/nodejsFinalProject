@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Bell, Package, Users, ShoppingCart, TrendingUp, X, CheckCircle, ExternalLink, ArrowRight } from 'lucide-react';
 import { OrderController } from '../controllers/OrderController';
 import { UserController } from '../controllers/userController';
@@ -11,11 +11,7 @@ const AdminNotifications = () => {
     const [filter, setFilter] = useState('all'); // all, orders, users, products
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchNotifications();
-    }, []);
-
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         try {
             setLoading(true);
             const allNotifications = [];
@@ -97,7 +93,11 @@ const AdminNotifications = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     const getOrderTitle = (status) => {
         const titles = {
@@ -183,9 +183,21 @@ const AdminNotifications = () => {
         // Đánh dấu đã đọc trước khi chuyển trang
         markAsRead(notif.id);
 
-        // Chuyển đến trang chi tiết thông báo
+        // Chuyển đến trang chi tiết dựa trên loại thông báo
         const entityId = notif.data._id;
-        navigate(`/admin/notifications/${notif.type}/${entityId}`);
+        switch (notif.type) {
+            case 'order':
+                navigate(`/admin/orders/${entityId}`);
+                break;
+            case 'user':
+                navigate(`/admin/users`);
+                break;
+            case 'product':
+                navigate(`/admin/products/edit/${entityId}`);
+                break;
+            default:
+                navigate(`/admin/dashboard`);
+        }
     };
 
     const getActionButton = (notif) => {
@@ -305,7 +317,8 @@ const AdminNotifications = () => {
                     filteredNotifications.map((notif) => (
                         <div
                             key={notif.id}
-                            className={`bg-white rounded-xl shadow-sm border transition-all hover:shadow-md ${
+                            onClick={() => handleViewDetail(notif)}
+                            className={`bg-white rounded-xl shadow-sm border transition-all hover:shadow-md cursor-pointer ${
                                 notif.isRead ? 'border-gray-100' : 'border-blue-200 bg-blue-50/30'
                             }`}
                         >
@@ -324,7 +337,7 @@ const AdminNotifications = () => {
                                             <h3 className="font-semibold text-gray-800">
                                                 {notif.title}
                                             </h3>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                                                 {!notif.isRead && (
                                                     <button
                                                         onClick={() => markAsRead(notif.id)}
@@ -355,7 +368,10 @@ const AdminNotifications = () => {
                                             </div>
                                             {/* Action Button */}
                                             <button
-                                                onClick={() => handleViewDetail(notif)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleViewDetail(notif);
+                                                }}
                                                 className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-all text-sm font-medium ${getActionButton(notif).color}`}
                                             >
                                                 {getActionButton(notif).label}
