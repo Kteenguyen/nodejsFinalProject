@@ -64,7 +64,7 @@ export default function Home() {
                         const res = await ProductController.getProductsByCategory(cat.categoryId, { limit: 8 });
                         return { 
                             id: cat.categoryId, 
-                            name: cat.categoryName, 
+                            name: cat.name || cat.categoryName || 'Danh mục', 
                             products: res.products || [] 
                         };
                     });

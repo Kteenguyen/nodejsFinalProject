@@ -11,92 +11,83 @@ const AdminNotifications = () => {
     const [filter, setFilter] = useState('all'); // all, orders, users, products
     const navigate = useNavigate();
 
-<<<<<<< HEAD
     const fetchNotifications = useCallback(async () => {
-=======
-    useEffect(() => {
-        fetchNotifications();
-        // eslint-disable-next-line
-    }, []);
-
-    const fetchNotifications = async () => {
->>>>>>> 85c9c5fa39ad89b2f1078e3655d76f5d44f2a1db
         try {
-            setLoading(true);
-            const allNotifications = [];
+                setLoading(true);
+                const allNotifications = [];
 
-            // 1. Lấy thông báo từ đơn hàng
-            const orders = await OrderController.getAllOrdersForAdmin();
-            const orderNotifications = orders.map(order => ({
-                id: `order-${order._id}`,
-                type: 'order',
-                title: getOrderTitle(order.status),
-                message: `Đơn hàng #${order._id.slice(-6)} - ${order.user?.name || 'Khách hàng'} - ${formatPrice(order.totalPrice)}`,
-                status: order.status,
-                time: new Date(order.createdAt),
-                isRead: false,
-                data: order
-            }));
-            allNotifications.push(...orderNotifications);
-
-            // 2. Lấy thông báo từ người dùng mới
-            const usersData = await UserController.getUsers({ page: 1, limit: 50 });
-            const users = usersData.users || usersData.data || [];
-            
-            // Người dùng đăng ký trong 7 ngày qua
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            
-            const newUserNotifications = users
-                .filter(user => new Date(user.createdAt) > sevenDaysAgo)
-                .map(user => ({
-                    id: `user-${user._id}`,
-                    type: 'user',
-                    title: '👤 Người dùng mới đăng ký',
-                    message: `${user.name || user.userName} (${user.email}) đã tạo tài khoản`,
-                    time: new Date(user.createdAt),
+                // 1. Lấy thông báo từ đơn hàng
+                const orders = await OrderController.getAllOrdersForAdmin();
+                const orderNotifications = orders.map(order => ({
+                    id: `order-${order._id}`,
+                    type: 'order',
+                    title: getOrderTitle(order.status),
+                    message: `Đơn hàng #${order._id.slice(-6)} - ${order.user?.name || 'Khách hàng'} - ${formatPrice(order.totalPrice)}`,
+                    status: order.status,
+                    time: new Date(order.createdAt),
                     isRead: false,
-                    data: user
+                    data: order
                 }));
-            allNotifications.push(...newUserNotifications);
+                allNotifications.push(...orderNotifications);
 
-            // 3. Lấy thông báo từ sản phẩm (sắp hết hàng)
-            const productsData = await ProductController.getProducts({ limit: 1000 });
-            const products = productsData.products || productsData.data || [];
-            
-            const lowStockNotifications = products
-                .filter(product => product.stock > 0 && product.stock < 10)
-                .map(product => ({
-                    id: `product-low-${product._id}`,
-                    type: 'product',
-                    title: '⚠️ Sản phẩm sắp hết hàng',
-                    message: `${product.name} - Còn ${product.stock} sản phẩm`,
-                    time: new Date(), // Thời gian hiện tại
-                    isRead: false,
-                    status: `Còn ${product.stock}`,
-                    data: product
-                }));
-            allNotifications.push(...lowStockNotifications);
+                // 2. Lấy thông báo từ người dùng mới
+                const usersData = await UserController.getUsers({ page: 1, limit: 50 });
+                const users = usersData.users || usersData.data || [];
 
-            // Sản phẩm hết hàng
-            const outOfStockNotifications = products
-                .filter(product => product.stock === 0)
-                .map(product => ({
-                    id: `product-out-${product._id}`,
-                    type: 'product',
-                    title: '🚫 Sản phẩm hết hàng',
-                    message: `${product.name} - Cần nhập thêm hàng`,
-                    time: new Date(),
-                    isRead: false,
-                    status: 'Hết hàng',
-                    data: product
-                }));
-            allNotifications.push(...outOfStockNotifications);
+                // Người dùng đăng ký trong 7 ngày qua
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-            // Sắp xếp theo thời gian mới nhất
-            allNotifications.sort((a, b) => b.time - a.time);
+                const newUserNotifications = users
+                    .filter(user => new Date(user.createdAt) > sevenDaysAgo)
+                    .map(user => ({
+                        id: `user-${user._id}`,
+                        type: 'user',
+                        title: '👤 Người dùng mới đăng ký',
+                        message: `${user.name || user.userName} (${user.email}) đã tạo tài khoản`,
+                        time: new Date(user.createdAt),
+                        isRead: false,
+                        data: user
+                    }));
+                allNotifications.push(...newUserNotifications);
 
-            setNotifications(allNotifications);
+                // 3. Lấy thông báo từ sản phẩm (sắp hết hàng)
+                const productsData = await ProductController.getProducts({ limit: 1000 });
+                const products = productsData.products || productsData.data || [];
+
+                const lowStockNotifications = products
+                    .filter(product => product.stock > 0 && product.stock < 10)
+                    .map(product => ({
+                        id: `product-low-${product._id}`,
+                        type: 'product',
+                        title: '⚠️ Sản phẩm sắp hết hàng',
+                        message: `${product.name} - Còn ${product.stock} sản phẩm`,
+                        time: new Date(), // Thời gian hiện tại
+                        isRead: false,
+                        status: `Còn ${product.stock}`,
+                        data: product
+                    }));
+                allNotifications.push(...lowStockNotifications);
+
+                // Sản phẩm hết hàng
+                const outOfStockNotifications = products
+                    .filter(product => product.stock === 0)
+                    .map(product => ({
+                        id: `product-out-${product._id}`,
+                        type: 'product',
+                        title: '🚫 Sản phẩm hết hàng',
+                        message: `${product.name} - Cần nhập thêm hàng`,
+                        time: new Date(),
+                        isRead: false,
+                        status: 'Hết hàng',
+                        data: product
+                    }));
+                allNotifications.push(...outOfStockNotifications);
+
+                // Sắp xếp theo thời gian mới nhất
+                allNotifications.sort((a, b) => b.time - a.time);
+
+                setNotifications(allNotifications);
         } catch (error) {
             console.error('Lỗi khi tải thông báo:', error);
         } finally {
@@ -155,7 +146,7 @@ const AdminNotifications = () => {
             case 'Delivered': return 'bg-green-100 text-green-700 border-green-200';
             case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
             case 'Hết hàng': return 'bg-red-100 text-red-700 border-red-200';
-            default: 
+            default:
                 // Xử lý trạng thái "Còn X"
                 if (status && status.startsWith('Còn')) {
                     const stock = parseInt(status.match(/\d+/)?.[0] || '0');
@@ -175,7 +166,7 @@ const AdminNotifications = () => {
     });
 
     const markAsRead = (id) => {
-        setNotifications(prev => prev.map(notif => 
+        setNotifications(prev => prev.map(notif =>
             notif.id === id ? { ...notif, isRead: true } : notif
         ));
     };
@@ -263,8 +254,8 @@ const AdminNotifications = () => {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-800">Thông báo</h1>
                             <p className="text-sm text-gray-500">
-                                {unreadCount > 0 
-                                    ? `Bạn có ${unreadCount} thông báo chưa đọc` 
+                                {unreadCount > 0
+                                    ? `Bạn có ${unreadCount} thông báo chưa đọc`
                                     : 'Tất cả thông báo đã được đọc'}
                             </p>
                         </div>
@@ -289,19 +280,18 @@ const AdminNotifications = () => {
                     { value: 'user', label: 'Người dùng', icon: Users },
                     { value: 'product', label: 'Sản phẩm', icon: ShoppingCart },
                 ].map(({ value, label, icon: Icon }) => {
-                    const count = value === 'all' 
-                        ? unreadCount 
+                    const count = value === 'all'
+                        ? unreadCount
                         : notifications.filter(n => !n.isRead && n.type === value).length;
-                    
+
                     return (
                         <button
                             key={value}
                             onClick={() => setFilter(value)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
-                                filter === value
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${filter === value
                                     ? 'bg-blue-600 text-white shadow-md'
                                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
-                            }`}
+                                }`}
                         >
                             <Icon className="w-4 h-4" />
                             {label}
@@ -327,16 +317,14 @@ const AdminNotifications = () => {
                         <div
                             key={notif.id}
                             onClick={() => handleViewDetail(notif)}
-                            className={`bg-white rounded-xl shadow-sm border transition-all hover:shadow-md cursor-pointer ${
-                                notif.isRead ? 'border-gray-100' : 'border-blue-200 bg-blue-50/30'
-                            }`}
+                            className={`bg-white rounded-xl shadow-sm border transition-all hover:shadow-md cursor-pointer ${notif.isRead ? 'border-gray-100' : 'border-blue-200 bg-blue-50/30'
+                                }`}
                         >
                             <div className="p-4">
                                 <div className="flex items-start gap-4">
                                     {/* Icon */}
-                                    <div className={`p-3 rounded-lg ${
-                                        notif.isRead ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'
-                                    }`}>
+                                    <div className={`p-3 rounded-lg ${notif.isRead ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-600'
+                                        }`}>
                                         {getNotificationIcon(notif.type)}
                                     </div>
 

@@ -322,7 +322,7 @@ exports.batchProductLines = async (req, res) => {
 exports.getBestSellers = async (_req, res) => {
   try {
     const items = await Product.aggregate([
-      { $match: { isBestSeller: true, status: 'available' } },
+      { $match: { isBestSeller: true, $or: [{ status: { $exists: false } }, { status: 'available' }] } },
       // 👇 SỬA: Thêm tính totalStock
       {
         $addFields: {
@@ -353,7 +353,7 @@ exports.getBestSellers = async (_req, res) => {
 exports.getNewProducts = async (_req, res) => {
   try {
     const items = await Product.aggregate([
-      { $match: { isNewProduct: true, status: 'available' } },
+      { $match: { isNewProduct: true, $or: [{ status: { $exists: false } }, { status: 'available' }] } },
       // 👇 SỬA: Thêm tính totalStock
       {
         $addFields: {
@@ -399,7 +399,7 @@ exports.getProductsByCategory = async (req, res) => {
     // Count total documents
     const [items, totalCount] = await Promise.all([
       Product.aggregate([
-        { $match: { 'category.categoryId': categoryId, status: 'available' } },
+        { $match: { 'category.categoryId': categoryId, $or: [{ status: { $exists: false } }, { status: 'available' }] } },
         // 👇 SỬA: Tính tổng tồn kho
         {
           $addFields: {
@@ -424,7 +424,7 @@ exports.getProductsByCategory = async (req, res) => {
           }
         },
       ]),
-      Product.countDocuments({ 'category.categoryId': categoryId, status: 'available' })
+      Product.countDocuments({ 'category.categoryId': categoryId, $or: [{ status: { $exists: false } }, { status: 'available' }] })
     ]);
 
     const totalPages = Math.max(Math.ceil(totalCount / limitNum), 1);

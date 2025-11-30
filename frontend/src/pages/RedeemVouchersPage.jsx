@@ -11,16 +11,7 @@ const RedeemVouchersPage = () => {
     const [activeTab, setActiveTab] = useState('available'); // 'available' hoặc 'redeemed'
     const [message, setMessage] = useState({ type: '', text: '' });
 
-<<<<<<< HEAD
     const fetchData = useCallback(async () => {
-=======
-    useEffect(() => {
-        fetchData();
-        // eslint-disable-next-line
-    }, []);
-
-    const fetchData = async () => {
->>>>>>> 85c9c5fa39ad89b2f1078e3655d76f5d44f2a1db
         try {
             setLoading(true);
             const [pointsData, availableData, redeemedData] = await Promise.all([
