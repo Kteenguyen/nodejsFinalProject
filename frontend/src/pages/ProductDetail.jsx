@@ -74,6 +74,7 @@ export default function ProductDetail() {
       }
     })();
     return () => ctrl.abort();
+    // eslint-disable-next-line
   }, [urlId]);
 
   // --- 2. SOCKET REALTIME ---
@@ -87,6 +88,7 @@ export default function ProductDetail() {
           }
       });
       return () => socket.disconnect();
+      // eslint-disable-next-line
   }, [urlId, product]);
 
   async function refetch() {

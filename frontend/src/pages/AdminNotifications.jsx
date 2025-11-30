@@ -13,6 +13,7 @@ const AdminNotifications = () => {
 
     useEffect(() => {
         fetchNotifications();
+        // eslint-disable-next-line
     }, []);
 
     const fetchNotifications = async () => {

@@ -98,6 +98,7 @@ export default function OrderSuccessPage() {
         if (isSuccess) {
             clearCart();
         }
+        // eslint-disable-next-line
     }, [isSuccess]);
 
     return (
