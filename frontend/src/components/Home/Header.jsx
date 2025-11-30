@@ -144,77 +144,64 @@ const Header = () => {
           setNotifications(notificationsWithReadState);
           setUnreadCount(notificationsWithReadState.filter(n => !n.isRead).length);
         } else {
-          // USER THƯỜNG - lấy thông báo của user (từ API hoặc mock)
+          // USER THƯỜNG - lấy thông báo từ đơn hàng của user
+          // Lấy đơn hàng gần nhất của user để tạo thông báo thực tế
+          let orderNotifications = [];
           try {
-            const res = await api.get('/notifications');
-            if (res.data?.notifications) {
-              // Áp dụng trạng thái đã đọc từ localStorage
-              const notificationsWithReadState = res.data.notifications.map(n => ({
-                ...n,
-                isRead: n.isRead || readNotificationIds.includes(n._id)
-              }));
-              setNotifications(notificationsWithReadState);
-              setUnreadCount(notificationsWithReadState.filter(n => !n.isRead).length);
-            }
-          } catch (err) {
-            // Lấy đơn hàng gần nhất của user để tạo thông báo thực tế
-            let orderNotifications = [];
-            try {
-              const ordersRes = await api.get('/orders/my-orders');
-              const orders = ordersRes.data?.orders || ordersRes.data || [];
-              
-              // Tạo thông báo từ đơn hàng gần đây (tối đa 3 đơn)
-              orderNotifications = orders.slice(0, 3).map((order, idx) => {
-                const statusMessages = {
-                  'Pending': 'Đơn hàng đang chờ xác nhận',
-                  'Confirmed': 'Đơn hàng đã được xác nhận',
-                  'Shipping': 'Đơn hàng đang được giao',
-                  'Delivered': 'Đơn hàng đã giao thành công',
-                  'Cancelled': 'Đơn hàng đã bị hủy'
-                };
-                return {
-                  _id: `order-${order._id}`,
-                  title: statusMessages[order.status] || 'Cập nhật đơn hàng',
-                  message: `Đơn hàng #${order.orderId || order._id.slice(-6)} - ${(order.totalPrice || 0).toLocaleString('vi-VN')}đ`,
-                  type: 'order',
-                  isRead: readNotificationIds.includes(`order-${order._id}`),
-                  createdAt: order.updatedAt || order.createdAt,
-                  actionUrl: `/order/${order._id}` // Chuyển thẳng đến chi tiết đơn hàng
-                };
-              });
-            } catch (orderErr) {
-              console.log('Không thể lấy đơn hàng:', orderErr);
-            }
+            const ordersRes = await api.get('/orders/my-orders');
+            const orders = ordersRes.data?.orders || ordersRes.data || [];
             
-            // Thông báo khuyến mãi mặc định
-            const promoNotifications = [
-              {
-                _id: 'user-promo-1',
-                title: 'Khuyến mãi đặc biệt',
-                message: 'Giảm 20% cho tất cả sản phẩm điện tử trong tuần này!',
-                type: 'promotion',
-                isRead: readNotificationIds.includes('user-promo-1'),
-                createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-                actionUrl: '/products'
-              },
-              {
-                _id: 'user-promo-2',
-                title: 'Đổi điểm nhận quà',
-                message: 'Bạn có điểm thưởng! Đổi ngay để nhận voucher giảm giá.',
-                type: 'promotion',
-                isRead: readNotificationIds.includes('user-promo-2'),
-                createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-                actionUrl: '/redeem-vouchers'
-              }
-            ];
-            
-            // Gộp và sắp xếp theo thời gian
-            const allNotifications = [...orderNotifications, ...promoNotifications]
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            
-            setNotifications(allNotifications);
-            setUnreadCount(allNotifications.filter(n => !n.isRead).length);
+            // Tạo thông báo từ đơn hàng gần đây (tối đa 3 đơn)
+            orderNotifications = orders.slice(0, 3).map((order, idx) => {
+              const statusMessages = {
+                'Pending': 'Đơn hàng đang chờ xác nhận',
+                'Confirmed': 'Đơn hàng đã được xác nhận',
+                'Shipping': 'Đơn hàng đang được giao',
+                'Delivered': 'Đơn hàng đã giao thành công',
+                'Cancelled': 'Đơn hàng đã bị hủy'
+              };
+              return {
+                _id: `order-${order._id}`,
+                title: statusMessages[order.status] || 'Cập nhật đơn hàng',
+                message: `Đơn hàng #${order.orderId || order._id.slice(-6)} - ${(order.totalPrice || 0).toLocaleString('vi-VN')}đ`,
+                type: 'order',
+                isRead: readNotificationIds.includes(`order-${order._id}`),
+                createdAt: order.updatedAt || order.createdAt,
+                actionUrl: `/order/${order._id}` // Chuyển thẳng đến chi tiết đơn hàng
+              };
+            });
+          } catch (orderErr) {
+            console.log('Không thể lấy đơn hàng:', orderErr);
           }
+          
+          // Thông báo khuyến mãi mặc định
+          const promoNotifications = [
+            {
+              _id: 'user-promo-1',
+              title: 'Khuyến mãi đặc biệt',
+              message: 'Giảm 20% cho tất cả sản phẩm điện tử trong tuần này!',
+              type: 'promotion',
+              isRead: readNotificationIds.includes('user-promo-1'),
+              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+              actionUrl: '/products'
+            },
+            {
+              _id: 'user-promo-2',
+              title: 'Đổi điểm nhận quà',
+              message: 'Bạn có điểm thưởng! Đổi ngay để nhận voucher giảm giá.',
+              type: 'promotion',
+              isRead: readNotificationIds.includes('user-promo-2'),
+              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+              actionUrl: '/redeem-vouchers'
+            }
+          ];
+          
+          // Gộp và sắp xếp theo thời gian
+          const allNotifications = [...orderNotifications, ...promoNotifications]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          
+          setNotifications(allNotifications);
+          setUnreadCount(allNotifications.filter(n => !n.isRead).length);
         }
       } catch (error) {
         console.error('Lỗi fetch notifications:', error);
