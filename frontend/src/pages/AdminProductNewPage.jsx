@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from '../services/api';
+import Calendar from '../components/common/Calendar';
 
 const generateProductId = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -48,6 +49,7 @@ export default function AdminProductNewPage() {
     description: "",
     images: ["", "", ""],
     variants: [emptyVariant()],
+    createdAt: new Date().toISOString().split('T')[0], // Ngày tạo mặc định là hôm nay
   });
 
   // Load danh mục
@@ -149,7 +151,8 @@ export default function AdminProductNewPage() {
           stock: Number(v.stock) || 0,
         })),
         status: 'available',
-        isNewProduct: true
+        isNewProduct: true,
+        createdAt: product.createdAt ? new Date(product.createdAt) : new Date()
       };
 
       await api.post('/products', payload);
@@ -177,6 +180,15 @@ export default function AdminProductNewPage() {
               <option value="">-- Chọn --</option>
               {categories.map((c) => (<option key={c.categoryId} value={c.categoryId}>{c.name || c.categoryName}</option>))}
             </select>
+          </div>
+          <div>
+            <Calendar
+              label="Ngày tạo (Sản phẩm mới)"
+              value={product.createdAt}
+              onChange={(val) => updateField("createdAt", val ? val.split('T')[0] : "")}
+              placeholder="Chọn ngày tạo..."
+            />
+            <p className="text-xs text-gray-500 mt-1">Sản phẩm tạo trong 30 ngày gần đây sẽ hiển thị ở "Sản phẩm mới"</p>
           </div>
         </div>
         <div><label className="block text-sm font-medium mb-1">Mô tả</label><textarea className="w-full border rounded px-3 py-2 h-24" value={product.description} onChange={(e) => updateField("description", e.target.value)} /></div>

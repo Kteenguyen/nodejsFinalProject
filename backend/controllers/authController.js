@@ -489,12 +489,8 @@ exports.resetPassword = async (req, res) => {
         console.error("Reset Password Error:", error);
         res.status(500).json({ message: 'Lỗi server khi đặt lại mật khẩu.' });
     }
-
-} catch (error) {
-    console.error("Reset Password Error:", error);
-    res.status(500).json({ message: 'Lỗi server khi đặt lại mật khẩu.' });
-}
 };
+
 // Kiểm tra token từ cookie HOẶC Authorization header
 exports.checkSession = asyncHandler(async (req, res) => {
     // ❗ CHỈ LẤY TOKEN TỪ AUTHORIZATION HEADER để hỗ trợ multi-tab

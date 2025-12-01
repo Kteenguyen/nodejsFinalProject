@@ -79,21 +79,22 @@ export default function ProductManagement() {
   }, [page, limit, search, sort]);
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex items-center gap-3 mb-4">
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <button
           onClick={() => navigate("/admin/management")}
-          className="px-3 py-2 rounded bg-gray-300 text-gray-800 hover:bg-gray-400 transition flex items-center gap-2"
+          className="px-3 py-2 rounded bg-gray-300 text-gray-800 hover:bg-gray-400 transition flex items-center gap-2 text-sm"
           title="Quay lại Management Hub"
         >
           ← Quay lại
         </button>
-        <h2 className="text-xl font-semibold">Product Management</h2>
+        <h2 className="text-lg sm:text-xl font-semibold">Product Management</h2>
       </div>
 
-      <div className="flex gap-2 mb-3">
+      {/* Search & Filter - Stack on mobile */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input
-          className="border rounded px-3 py-2 flex-1"
+          className="border rounded px-3 py-2 flex-1 text-sm"
           placeholder="Tìm theo tên/mã/brand…"
           value={search}
           onChange={(e) => {
@@ -101,40 +102,43 @@ export default function ProductManagement() {
             setSearch(e.target.value);
           }}
         />
-        <button
-          className="px-4 py-2 rounded bg-blue-600 text-white"
-          onClick={() => navigate("/admin/products/new")}
-        >
-          + Thêm sản phẩm
-        </button>
-        <select
-          className="border rounded px-3 py-2"
-          value={sort}
-          onChange={(e) => {
-            setPage(1);
-            setSort(e.target.value);
-          }}
-        >
-          <option value="newest">Mới nhất</option>
-          <option value="oldest">Cũ nhất</option>
-          <option value="price_asc">Giá tăng dần</option>
-          <option value="price_desc">Giá giảm dần</option>
-          <option value="name_asc">Tên A→Z</option>
-          <option value="name_desc">Tên Z→A</option>
-        </select>
+        <div className="flex gap-2">
+          <button
+            className="px-3 sm:px-4 py-2 rounded bg-blue-600 text-white text-sm whitespace-nowrap flex-1 sm:flex-none"
+            onClick={() => navigate("/admin/products/new")}
+          >
+            + Thêm sản phẩm
+          </button>
+          <select
+            className="border rounded px-2 sm:px-3 py-2 text-sm bg-white"
+            value={sort}
+            onChange={(e) => {
+              setPage(1);
+              setSort(e.target.value);
+            }}
+          >
+            <option value="newest">Mới nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="price_asc">Giá tăng dần</option>
+            <option value="price_desc">Giá giảm dần</option>
+            <option value="name_asc">Tên A→Z</option>
+            <option value="name_desc">Tên Z→A</option>
+          </select>
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
+      {/* Desktop Table - Hidden on mobile */}
+      <div className="hidden md:block bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left px-4 py-3">Ảnh</th>
-              <th className="text-left px-4 py-3">Tên</th>
-              <th className="text-left px-4 py-3">Danh mục</th>
-              <th className="text-left px-4 py-3">Brand</th>
-              <th className="text-left px-4 py-3">Giá thấp nhất</th>
-              <th className="px-4 py-3 text-center">Tồn kho</th>
-              <th className="text-left px-4 py-3">Actions</th>
+              <th className="text-left px-4 py-3 text-sm">Ảnh</th>
+              <th className="text-left px-4 py-3 text-sm">Tên</th>
+              <th className="text-left px-4 py-3 text-sm">Danh mục</th>
+              <th className="text-left px-4 py-3 text-sm">Brand</th>
+              <th className="text-left px-4 py-3 text-sm">Giá thấp nhất</th>
+              <th className="px-4 py-3 text-center text-sm">Tồn kho</th>
+              <th className="text-left px-4 py-3 text-sm">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -152,11 +156,9 @@ export default function ProductManagement() {
               </tr>
             ) : (
               rows.map((r) => {
-                // 2. XỬ LÝ MÀU SẮC CHO TỒN KHO
                 const stockColor = r.totalStock > 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50";
-
                 return (
-                  <tr key={r.id} className="border-t">
+                  <tr key={r.id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <img src={r.image} alt={r.name} className="w-12 h-12 object-cover rounded" />
                     </td>
@@ -164,50 +166,29 @@ export default function ProductManagement() {
                     <td className="px-4 py-3 text-gray-600">{r.category}</td>
                     <td className="px-4 py-3">{r.brand}</td>
                     <td className="px-4 py-3">{fmtVND(r.lowestPrice)}</td>
-
-                    {/* 👇 CỘT HIỂN THỊ TỒN KHO MỚI 👇 */}
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${stockColor}`}>
                         {r.totalStock > 0 ? r.totalStock : "Hết hàng"}
                       </span>
                     </td>
-                    {/* -------------------------------- */}
-
                     <td className="px-4 py-3 space-x-2">
                       <button
-                        className="px-3 py-1.5 rounded border"
-                        onClick={() =>
-                          navigate(
-                            `/admin/products/${encodeURIComponent(r.id)}/edit`
-                          )
-                        }
+                        className="px-3 py-1.5 rounded border hover:bg-gray-100"
+                        onClick={() => navigate(`/admin/products/${encodeURIComponent(r.id)}/edit`)}
                       >
                         Sửa
                       </button>
                       <button
-                        className="px-3 py-1.5 rounded border border-red-500 text-red-600"
+                        className="px-3 py-1.5 rounded border border-red-500 text-red-600 hover:bg-red-50"
                         onClick={async () => {
-                          if (
-                            !window.confirm(
-                              "Bạn có chắc muốn xóa sản phẩm này?"
-                            )
-                          )
-                            return;
+                          if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
                           try {
-                            await api.delete(
-                              `/products/${encodeURIComponent(r.id)}`
-                            );
+                            await api.delete(`/products/${encodeURIComponent(r.id)}`);
                             toast.success("Xóa sản phẩm thành công");
-                            setRows((prev) =>
-                              prev.filter((x) => x.id !== r.id)
-                            );
+                            setRows((prev) => prev.filter((x) => x.id !== r.id));
                           } catch (err) {
                             console.error("DELETE ERROR", err.response || err);
-                            const msg =
-                              err.response?.data?.message ||
-                              err.response?.statusText ||
-                              err.message ||
-                              "Xóa sản phẩm thất bại";
+                            const msg = err.response?.data?.message || err.response?.statusText || err.message || "Xóa sản phẩm thất bại";
                             toast.error(msg);
                           }
                         }}
@@ -221,6 +202,61 @@ export default function ProductManagement() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Cards - Show on mobile only */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <div className="bg-white rounded-lg shadow p-4 text-gray-500 text-center">Đang tải…</div>
+        ) : rows.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-4 text-gray-500 text-center">Không có sản phẩm</div>
+        ) : (
+          rows.map((r) => {
+            const stockColor = r.totalStock > 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50";
+            return (
+              <div key={r.id} className="bg-white rounded-lg shadow p-3">
+                <div className="flex gap-3">
+                  <img src={r.image} alt={r.name} className="w-16 h-16 object-cover rounded flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm truncate">{r.name}</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">{r.category} • {r.brand}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm font-semibold text-blue-600">{fmtVND(r.lowestPrice)}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${stockColor}`}>
+                        {r.totalStock > 0 ? `SL: ${r.totalStock}` : "Hết hàng"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3 pt-3 border-t">
+                  <button
+                    className="flex-1 px-3 py-2 rounded border text-sm hover:bg-gray-100"
+                    onClick={() => navigate(`/admin/products/${encodeURIComponent(r.id)}/edit`)}
+                  >
+                    ✏️ Sửa
+                  </button>
+                  <button
+                    className="flex-1 px-3 py-2 rounded border border-red-500 text-red-600 text-sm hover:bg-red-50"
+                    onClick={async () => {
+                      if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
+                      try {
+                        await api.delete(`/products/${encodeURIComponent(r.id)}`);
+                        toast.success("Xóa sản phẩm thành công");
+                        setRows((prev) => prev.filter((x) => x.id !== r.id));
+                      } catch (err) {
+                        console.error("DELETE ERROR", err.response || err);
+                        const msg = err.response?.data?.message || err.response?.statusText || err.message || "Xóa sản phẩm thất bại";
+                        toast.error(msg);
+                      }
+                    }}
+                  >
+                    🗑️ Xóa
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

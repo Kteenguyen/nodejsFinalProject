@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import api, { getImageUrl } from '../services/api';
+import Calendar from '../components/common/Calendar';
 
 const emptyVariant = () => ({
   variantId: "",
@@ -43,6 +44,7 @@ export default function AdminProductEditPage() {
     description: "",
     images: [], 
     variants: [emptyVariant()],
+    createdAt: "",
   });
 
   // Load danh mục từ Category model (giống trang New)
@@ -79,6 +81,7 @@ export default function AdminProductEditPage() {
                 stock: v.stock ?? 0,
               }))
             : [emptyVariant()],
+          createdAt: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : "",
         });
       } catch (err) { toast.error(err.message); } finally { if (!ignore) setLoading(false); }
     }
@@ -148,6 +151,7 @@ export default function AdminProductEditPage() {
           price: Number(v.price) || 0,
           stock: Number(v.stock) || 0,
         })),
+        createdAt: product.createdAt ? new Date(product.createdAt) : undefined,
       };
 
       await api.put(`/products/${id}`, payload);
@@ -175,6 +179,15 @@ export default function AdminProductEditPage() {
           <div><label className="block text-sm font-medium mb-1">Mã (Read-only)</label><input className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-500" value={product.productId} disabled /></div>
           <div><label className="block text-sm font-medium mb-1">Thương hiệu</label><input className="w-full border rounded px-3 py-2" value={product.brand} onChange={e => updateField("brand", e.target.value)} /></div>
           <div><label className="block text-sm font-medium mb-1">Danh mục</label><select className="w-full border rounded px-3 py-2 bg-white" onChange={handleCategorySelect} value={product.category?.categoryId || ""}><option value="">-- Chọn --</option>{categories.map((c) => (<option key={c.categoryId} value={c.categoryId}>{c.name || c.categoryName}</option>))}</select></div>
+          <div>
+            <Calendar
+              label="Ngày tạo (Sản phẩm mới)"
+              value={product.createdAt}
+              onChange={(val) => updateField("createdAt", val ? val.split('T')[0] : "")}
+              placeholder="Chọn ngày tạo..."
+            />
+            <p className="text-xs text-gray-500 mt-1">Sản phẩm trong 30 ngày gần đây sẽ hiển thị ở "Sản phẩm mới"</p>
+          </div>
         </div>
 
         <div><label className="block text-sm font-medium mb-1">Mô tả</label><textarea className="w-full border rounded px-3 py-2 h-24" value={product.description} onChange={e => updateField("description", e.target.value)} /></div>

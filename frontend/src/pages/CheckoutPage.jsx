@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { 
     MapPin, Truck, CreditCard, Ticket, ChevronRight, Edit2, 
     ShieldCheck, Coins, X, Check, Plus, ArrowLeft, Loader 
@@ -17,9 +17,16 @@ import AddressForm from '../components/common/AddressForm'; // Gọi đúng đư
 import PaymentMethods from '../components/checkout/PaymentMethods';
 
 export default function CheckoutPage() {
-    const { cartItems, clearCart, loadingCart } = useCart();
+    const { cartItems: allCartItems, clearCart, loadingCart, setCartItems } = useCart();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Lấy danh sách sản phẩm được chọn từ CartPage (nếu có)
+    const selectedItemsFromCart = location.state?.selectedItems;
+    
+    // Sử dụng selectedItems nếu được truyền từ CartPage, nếu không thì dùng toàn bộ giỏ hàng
+    const cartItems = selectedItemsFromCart || allCartItems;
 
     // --- STATE ---
     const [loading, setLoading] = useState(false);
@@ -183,7 +190,20 @@ export default function CheckoutPage() {
             
             if (res.success || res.order) {
                 orderPlacedRef.current = true; // Đánh dấu đã đặt hàng thành công
-                clearCart();
+                
+                // Nếu chỉ checkout một số sản phẩm, chỉ xóa những sản phẩm đã checkout
+                if (selectedItemsFromCart && selectedItemsFromCart.length < allCartItems.length) {
+                    // Lọc ra những sản phẩm chưa được checkout
+                    const selectedKeys = selectedItemsFromCart.map(item => item.variantId || item.sku || `${item._id || item.productMongoId || item.productId}-noVariant`);
+                    const remainingItems = allCartItems.filter(item => {
+                        const key = item.variantId || item.sku || `${item._id || item.productMongoId || item.productId}-noVariant`;
+                        return !selectedKeys.includes(key);
+                    });
+                    setCartItems(remainingItems);
+                } else {
+                    clearCart();
+                }
+                
                 const newOrderId = res.order?.orderId || res.order?._id;
                 
                 // Lưu flag vào sessionStorage để trang OrderSuccess hiển thị toast

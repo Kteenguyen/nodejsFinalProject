@@ -378,16 +378,38 @@ exports.getBestSellers = async (_req, res) => {
 
 exports.getNewProducts = async (_req, res) => {
   try {
+    // Lấy sản phẩm mới: tạo trong 30 ngày gần đây HOẶC có isNewProduct = true
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     const items = await Product.aggregate([
-      { $match: { isNewProduct: true, $or: [{ status: { $exists: false } }, { status: 'available' }] } },
-      // 👇 SỬA: Thêm tính totalStock
+      { 
+        $match: { 
+          // Chỉ lấy sản phẩm available
+          $or: [
+            { status: { $exists: false } }, 
+            { status: 'available' }
+          ]
+        } 
+      },
+      {
+        $match: {
+          // Điều kiện "mới": isNewProduct = true HOẶC tạo trong 30 ngày
+          $or: [
+            { isNewProduct: true },
+            { createdAt: { $gte: thirtyDaysAgo } }
+          ]
+        }
+      },
+      // Sắp xếp theo ngày tạo mới nhất
+      { $sort: { createdAt: -1 } },
+      // Tính totalStock và minPrice
       {
         $addFields: {
           minPrice: { $min: '$variants.price' },
           totalStock: { $sum: '$variants.stock' }
         }
       },
-      // 👇 SỬA: Thêm totalStock vào project
       {
         $project: {
           productId: 1,
@@ -396,13 +418,16 @@ exports.getNewProducts = async (_req, res) => {
           brand: 1,
           images: { $slice: ['$images', 1] },
           lowestPrice: '$minPrice',
-          totalStock: 1 // <-- Quan trọng
+          totalStock: 1,
+          createdAt: 1,
+          isNewProduct: 1
         }
       },
       { $limit: 20 },
     ]);
     res.json({ success: true, products: items });
-  } catch {
+  } catch (e) {
+    console.error('Error getNewProducts:', e);
     res.status(500).json({ success: false, message: 'Lỗi server' });
   }
 };
@@ -477,6 +502,7 @@ exports.createProduct = async (req, res) => {
     const {
       productId, productName, brand, productDescription, category, images = [],
       status = 'available', isNewProduct = false, isBestSeller = false, variants = [],
+      createdAt, // Cho phép set ngày tạo tùy chỉnh
     } = req.body;
 
     if (!productId || !productName || !category?.categoryId || !variants?.length) {
@@ -492,10 +518,17 @@ exports.createProduct = async (req, res) => {
       stock: v.stock ?? 0,
     }));
 
-    const created = await Product.create({
+    const productData = {
       productId, productName, brand, productDescription, category, images,
       status, isNewProduct, isBestSeller, variants: processedVariants,
-    });
+    };
+
+    // Nếu có createdAt từ request, sử dụng nó
+    if (createdAt) {
+      productData.createdAt = new Date(createdAt);
+    }
+
+    const created = await Product.create(productData);
 
     res.status(201).json({ success: true, product: created });
   } catch (e) {
@@ -512,6 +545,7 @@ exports.updateProduct = async (req, res) => {
     const {
       productName, brand, productDescription, category,
       images, status, isNewProduct, isBestSeller, variants,
+      createdAt, // Cho phép cập nhật ngày tạo
     } = req.body;
 
     if (productName) product.productName = productName;
@@ -522,6 +556,7 @@ exports.updateProduct = async (req, res) => {
     if (status) product.status = status;
     if (typeof isNewProduct !== 'undefined') product.isNewProduct = isNewProduct;
     if (typeof isBestSeller !== 'undefined') product.isBestSeller = isBestSeller;
+    if (createdAt) product.createdAt = new Date(createdAt);
 
     if (Array.isArray(variants)) {
       if (variants.length === 0) {

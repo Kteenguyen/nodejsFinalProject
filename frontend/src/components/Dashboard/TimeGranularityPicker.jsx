@@ -1,3 +1,5 @@
+import Calendar from "../common/Calendar";
+
 export default function TimeGranularityPicker({ value, onChange, from, to, onRangeChange }) {
   const opts = ["year", "quarter", "month", "week", "custom"];
   return (
@@ -14,19 +16,21 @@ export default function TimeGranularityPicker({ value, onChange, from, to, onRan
 
       {value === "custom" && (
         <div className="flex gap-2 items-center">
-          <input
-            type="date"
-            className="border rounded px-2 py-1"
-            value={from || ""}
-            onChange={e => onRangeChange({ from: e.target.value, to })}
-          />
+          <div className="w-36">
+            <Calendar
+              value={from || ""}
+              onChange={(val) => onRangeChange({ from: val ? val.split('T')[0] : "", to })}
+              placeholder="Từ ngày..."
+            />
+          </div>
           <span>→</span>
-          <input
-            type="date"
-            className="border rounded px-2 py-1"
-            value={to || ""}
-            onChange={e => onRangeChange({ from, to: e.target.value })}
-          />
+          <div className="w-36">
+            <Calendar
+              value={to || ""}
+              onChange={(val) => onRangeChange({ from, to: val ? val.split('T')[0] : "" })}
+              placeholder="Đến ngày..."
+            />
+          </div>
         </div>
       )}
     </div>

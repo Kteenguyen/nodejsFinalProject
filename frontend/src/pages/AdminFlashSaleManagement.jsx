@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import FlashSaleCountdown from '../components/FlashSale/FlashSaleCountdown';
 import api, { getImageUrl } from '../services/api';
+import Calendar from '../components/common/Calendar';
 
 const AdminFlashSaleManagement = () => {
     const [flashSales, setFlashSales] = useState([]);
@@ -412,26 +413,22 @@ const AdminFlashSaleManagement = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-gray-700 font-bold mb-2">Thời gian bắt đầu *</label>
-                                        <input
-                                            type="datetime-local"
-                                            name="startTime"
+                                        <Calendar
+                                            label="Thời gian bắt đầu *"
                                             value={formData.startTime}
-                                            onChange={handleInputChange}
-                                            className="w-full border rounded-lg px-4 py-2"
-                                            required
+                                            onChange={(val) => handleInputChange({ target: { name: 'startTime', value: val } })}
+                                            enableTime={true}
+                                            placeholder="Chọn thời gian bắt đầu..."
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="block text-gray-700 font-bold mb-2">Thời gian kết thúc *</label>
-                                        <input
-                                            type="datetime-local"
-                                            name="endTime"
+                                        <Calendar
+                                            label="Thời gian kết thúc *"
                                             value={formData.endTime}
-                                            onChange={handleInputChange}
-                                            className="w-full border rounded-lg px-4 py-2"
-                                            required
+                                            onChange={(val) => handleInputChange({ target: { name: 'endTime', value: val } })}
+                                            enableTime={true}
+                                            placeholder="Chọn thời gian kết thúc..."
                                         />
                                     </div>
                                 </div>

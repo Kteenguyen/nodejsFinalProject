@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OrderController } from "../controllers/OrderController";
 import Pagination from "../components/common/Pagination";
+import Calendar from "../components/common/Calendar";
 
 const LABELS = {
   today: "Hôm nay",
@@ -151,11 +152,21 @@ export default function AdminOrders() {
 
           {date === "custom" && (
             <div className="flex items-center gap-2 ml-2">
-              <input type="date" className="border rounded px-2 py-1.5 text-sm"
-                onChange={(e) => setRange({ ...range, start: e.target.value })} />
+              <div className="w-40">
+                <Calendar
+                  value={range.start}
+                  onChange={(val) => setRange({ ...range, start: val ? val.split('T')[0] : "" })}
+                  placeholder="Từ ngày..."
+                />
+              </div>
               <span>-</span>
-              <input type="date" className="border rounded px-2 py-1.5 text-sm"
-                onChange={(e) => setRange({ ...range, end: e.target.value })} />
+              <div className="w-40">
+                <Calendar
+                  value={range.end}
+                  onChange={(val) => setRange({ ...range, end: val ? val.split('T')[0] : "" })}
+                  placeholder="Đến ngày..."
+                />
+              </div>
               <button onClick={handleCustomFilter} className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm">Lọc</button>
             </div>
           )}

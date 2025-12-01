@@ -17,72 +17,86 @@ const AdminNotifications = () => {
                 const allNotifications = [];
 
                 // 1. Lấy thông báo từ đơn hàng
-                const orders = await OrderController.getAllOrdersForAdmin();
-                const orderNotifications = orders.map(order => ({
-                    id: `order-${order._id}`,
-                    type: 'order',
-                    title: getOrderTitle(order.status),
-                    message: `Đơn hàng #${order._id.slice(-6)} - ${order.user?.name || 'Khách hàng'} - ${formatPrice(order.totalPrice)}`,
-                    status: order.status,
-                    time: new Date(order.createdAt),
-                    isRead: false,
-                    data: order
-                }));
-                allNotifications.push(...orderNotifications);
+                try {
+                    const orders = await OrderController.getAllOrdersForAdmin();
+                    console.log('📦 Orders loaded for notifications:', orders?.length || 0);
+                    
+                    const orderNotifications = (orders || []).map(order => ({
+                        id: `order-${order._id}`,
+                        type: 'order',
+                        title: getOrderTitle(order.status),
+                        message: `Đơn hàng #${(order.orderId || order._id || '').slice(-6)} - ${order.customerName || 'Khách hàng'} - ${formatPrice(order.totalPrice || 0)}`,
+                        status: order.status,
+                        time: new Date(order.createdAt),
+                        isRead: false,
+                        data: order
+                    }));
+                    allNotifications.push(...orderNotifications);
+                } catch (orderError) {
+                    console.error('Lỗi khi tải đơn hàng:', orderError);
+                }
 
                 // 2. Lấy thông báo từ người dùng mới
-                const usersData = await UserController.getUsers({ page: 1, limit: 50 });
-                const users = usersData.users || usersData.data || [];
+                try {
+                    const usersData = await UserController.getUsers({ page: 1, limit: 50 });
+                    const users = usersData.users || usersData.data || [];
 
-                // Người dùng đăng ký trong 7 ngày qua
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                    // Người dùng đăng ký trong 7 ngày qua
+                    const sevenDaysAgo = new Date();
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-                const newUserNotifications = users
-                    .filter(user => new Date(user.createdAt) > sevenDaysAgo)
-                    .map(user => ({
-                        id: `user-${user._id}`,
-                        type: 'user',
-                        title: '👤 Người dùng mới đăng ký',
-                        message: `${user.name || user.userName} (${user.email}) đã tạo tài khoản`,
-                        time: new Date(user.createdAt),
-                        isRead: false,
-                        data: user
-                    }));
-                allNotifications.push(...newUserNotifications);
+                    const newUserNotifications = users
+                        .filter(user => new Date(user.createdAt) > sevenDaysAgo)
+                        .map(user => ({
+                            id: `user-${user._id}`,
+                            type: 'user',
+                            title: '👤 Người dùng mới đăng ký',
+                            message: `${user.name || user.userName} (${user.email}) đã tạo tài khoản`,
+                            time: new Date(user.createdAt),
+                            isRead: false,
+                            data: user
+                        }));
+                    allNotifications.push(...newUserNotifications);
+                } catch (userError) {
+                    console.error('Lỗi khi tải người dùng:', userError);
+                }
 
                 // 3. Lấy thông báo từ sản phẩm (sắp hết hàng)
-                const productsData = await ProductController.getProducts({ limit: 1000 });
-                const products = productsData.products || productsData.data || [];
+                try {
+                    const productsData = await ProductController.getProducts({ limit: 1000 });
+                    const products = productsData.products || productsData.data || [];
 
-                const lowStockNotifications = products
-                    .filter(product => product.stock > 0 && product.stock < 10)
-                    .map(product => ({
-                        id: `product-low-${product._id}`,
-                        type: 'product',
-                        title: '⚠️ Sản phẩm sắp hết hàng',
-                        message: `${product.name} - Còn ${product.stock} sản phẩm`,
-                        time: new Date(), // Thời gian hiện tại
-                        isRead: false,
-                        status: `Còn ${product.stock}`,
-                        data: product
-                    }));
-                allNotifications.push(...lowStockNotifications);
+                    const lowStockNotifications = products
+                        .filter(product => product.stock > 0 && product.stock < 10)
+                        .map(product => ({
+                            id: `product-low-${product._id}`,
+                            type: 'product',
+                            title: '⚠️ Sản phẩm sắp hết hàng',
+                            message: `${product.name} - Còn ${product.stock} sản phẩm`,
+                            time: new Date(), // Thời gian hiện tại
+                            isRead: false,
+                            status: `Còn ${product.stock}`,
+                            data: product
+                        }));
+                    allNotifications.push(...lowStockNotifications);
 
-                // Sản phẩm hết hàng
-                const outOfStockNotifications = products
-                    .filter(product => product.stock === 0)
-                    .map(product => ({
-                        id: `product-out-${product._id}`,
-                        type: 'product',
-                        title: '🚫 Sản phẩm hết hàng',
-                        message: `${product.name} - Cần nhập thêm hàng`,
-                        time: new Date(),
-                        isRead: false,
-                        status: 'Hết hàng',
-                        data: product
-                    }));
-                allNotifications.push(...outOfStockNotifications);
+                    // Sản phẩm hết hàng
+                    const outOfStockNotifications = products
+                        .filter(product => product.stock === 0)
+                        .map(product => ({
+                            id: `product-out-${product._id}`,
+                            type: 'product',
+                            title: '🚫 Sản phẩm hết hàng',
+                            message: `${product.name} - Cần nhập thêm hàng`,
+                            time: new Date(),
+                            isRead: false,
+                            status: 'Hết hàng',
+                            data: product
+                        }));
+                    allNotifications.push(...outOfStockNotifications);
+                } catch (productError) {
+                    console.error('Lỗi khi tải sản phẩm:', productError);
+                }
 
                 // Sắp xếp theo thời gian mới nhất
                 allNotifications.sort((a, b) => b.time - a.time);

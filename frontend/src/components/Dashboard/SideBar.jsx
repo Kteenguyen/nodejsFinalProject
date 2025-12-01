@@ -23,7 +23,7 @@ const managementItems = [
     { label: "Flash Sale", icon: Zap, path: "/admin/flash-sales" },
 ];
 
-const SideBar = ({ onToggle }) => {
+const SideBar = ({ onToggle, isMobileMenuOpen, onMobileClose }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { logout } = useAuth();
@@ -35,6 +35,12 @@ const SideBar = ({ onToggle }) => {
         const newState = !collapsed;
         setCollapsed(newState);
         if (onToggle) onToggle(newState);
+    };
+
+    // Xử lý navigation trên mobile
+    const handleNavigate = (path) => {
+        navigate(path);
+        if (onMobileClose) onMobileClose();
     };
 
     useEffect(() => {
@@ -56,7 +62,7 @@ const SideBar = ({ onToggle }) => {
         const isActive = active === item.path || active.startsWith(`${item.path}/`);
         return (
             <button
-                onClick={() => navigate(item.path)}
+                onClick={() => handleNavigate(item.path)}
                 className={`
                     relative group w-full py-3 rounded-xl transition-all duration-200 font-medium
                     flex items-center
@@ -95,7 +101,9 @@ const SideBar = ({ onToggle }) => {
                 fixed top-0 left-0 h-screen bg-white shadow-xl border-r border-gray-100
                 flex flex-col z-50 transition-all duration-300 ease-in-out
                 overflow-x-hidden
-                ${collapsed ? "w-20" : "w-64"}
+                ${collapsed ? "lg:w-20" : "lg:w-64"}
+                w-64
+                ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
             `}
         >
             {/* === HEADER (SỬA ĐỔI CHÍNH Ở ĐÂY) === */}
@@ -160,7 +168,7 @@ const SideBar = ({ onToggle }) => {
             {/* === FOOTER === */}
             <div className="mt-auto border-t border-gray-100 bg-gray-50/50 p-3 space-y-1 flex-shrink-0">
                 <button
-                    onClick={() => navigate('/')}
+                    onClick={() => handleNavigate('/')}
                     className={`flex items-center w-full py-2.5 rounded-xl transition font-medium group
                         ${collapsed ? "justify-center" : "px-4 gap-3"}
                         text-gray-600 hover:text-blue-600 hover:bg-white hover:shadow-sm
