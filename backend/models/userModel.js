@@ -1,6 +1,7 @@
 // backend/models/userModel.js
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 // === 1. TẠO SCHEMA CHO ĐỊA CHỈ (MỚI) ===
 const addressSchema = new mongoose.Schema({

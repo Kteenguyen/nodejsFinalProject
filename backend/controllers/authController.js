@@ -114,25 +114,48 @@ exports.login = async (req, res) => {
 // --- HÀM REGISTER (ĐÃ NÂNG CẤP) ---
 exports.register = async (req, res) => {
     try {
+        console.log('📝 [REGISTER] Starting registration...');
+        console.log('📝 [REGISTER] Body:', req.body);
+        console.log('📝 [REGISTER] File:', req.file);
+
         // ... (Toàn bộ logic validate, check user, hash pass, upload Cloudinary giữ nguyên) ...
         const { name, userName, email, password } = req.body;
         if (!name || !userName || !email || !password) {
+            console.log('❌ [REGISTER] Missing required fields');
             return res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ thông tin: name, userName, email, password.' });
         }
         let user = await User.findOne({ $or: [{ email: email }, { userName: userName }] });
         if (user) {
-            if (user.email === email) return res.status(400).json({ message: 'Email đã được sử dụng!' });
-            if (user.userName === userName) return res.status(400).json({ message: 'Username đã được sử dụng!' });
+            if (user.email === email) {
+                console.log('❌ [REGISTER] Email already exists');
+                return res.status(400).json({ message: 'Email đã được sử dụng!' });
+            }
+            if (user.userName === userName) {
+                console.log('❌ [REGISTER] Username already exists');
+                return res.status(400).json({ message: 'Username đã được sử dụng!' });
+            }
         }
+        console.log('✅ [REGISTER] Email & username are available');
+
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         const newUserId = await generateUuid();
+        console.log('✅ [REGISTER] Password hashed, UUID generated');
+
         let avatarUrl = null;
         if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path, {
-                folder: "avatars", width: 150, crop: "scale"
-            });
-            avatarUrl = result.secure_url;
+            console.log('📸 [REGISTER] Uploading avatar...');
+            try {
+                const result = await cloudinary.uploader.upload(req.file.path, {
+                    folder: "avatars", width: 150, crop: "scale"
+                });
+                avatarUrl = result.secure_url;
+                console.log('✅ [REGISTER] Avatar uploaded:', avatarUrl);
+            } catch (uploadErr) {
+                console.error('❌ [REGISTER] Cloudinary upload error:', uploadErr.message);
+                // Vẫn tạo user mà không avatar
+                avatarUrl = null;
+            }
         }
 
         user = new User({
@@ -146,13 +169,17 @@ exports.register = async (req, res) => {
             role: 'user',
         });
 
+        console.log('💾 [REGISTER] Saving user to DB...');
         await user.save();
+        console.log('✅ [REGISTER] User saved successfully:', user.email);
 
         // 👈 NÂNG CẤP: Thay vì res.cookie và res.json thủ công...
         // ... chúng ta gọi hàm chuẩn
         sendTokenResponse(user, 201, res, "Đăng ký thành công!");
 
     } catch (error) {
+        console.error('❌ [REGISTER] Error:', error.message);
+        console.error('❌ [REGISTER] Stack:', error.stack);
         res.status(500).json({ message: 'Lỗi server', error: error.message });
     }
 };
@@ -330,13 +357,13 @@ exports.forgotPassword = async (req, res) => {
         // Nếu provider chứa 'google' hoặc 'facebook' VÀ user không có password (thuần social)
         // Hoặc đơn giản là cứ dính social là nhắc nhở.
         const isSocial = user.provider.some(p => p === 'google' || p === 'facebook');
-        
+
         if (isSocial) {
             const providers = user.provider.filter(p => p !== 'local').join(' hoặc ');
             // Backend trả về lỗi 400 kèm thông báo cụ thể
             // Frontend sẽ bắt lỗi này và hiện Toast
-            return res.status(400).json({ 
-                message: `Tài khoản này được đăng ký bằng ${providers}. Vui lòng đăng nhập bằng ${providers}!` 
+            return res.status(400).json({
+                message: `Tài khoản này được đăng ký bằng ${providers}. Vui lòng đăng nhập bằng ${providers}!`
             });
         }
 
@@ -435,7 +462,7 @@ exports.checkSession = asyncHandler(async (req, res) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.substring(7);
     }
-    
+
     if (!token) {
         return res.status(200).json({ isAuthenticated: false, user: null });
     }
