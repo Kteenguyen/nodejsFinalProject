@@ -5,7 +5,7 @@ import {
   FaShoppingCart, FaSearch, FaBars, FaTimes,
   FaHome, FaBox, FaInfoCircle, FaPhoneAlt,
   FaSignOutAlt, FaAngleDown,
-  FaUserCircle, FaChartBar, FaBell, FaCommentDots
+  FaUserCircle, FaChartBar, FaBell, FaCommentDots, FaUserPlus
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -137,6 +137,9 @@ const Header = () => {
 
   const isAdmin = user?.role === 'admin';
   const displayName = user?.name || user?.userName || user?.email?.split('@')[0] || "Khách";
+  
+  // State cho submenu admin
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
 
   const navLinks = [
     { name: 'Trang chủ', path: '/', icon: FaHome },
@@ -441,15 +444,30 @@ const Header = () => {
 
                           <div className="p-2 space-y-1">
                             {isAdmin && (
-                              <Link to="/admin/dashboard" className="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 group transition-colors">
-                                <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform shadow-sm">
-                                  <FaChartBar className="text-sm" />
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-gray-800 text-sm">Quản trị hệ thống</p>
-                                  <p className="text-[10px] text-gray-400 font-medium">Dashboard & Thống kê</p>
-                                </div>
-                              </Link>
+                              <>
+                                {/* Thống kê - vào Dashboard */}
+                                <Link to="/admin/dashboard" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 group transition-colors">
+                                  <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform shadow-sm">
+                                    <FaChartBar className="text-sm" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-gray-800 text-sm">Thống kê</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Dashboard & Báo cáo</p>
+                                  </div>
+                                </Link>
+                                
+                                {/* Quản trị hệ thống - vào trang quản lý chính */}
+                                <Link to="/admin/products" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 group transition-colors">
+                                  <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform shadow-sm">
+                                    <FaBox className="text-sm" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-gray-800 text-sm">Quản trị hệ thống</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">Sản phẩm, đơn hàng, người dùng</p>
+                                  </div>
+                                </Link>
+                                <div className="border-t border-gray-100 my-2"></div>
+                              </>
                             )}
 
                             <Link to="/profile" className="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 group transition-colors">
