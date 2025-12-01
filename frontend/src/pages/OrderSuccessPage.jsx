@@ -1,5 +1,5 @@
 // src/pages/OrderSuccessPage.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, Home, ShoppingBag, Copy, Building2, Upload, Image as ImageIcon } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -12,6 +12,7 @@ export default function OrderSuccessPage() {
     const [copied, setCopied] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [proofUploaded, setProofUploaded] = useState(false);
+    const toastShownRef = useRef(false); // Track toast đã hiển thị chưa
 
     // 1. Lấy thông tin từ URL
     const responseCode = searchParams.get('code'); 
@@ -93,7 +94,23 @@ export default function OrderSuccessPage() {
         }
     };
 
-    // Xóa giỏ hàng nếu thành công
+    // Hiện toast ngay khi vào trang (chạy trước mọi thứ)
+    useEffect(() => {
+        const shouldShowToast = sessionStorage.getItem('orderSuccess');
+        console.log('📢 OrderSuccessPage - shouldShowToast:', shouldShowToast);
+        
+        if (shouldShowToast) {
+            sessionStorage.removeItem('orderSuccess');
+            toast.success('🎉 Đặt hàng thành công!');
+            
+            // Delay 500ms để backend kịp tạo notification, rồi mới refresh
+            setTimeout(() => {
+                window.dispatchEvent(new Event('refreshNotifications'));
+            }, 500);
+        }
+    }, []);
+
+    // Xóa giỏ hàng (tách riêng để không ảnh hưởng toast)
     useEffect(() => {
         if (isSuccess) {
             clearCart();

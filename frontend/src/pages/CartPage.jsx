@@ -48,7 +48,8 @@ const CartPage = () => {
     updateQuantity,
     totalPrice,
     itemCount,
-    setCartItems
+    setCartItems,
+    loadingCart
   } = useCart();
 
   const { user } = useAuth();
@@ -105,7 +106,7 @@ const CartPage = () => {
     updateQuantity(variantIdOrSku, newQuantity);
   };
 
-  if (isLoading) {
+  if (isLoading || loadingCart) {
     return <div className="text-center p-10 text-lg font-semibold">Đang cập nhật giỏ hàng...</div>;
   }
 

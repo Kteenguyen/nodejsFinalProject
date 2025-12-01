@@ -105,7 +105,7 @@ const saveCartToDatabase = async (cartItems) => {
 
 const clearCart = async () => {
     try {
-        await api.delete('/cart/clear'); // Gọi endpoint xóa sạch giỏ hàng ở Backend
+        await api.delete('/cart'); // Backend route là DELETE /cart (không có /clear)
         return true;
     } catch (error) {
         console.error("Lỗi xóa giỏ hàng:", error);

@@ -20,7 +20,7 @@ const PaymentMethodItem = ({ id, title, desc, icon, selected, onSelect }) => (
     </div>
 );
 
-const PaymentMethods = ({ method, setMethod }) => {
+const PaymentMethods = ({ selected, onSelect }) => {
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
@@ -32,21 +32,21 @@ const PaymentMethods = ({ method, setMethod }) => {
                     title="Thanh toán VNPAY-QR" 
                     desc="Quét mã QR qua ứng dụng ngân hàng"
                     icon={<CheckCircle size={20}/>}
-                    selected={method} onSelect={setMethod}
+                    selected={selected} onSelect={onSelect}
                 />
                 <PaymentMethodItem 
                     id="banking" 
                     title="Chuyển khoản ngân hàng" 
                     desc="Vietcombank, Techcombank,..."
                     icon={<Landmark size={20}/>}
-                    selected={method} onSelect={setMethod}
+                    selected={selected} onSelect={onSelect}
                 />
                 <PaymentMethodItem 
                     id="cod" 
                     title="Thanh toán khi nhận hàng (COD)" 
                     desc="Thanh toán tiền mặt cho shipper"
                     icon={<Truck size={20}/>}
-                    selected={method} onSelect={setMethod}
+                    selected={selected} onSelect={onSelect}
                 />
             </div>
         </div>

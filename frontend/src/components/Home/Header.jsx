@@ -35,33 +35,48 @@ const Header = () => {
   // Notifications
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const [unreadCount, setUnreadCount] = useState(0); // Lấy từ API thay vì đếm local
 
   // Fetch notifications from API
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!isAuthenticated) return;
-      
-      try {
-        const res = await api.get('/notifications');
-        if (res.data?.notifications) {
-          const notifs = res.data.notifications.slice(0, 5).map(n => ({
-            id: n._id,
-            title: n.title,
-            message: n.message,
-            isRead: n.isRead,
-            time: getTimeAgo(n.createdAt),
-            actionUrl: n.actionUrl,
-            type: n.type
-          }));
-          setNotifications(notifs);
-        }
-      } catch (err) {
-        console.error('Error fetching notifications:', err);
+  const fetchNotifications = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const res = await api.get('/notifications');
+      if (res.data?.notifications) {
+        const notifs = res.data.notifications.slice(0, 5).map(n => ({
+          id: n._id,
+          title: n.title,
+          message: n.message,
+          isRead: n.isRead,
+          time: getTimeAgo(n.createdAt),
+          actionUrl: n.actionUrl,
+          type: n.type
+        }));
+        setNotifications(notifs);
+        // Lấy unreadCount từ API (tổng số chưa đọc, không chỉ 5 cái đầu)
+        setUnreadCount(res.data.unreadCount || 0);
       }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [isAuthenticated]);
+
+  // Lắng nghe event để refresh notifications (khi đặt hàng thành công)
+  useEffect(() => {
+    const handleRefreshNotifications = () => {
+      console.log('🔔 Refreshing notifications...');
+      fetchNotifications();
     };
 
-    fetchNotifications();
+    window.addEventListener('refreshNotifications', handleRefreshNotifications);
+    return () => {
+      window.removeEventListener('refreshNotifications', handleRefreshNotifications);
+    };
   }, [isAuthenticated]);
 
   // Helper function to get time ago
@@ -170,10 +185,17 @@ const Header = () => {
     setIsMobileSearchOpen(false);
   };
 
-  const markAllAsRead = () => {
-    const updated = notifications.map(n => ({ ...n, isRead: true }));
-    setNotifications(updated);
-    toast.success("Đã đánh dấu tất cả là đã đọc");
+  const markAllAsRead = async () => {
+    try {
+      await api.put('/notifications/read-all');
+      const updated = notifications.map(n => ({ ...n, isRead: true }));
+      setNotifications(updated);
+      setUnreadCount(0); // Reset unread count
+      toast.success("Đã đánh dấu tất cả là đã đọc");
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+      toast.error("Lỗi khi đánh dấu đã đọc");
+    }
   };
 
   const isAdmin = user?.role === 'admin';

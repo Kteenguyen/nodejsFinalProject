@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -17,7 +17,7 @@ import AddressForm from '../components/common/AddressForm'; // Gọi đúng đư
 import PaymentMethods from '../components/checkout/PaymentMethods';
 
 export default function CheckoutPage() {
-    const { cartItems, clearCart } = useCart();
+    const { cartItems, clearCart, loadingCart } = useCart();
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -38,16 +38,25 @@ export default function CheckoutPage() {
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [usePoints, setUsePoints] = useState(false);
     const [checkingCoupon, setCheckingCoupon] = useState(false);
+    
+    // Ref để track đã đặt hàng thành công (tránh hiện thông báo giỏ hàng trống)
+    const orderPlacedRef = useRef(false);
 
     // --- 1. LOAD DATA ---
     useEffect(() => {
+        // Đợi giỏ hàng load xong trước khi kiểm tra
+        if (loadingCart) return;
+        
+        // Nếu đã đặt hàng thành công, không redirect
+        if (orderPlacedRef.current) return;
+        
         if (cartItems.length === 0) {
             toast.info("Giỏ hàng trống, vui lòng mua sắm thêm!");
             navigate('/products');
             return;
         }
         fetchAddresses();
-    }, [cartItems, navigate]);
+    }, [cartItems, navigate, loadingCart]);
 
     const fetchAddresses = async () => {
         try {
@@ -144,21 +153,27 @@ export default function CheckoutPage() {
         setLoading(true);
         try {
             const orderData = {
-                orderItems: cartItems.map(item => ({
-                    product: item.productId || item._id, // ID sản phẩm
-                    qty: item.quantity,
+                items: cartItems.map(item => ({
+                    productId: item.productId || item._id, // ID sản phẩm
+                    variantId: item.variantId,
+                    quantity: item.quantity,
                     price: item.price,
-                    name: item.productName,
+                    name: item.productName || item.name,
+                    variantName: item.variantName,
                     image: item.image
                 })),
                 shippingAddress: {
-                    fullName: selectedAddress.fullName,
-                    address: selectedAddress.address,
+                    recipientName: selectedAddress.fullName,      // Backend expects recipientName
+                    phoneNumber: selectedAddress.phoneNumber,     // Backend expects phoneNumber
+                    street: selectedAddress.address,              // Backend expects street
+                    ward: selectedAddress.ward || '',
+                    district: selectedAddress.district || '',
                     city: selectedAddress.city,
-                    phone: selectedAddress.phoneNumber,
                 },
                 paymentMethod,
+                subTotal: subtotal,                               // Backend requires subTotal
                 shippingPrice: shippingFee,
+                tax: 0,                                           // Backend requires tax
                 totalPrice: finalTotal,
                 note
             };
@@ -167,9 +182,13 @@ export default function CheckoutPage() {
             const res = await OrderController.createOrder(orderData);
             
             if (res.success || res.order) {
+                orderPlacedRef.current = true; // Đánh dấu đã đặt hàng thành công
                 clearCart();
                 const newOrderId = res.order?.orderId || res.order?._id;
-                toast.success("Đặt hàng thành công!");
+                
+                // Lưu flag vào sessionStorage để trang OrderSuccess hiển thị toast
+                sessionStorage.setItem('orderSuccess', 'true');
+                
                 navigate(`/order-success?code=00&orderId=${newOrderId}&method=${paymentMethod}`);
             }
 
@@ -180,6 +199,18 @@ export default function CheckoutPage() {
             setLoading(false);
         }
     };
+
+    // Hiển thị loading khi giỏ hàng đang load
+    if (loadingCart) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-4" />
+                    <p className="text-gray-600">Đang tải giỏ hàng...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-8 font-sans text-gray-800">

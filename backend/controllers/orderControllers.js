@@ -181,18 +181,21 @@ exports.createOrder = async (req, res) => {
       }
 
       // 6. TẠO THÔNG BÁO CHO USER
+      console.log('📋 Attempting to create notification, accountId:', accountId);
       if (accountId) {
         try {
-          await Notification.createOrderNotification(
+          const notif = await Notification.createOrderNotification(
             accountId,
             createdOrder._id,
             'Đặt hàng thành công',
             `Đơn hàng ${createdOrder.orderId || createdOrder._id} của bạn đã được tiếp nhận. Tổng tiền: ${totalPrice.toLocaleString('vi-VN')}đ`
           );
-          console.log('🔔 Đã tạo thông báo đơn hàng cho user:', accountId);
+          console.log('🔔 Đã tạo thông báo đơn hàng cho user:', accountId, 'notifId:', notif._id);
         } catch (err) {
-          console.log("Lỗi tạo notification (không ảnh hưởng đơn hàng):", err.message);
+          console.log("❌ Lỗi tạo notification:", err.message, err.stack);
         }
+      } else {
+        console.log('⚠️ Không tạo notification vì accountId là:', accountId);
       }
 
       if (useTxn) await session.commitTransaction();
@@ -227,6 +230,8 @@ exports.createOrder = async (req, res) => {
     const result = await runCreate(true);
     return res.status(201).json(result);
   } catch (error) {
+    console.error('❌ [CREATE ORDER ERROR]:', error.message);
+    console.error('❌ [STACK]:', error.stack);
 
     // Nếu lỗi liên quan đến transaction (Mongo standalone) thì thử lại KHÔNG dùng transaction
     if (error.message && error.message.includes("Transaction")) {
@@ -235,6 +240,7 @@ exports.createOrder = async (req, res) => {
         const result = await runCreate(false);   // useTxn = false -> không startSession()
         return res.status(201).json(result);
       } catch (retryError) {
+        console.error('❌ [RETRY ERROR]:', retryError.message);
         return res.status(500).json({ success: false, message: retryError.message });
       }
     } else {

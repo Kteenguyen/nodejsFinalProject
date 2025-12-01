@@ -1,20 +1,31 @@
 // src/pages/AdminProductEditPage.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
 import { toast } from "react-toastify";
-import { getImageUrl } from '../services/api';
-
-const API_BASE = "https://localhost:3001/api";
+import api, { getImageUrl } from '../services/api';
 
 const emptyVariant = () => ({
   variantId: "",
   name: "",
-  oldPrice: 0,
+  oldPrice: "",
   discount: 0, 
   price: 0, 
   stock: 0,
 });
+
+// Helper: Format số với dấu chấm phân cách hàng nghìn
+const formatPrice = (value) => {
+  if (!value && value !== 0) return "";
+  const num = String(value).replace(/\D/g, ""); // Chỉ giữ số
+  if (!num) return "";
+  return Number(num).toLocaleString("vi-VN");
+};
+
+// Helper: Parse giá từ string có dấu chấm về số
+const parsePrice = (formattedValue) => {
+  if (!formattedValue) return 0;
+  return Number(String(formattedValue).replace(/\./g, "")) || 0;
+};
 
 export default function AdminProductEditPage() {
   const { id } = useParams();
@@ -35,7 +46,7 @@ export default function AdminProductEditPage() {
   });
 
   useEffect(() => {
-    axios.get(`${API_BASE}/products/categories`)
+    api.get('/products/categories')
       .then((res) => { if (res.data.success) setCategories(res.data.categories); })
       .catch((err) => console.error(err));
   }, []);
@@ -45,7 +56,7 @@ export default function AdminProductEditPage() {
     async function fetchProduct() {
       try {
         setLoading(true);
-        const res = await axios.get(`${API_BASE}/products/${id}`, { withCredentials: true });
+        const res = await api.get(`/products/${id}`);
         const data = res.data?.product || res.data;
         if (!data) throw new Error("No data");
         if (ignore) return;
@@ -80,13 +91,22 @@ export default function AdminProductEditPage() {
   const updateVariantField = (index, field, value) => {
     setProduct((prev) => {
       const variants = [...prev.variants];
-      const variant = { ...variants[index], [field]: value };
-
-      if (field === 'oldPrice' || field === 'discount') {
-          const old = Number(field === 'oldPrice' ? value : variant.oldPrice) || 0;
-          const disc = Number(field === 'discount' ? value : variant.discount) || 0;
-          const newPrice = old * (100 - disc) / 100;
-          variant.price = Math.max(0, Math.round(newPrice));
+      const variant = { ...variants[index] };
+      
+      // Xử lý giá gốc - format với dấu chấm
+      if (field === 'oldPrice') {
+        const numericValue = parsePrice(value);
+        variant.oldPrice = numericValue;
+        // Tính lại giá bán
+        const disc = Number(variant.discount) || 0;
+        variant.price = Math.max(0, Math.round(numericValue * (100 - disc) / 100));
+      } else if (field === 'discount') {
+        variant.discount = value;
+        const old = parsePrice(variant.oldPrice);
+        const disc = Number(value) || 0;
+        variant.price = Math.max(0, Math.round(old * (100 - disc) / 100));
+      } else {
+        variant[field] = value;
       }
 
       variants[index] = variant;
@@ -122,14 +142,14 @@ export default function AdminProductEditPage() {
         variants: product.variants.map((v) => ({
           variantId: v.variantId,
           name: v.name,
-          oldPrice: Number(v.oldPrice) || 0,
+          oldPrice: parsePrice(v.oldPrice),
           discount: Number(v.discount) || 0,
           price: Number(v.price) || 0,
           stock: Number(v.stock) || 0,
         })),
       };
 
-      await axios.put(`${API_BASE}/products/${id}`, payload, { withCredentials: true });
+      await api.put(`/products/${id}`, payload);
       toast.success("Cập nhật thành công");
       navigate("/admin/products");
     } catch (err) {
@@ -174,19 +194,57 @@ export default function AdminProductEditPage() {
                     <td className="p-2"><input className="w-full border rounded px-2 py-1" value={v.name} onChange={e=>updateVariantField(idx,"name",e.target.value)}/></td>
                     <td className="p-2"><input className="w-full border rounded px-2 py-1" value={v.variantId} onChange={e=>updateVariantField(idx,"variantId",e.target.value)}/></td>
                     
-                    {/* GIÁ GỐC */}
-                    <td className="p-2"><input type="number" className="w-full border rounded px-2 py-1" value={v.oldPrice} onChange={e=>updateVariantField(idx,"oldPrice",e.target.value)} placeholder="0"/></td>
+                    {/* GIÁ GỐC - Format với dấu chấm */}
+                    <td className="p-2">
+                      <input 
+                        type="text" 
+                        className="w-full border rounded px-2 py-1" 
+                        value={formatPrice(v.oldPrice)} 
+                        onChange={e => updateVariantField(idx, "oldPrice", e.target.value)} 
+                        placeholder="0"
+                      />
+                    </td>
                     
-                    {/* % GIẢM */}
+                    {/* % GIẢM - Không hiện số 0 ở đầu */}
                     <td className="p-2 relative">
-                        <input type="number" className="w-full border rounded px-2 py-1 text-center font-bold text-green-600" value={v.discount} onChange={e=>updateVariantField(idx,"discount",e.target.value)} placeholder="0"/>
+                        <input 
+                          type="text" 
+                          inputMode="numeric"
+                          className="w-full border rounded px-2 py-1 text-center font-bold text-green-600" 
+                          value={v.discount === 0 ? "" : v.discount} 
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            updateVariantField(idx, "discount", val === "" ? 0 : Number(val));
+                          }} 
+                          placeholder="0"
+                        />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">%</span>
                     </td>
 
-                    {/* GIÁ BÁN (READONLY) */}
-                    <td className="p-2"><input type="number" className="w-full border rounded px-2 py-1 bg-gray-100 font-bold text-red-600 cursor-not-allowed" value={v.price} readOnly /></td>
+                    {/* GIÁ BÁN (READONLY) - Format với dấu chấm */}
+                    <td className="p-2">
+                      <input 
+                        type="text" 
+                        className="w-full border rounded px-2 py-1 bg-green-50 font-bold text-green-600 cursor-not-allowed" 
+                        value={formatPrice(v.price)} 
+                        readOnly 
+                      />
+                    </td>
 
-                    <td className="p-2"><input type="number" className="w-full border rounded px-2 py-1" value={v.stock} onChange={e=>updateVariantField(idx,"stock",e.target.value)}/></td>
+                    {/* KHO - Không hiện số 0 ở đầu */}
+                    <td className="p-2">
+                      <input 
+                        type="text" 
+                        inputMode="numeric"
+                        className="w-full border rounded px-2 py-1" 
+                        value={v.stock === 0 ? "" : v.stock} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          updateVariantField(idx, "stock", val === "" ? 0 : Number(val));
+                        }}
+                        placeholder="0"
+                      />
+                    </td>
                     <td className="p-2 text-center"><button type="button" onClick={()=>removeVariant(idx)} className="text-red-500 hover:text-red-700">Xóa</button></td>
                   </tr>
                 ))}
