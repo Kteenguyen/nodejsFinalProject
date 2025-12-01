@@ -64,6 +64,7 @@ const Header = () => {
 
   useEffect(() => {
     fetchNotifications();
+    // eslint-disable-next-line
   }, [isAuthenticated]);
 
   // Lắng nghe event để refresh notifications (khi đặt hàng thành công)
@@ -71,12 +72,14 @@ const Header = () => {
     const handleRefreshNotifications = () => {
       console.log('🔔 Refreshing notifications...');
       fetchNotifications();
+      // eslint-disable-next-line
     };
 
     window.addEventListener('refreshNotifications', handleRefreshNotifications);
     return () => {
       window.removeEventListener('refreshNotifications', handleRefreshNotifications);
     };
+    // eslint-disable-next-line
   }, [isAuthenticated]);
 
   // Helper function to get time ago
@@ -108,6 +111,7 @@ const Header = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  // eslint-disable-next-line
   }, []);
 
   // Click Outside
@@ -133,6 +137,7 @@ const Header = () => {
     setIsNotificationOpen(false);
     setShowSuggestions(false);
     setIsMobileSearchOpen(false);
+    // eslint-disable-next-line
   }, [location]);
 
   const handleLogout = () => {

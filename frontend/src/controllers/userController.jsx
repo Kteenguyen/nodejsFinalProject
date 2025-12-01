@@ -62,6 +62,16 @@ export const UserController = {
         }
     },
 
+    // 👈 NÂNG CẤP: Migrate isBanned field
+    migrateIsBanned: async () => {
+        try {
+            const response = await api.post('/auth/migrate-is-banned');
+            return response.data;
+        } catch (error) {
+            handleApiError(error, "Lỗi khi migrate isBanned field.");
+        }
+    },
+
     // === PROFILE ===
     updateProfile: async (formData) => {
         try {

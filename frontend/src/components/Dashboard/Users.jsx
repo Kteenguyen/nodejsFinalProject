@@ -1,6 +1,6 @@
 // frontend/src/pages/Admin/Users.jsx
 
-import React, { useState, useEffect, useCallback } from 'react'; 
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Search, UserX, PackageCheck, Truck, ArchiveRestore,
     Home, ChevronRight,
@@ -13,7 +13,7 @@ import { toast } from 'react-toastify';
 import { UserController } from "../../controllers/userController";
 import Pagination from '../../components/common/Pagination';
 import Breadcrumb from '../../components/common/Breadcrumb';
-import UserDetail from '../../components/common/UserDetail'; 
+import UserDetail from '../../components/common/UserDetail';
 // (Giả sử đường dẫn đến Register.jsx - Sửa nếu cần)
 import Register from '../../pages/Register';
 import { getAvatarUrl } from '../../services/api';
@@ -22,7 +22,7 @@ import { getAvatarUrl } from '../../services/api';
 const calculateAge = (dobString) => {
     if (!dobString) return 'N/A';
     try {
-        const birthDate = new Date(dobString.replace(/-/g, '/')); 
+        const birthDate = new Date(dobString.replace(/-/g, '/'));
         if (isNaN(birthDate.getTime())) return 'N/A';
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
@@ -35,7 +35,7 @@ const calculateAge = (dobString) => {
 };
 
 const formatOrderStatusBadges = (stats) => {
-     if (!stats || (stats.delivered === 0 && stats.processing === 0 && stats.returned === 0)) {
+    if (!stats || (stats.delivered === 0 && stats.processing === 0 && stats.returned === 0)) {
         return <span className="text-text-secondary text-xs">Chưa có đơn</span>;
     }
     return (
@@ -71,17 +71,17 @@ const Users = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState("");
     const [modalUser, setModalUser] = useState(null);
-    const [currentIndex, setCurrentIndex] = useState(null); 
+    const [currentIndex, setCurrentIndex] = useState(null);
     const [isRegisterOpen, setIsRegisterOpen] = useState(false); // (State cho Modal Tạo)
 
     // (Hàm lấy dữ liệu)
     const getUsersData = useCallback(async (currentPage, currentSearch) => {
         setLoading(true);
         try {
-            const data = await UserController.getUsers({ 
-                page: currentPage, 
-                limit: 10, 
-                search: currentSearch 
+            const data = await UserController.getUsers({
+                page: currentPage,
+                limit: 10,
+                search: currentSearch
             });
             if (data && data.users) {
                 setUsers(data.users);
@@ -98,25 +98,25 @@ const Users = () => {
     useEffect(() => {
         const handler = setTimeout(() => {
             getUsersData(page, search);
-        }, 300); 
+        }, 300);
         return () => clearTimeout(handler);
     }, [page, search, getUsersData]);
 
     const handleSearch = (e) => {
         setSearch(e.target.value);
-        setPage(1); 
+        setPage(1);
     };
-    
+
     // (Hàm mở Modal)
     const handleRowClick = (user, index) => {
         setModalUser(user);
-        setCurrentIndex(index); 
+        setCurrentIndex(index);
     };
-    
+
     // (Hàm Next/Prev cho Modal)
     const handleNextUser = () => {
         if (users.length === 0) return;
-        const nextIndex = (currentIndex + 1) % users.length; 
+        const nextIndex = (currentIndex + 1) % users.length;
         setCurrentIndex(nextIndex);
         setModalUser(users[nextIndex]);
     };
@@ -130,13 +130,13 @@ const Users = () => {
     // (Hàm callback khi Modal (UserDetail) lưu hoặc cấm)
     const handleAdminSave = (updatedUser) => {
         setUsers(prev => prev.map(u => u._id === updatedUser._id ? updatedUser : u));
-        setModalUser(updatedUser); 
+        setModalUser(updatedUser);
     };
-    
+
     // (Hàm Cấm/Gỡ cấm - Đã kích hoạt)
     const handleBanUser = async (e, user) => {
-        e.stopPropagation(); 
-        
+        e.stopPropagation();
+
         const actionText = user.isBanned ? 'GỠ CẤM' : 'CẤM';
         const confirmBan = window.confirm(
             `Bạn có chắc muốn ${actionText} người dùng [${user.name}]?`
@@ -146,30 +146,48 @@ const Users = () => {
         try {
             const data = await UserController.banUser(user._id);
             toast.success(data.message);
-            setUsers(prevUsers => 
-                prevUsers.map(u => 
+            setUsers(prevUsers =>
+                prevUsers.map(u =>
                     u._id === user._id ? { ...u, isBanned: data.isBanned } : u
                 )
             );
         } catch (error) {
             console.error("Lỗi khi cấm user:", error);
+            toast.error(error.message || "Lỗi khi cấm/gỡ cấm người dùng");
         }
     };
 
-    // (Hàm xử lý khi Tạo User thành công)
+    // 👈 NÂNG CẤP: Hàm migrate isBanned
+    const handleMigrateIsBanned = async () => {
+        const confirm = window.confirm(
+            'Bạn có chắc muốn migrate isBanned field cho tất cả users?\n\nNhững users chưa có field isBanned sẽ được set = false.'
+        );
+        if (!confirm) return;
+
+        try {
+            const data = await UserController.migrateIsBanned();
+            toast.success(`✅ Migration thành công! Cập nhật: ${data.stats.modifiedCount} users`);
+            console.log('Migration stats:', data.stats);
+            // Reload lại danh sách
+            getUsersData(page, search);
+        } catch (error) {
+            console.error("Lỗi migrate:", error);
+            toast.error(error.message || "Lỗi khi migrate isBanned");
+        }
+    };    // (Hàm xử lý khi Tạo User thành công)
     const handleRegisterSuccess = () => {
-        setIsRegisterOpen(false); 
-        setPage(1); 
-        setSearch(""); 
-        getUsersData(1, ""); 
+        setIsRegisterOpen(false);
+        setPage(1);
+        setSearch("");
+        getUsersData(1, "");
         toast.success("Tạo người dùng mới thành công!");
     };
-    
+
     // (Breadcrumbs - Đã sửa lỗi 'items' thành 'crumbs')
     const breadcrumbs = [
-        { label: "Người dùng" } 
+        { label: "Người dùng" }
     ];
-    
+
     // (Animation)
     const motionVariants = {
         hidden: { opacity: 0, y: 20 },
@@ -182,7 +200,7 @@ const Users = () => {
     };
     const modalVariants = {
         hidden: { opacity: 0, scale: 0.9, y: 50 },
-        visible: { 
+        visible: {
             opacity: 1, scale: 1, y: 0,
             transition: { type: "spring", stiffness: 400, damping: 30 }
         },
@@ -192,8 +210,8 @@ const Users = () => {
     // === GIAO DIỆN ===
     return (
         <div className="p-4 md:p-6 bg-background min-h-screen">
-            
-            <Breadcrumb crumbs={breadcrumbs} /> 
+
+            <Breadcrumb crumbs={breadcrumbs} />
 
             {/* Nút Quay lại */}
             <div className="mb-4">
@@ -207,26 +225,26 @@ const Users = () => {
             </div>
 
             {/* 1. Tiêu đề và Search + Tạo User */}
-            <motion.div 
+            <motion.div
                 className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4"
                 variants={motionVariants}
                 initial="hidden"
                 animate="visible"
             >
                 <h1 className="text-2xl font-bold text-text-primary">Quản lý Người dùng</h1>
-                
+
                 <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
                     <div className="relative w-full md:w-72">
-                        <input 
+                        <input
                             type="text"
                             placeholder="Tìm kiếm tên hoặc email..."
                             value={search}
                             onChange={handleSearch}
-                            className="input-field w-full pl-10" 
+                            className="input-field w-full pl-10"
                         />
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
                     </div>
-                    
+
                     <motion.button
                         onClick={() => setIsRegisterOpen(true)}
                         className="btn-accent-profile w-full sm:w-auto flex items-center justify-center gap-2"
@@ -263,14 +281,14 @@ const Users = () => {
                         {loading ? (
                             <tr><td colSpan="5" className="text-center py-4 text-text-secondary">Đang tải...</td></tr>
                         ) : (
-                            users.map((user, index) => ( 
-                                <tr 
-                                    key={user._id} 
-                                    className={user.isBanned 
-                                        ? "bg-red-50 text-red-700 hover:bg-red-100 cursor-pointer" 
+                            users.map((user, index) => (
+                                <tr
+                                    key={user._id}
+                                    className={user.isBanned
+                                        ? "bg-red-50 text-red-700 hover:bg-red-100 cursor-pointer"
                                         : "hover:bg-gray-50 cursor-pointer"
                                     }
-                                    onClick={() => handleRowClick(user, index)} 
+                                    onClick={() => handleRowClick(user, index)}
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -292,10 +310,10 @@ const Users = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <motion.button
-                                            onClick={(e) => handleBanUser(e, user)} 
+                                            onClick={(e) => handleBanUser(e, user)}
                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors 
-                                                ${user.isBanned 
-                                                    ? "text-yellow-600 hover:bg-yellow-100" 
+                                                ${user.isBanned
+                                                    ? "text-yellow-600 hover:bg-yellow-100"
                                                     : "text-red-600 hover:bg-red-100"
                                                 }`}
                                             whileHover={{ scale: 1.05 }}
@@ -319,16 +337,16 @@ const Users = () => {
                 initial="hidden"
                 animate="visible"
                 transition={{ delay: 0.1 }}
-                className="md:hidden space-y-4" 
+                className="md:hidden space-y-4"
             >
                 {loading ? (
-                     <div className="text-center py-4 text-text-secondary">Đang tải...</div>
+                    <div className="text-center py-4 text-text-secondary">Đang tải...</div>
                 ) : (
-                    users.map((user, index) => ( 
+                    users.map((user, index) => (
                         <div
                             key={user._id}
                             className={`rounded-lg shadow-md p-4 cursor-pointer ${user.isBanned ? 'bg-red-50' : 'bg-surface'}`}
-                            onClick={() => handleRowClick(user, index)} 
+                            onClick={() => handleRowClick(user, index)}
                         >
                             <div className="flex items-center mb-4 pb-4 border-b border-gray-200">
                                 <img className="h-10 w-10 rounded-full object-cover" src={getAvatarUrl(user.avatar)} alt={user.name} />
@@ -337,7 +355,7 @@ const Users = () => {
                                     <div className={`text-sm ${user.isBanned ? 'text-red-500' : 'text-text-secondary'}`}>{user.email}</div>
                                 </div>
                                 {user.isBanned && (
-                                     <span className="ml-auto text-xs font-bold px-2 py-1 rounded-full bg-red-600 text-white">ĐÃ BỊ CẤM</span>
+                                    <span className="ml-auto text-xs font-bold px-2 py-1 rounded-full bg-red-600 text-white">ĐÃ BỊ CẤM</span>
                                 )}
                             </div>
                             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -350,13 +368,13 @@ const Users = () => {
                                     {formatOrderStatusBadges(user.orderStats)}
                                 </div>
                             </div>
-                            
+
                             <div>
                                 <motion.button
-                                    onClick={(e) => handleBanUser(e, user)} 
+                                    onClick={(e) => handleBanUser(e, user)}
                                     className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md transition-colors 
-                                        ${user.isBanned 
-                                            ? "text-yellow-700 bg-yellow-100 hover:bg-yellow-200" 
+                                        ${user.isBanned
+                                            ? "text-yellow-700 bg-yellow-100 hover:bg-yellow-200"
                                             : "text-red-600 bg-red-50 hover:bg-red-100"
                                         }`}
                                     whileHover={{ scale: 1.02 }}
@@ -371,13 +389,13 @@ const Users = () => {
                 )}
             </motion.div>
             {/* ================================== */}
-            
+
             {/* 5. Phân trang (Đã gọi) */}
             {!loading && totalPages > 1 && (
                 <Pagination
                     currentPage={page}
                     totalPages={totalPages}
-                    onPageChange={setPage} 
+                    onPageChange={setPage}
                 />
             )}
 
@@ -392,7 +410,7 @@ const Users = () => {
                     onPrev={handlePrevUser}
                 />
             )}
-            
+
             {/* 7. MODAL TẠO USER MỚI (GỌI REGISTER) */}
             <AnimatePresence>
                 {isRegisterOpen && (
@@ -402,15 +420,15 @@ const Users = () => {
                         initial="hidden"
                         animate="visible"
                         exit="hidden"
-                        onClick={() => setIsRegisterOpen(false)} 
+                        onClick={() => setIsRegisterOpen(false)}
                     >
                         <motion.div
-                            className="bg-surface rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" 
+                            className="bg-surface rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
                             variants={modalVariants}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            onClick={(e) => e.stopPropagation()} 
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between p-4 border-b border-gray-200">
                                 <h2 className="text-lg font-semibold text-text-primary">
@@ -422,10 +440,10 @@ const Users = () => {
                             </div>
                             <div className="p-6">
                                 {/* Truyền 'context' để ẩn ảnh và 'onSuccess' để tải lại list */}
-                                <Register 
+                                <Register
                                     onSuccess={handleRegisterSuccess}
                                     onClose={() => setIsRegisterOpen(false)}
-                                    context="admin" 
+                                    context="admin"
                                 />
                             </div>
                         </motion.div>

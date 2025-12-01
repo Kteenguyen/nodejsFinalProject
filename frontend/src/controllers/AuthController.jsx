@@ -8,15 +8,22 @@ export const AuthController = {
             if (response.status >= 400 || (response.data && !response.data.success)) {
                 throw new Error(response.data?.message || "Đăng nhập thất bại");
             }
-            
+
             // Lưu token vào sessionStorage (mỗi tab riêng biệt)
             if (response.data.token) {
                 sessionStorage.setItem('token', response.data.token);
                 console.log('✅ Token saved to sessionStorage');
             }
-            
+
             return response.data;
         } catch (error) {
+            // 👈 NÂNG CẤP: Kiểm tra status code 403 (ban) và truyền flag
+            if (error.response?.status === 403) {
+                const err = new Error(error.response?.data?.message || "Tài khoản đã bị cấm");
+                err.isBanned = true;
+                err.statusCode = 403;
+                throw err;
+            }
             const msg = error.response?.data?.message || error.message || "Đăng nhập thất bại";
             throw new Error(msg);
         }
@@ -27,13 +34,13 @@ export const AuthController = {
             const response = await api.post("/auth/register", formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            
+
             // Lưu token sau khi đăng ký thành công
             if (response.data.token) {
                 sessionStorage.setItem('token', response.data.token);
                 console.log('✅ Token saved to sessionStorage after registration');
             }
-            
+
             return response.data;
         } catch (error) {
             throw new Error(error.response?.data?.message || "Đăng ký thất bại");
@@ -43,15 +50,22 @@ export const AuthController = {
     googleLogin: async (accessToken) => {
         try {
             const response = await api.post("/auth/googleLogin", { accessToken });
-            
+
             // Lưu token sau khi đăng nhập Google thành công
             if (response.data.token) {
                 sessionStorage.setItem('token', response.data.token);
                 console.log('✅ Token saved to sessionStorage after Google login');
             }
-            
+
             return response.data;
         } catch (error) {
+            // 👈 NÂNG CẤP: Kiểm tra status code 403 (ban)
+            if (error.response?.status === 403) {
+                const err = new Error(error.response?.data?.message || "Tài khoản đã bị cấm");
+                err.isBanned = true;
+                err.statusCode = 403;
+                throw err;
+            }
             console.error("Google login failed:", error.response?.data || error.message);
             throw new Error(error.response?.data?.message || "Đăng nhập Google thất bại");
         }
@@ -60,15 +74,22 @@ export const AuthController = {
     facebookLogin: async (accessToken, userID) => {
         try {
             const response = await api.post("/auth/facebookLogin", { accessToken, userID });
-            
+
             // Lưu token sau khi đăng nhập Facebook thành công
             if (response.data.token) {
                 sessionStorage.setItem('token', response.data.token);
                 console.log('✅ Token saved to sessionStorage after Facebook login');
             }
-            
+
             return response.data;
         } catch (error) {
+            // 👈 NÂNG CẤP: Kiểm tra status code 403 (ban)
+            if (error.response?.status === 403) {
+                const err = new Error(error.response?.data?.message || "Tài khoản đã bị cấm");
+                err.isBanned = true;
+                err.statusCode = 403;
+                throw err;
+            }
             console.error("Facebook login failed:", error.response?.data || error.message);
             throw new Error(error.response?.data?.message || "Đăng nhập Facebook thất bại");
         }
