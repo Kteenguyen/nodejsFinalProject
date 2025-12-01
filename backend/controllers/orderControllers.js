@@ -191,6 +191,51 @@ exports.createOrder = async (req, res) => {
             `Đơn hàng ${createdOrder.orderId || createdOrder._id} của bạn đã được tiếp nhận. Tổng tiền: ${totalPrice.toLocaleString('vi-VN')}đ`
           );
           console.log('🔔 Đã tạo thông báo đơn hàng cho user:', accountId, 'notifId:', notif._id);
+
+          // GỬI EMAIL XÁC NHẬN ĐƠN HÀNG
+          try {
+            const user = await User.findById(accountId);
+            if (user && user.email) {
+              const itemsList = items.map(item => 
+                `- ${item.name || 'Sản phẩm'} x${item.quantity}: ${(item.price * item.quantity).toLocaleString('vi-VN')}đ`
+              ).join('\n');
+
+              const emailMessage = `
+Xin chào ${user.name || 'Quý khách'},
+
+Cảm ơn bạn đã đặt hàng tại PhoneWorld! Đơn hàng của bạn đã được tiếp nhận.
+
+📦 MÃ ĐƠN HÀNG: ${createdOrder.orderId || createdOrder._id}
+
+📋 CHI TIẾT ĐƠN HÀNG:
+${itemsList}
+
+💰 Tạm tính: ${subTotal.toLocaleString('vi-VN')}đ
+🚚 Phí vận chuyển: ${shippingPrice.toLocaleString('vi-VN')}đ
+💵 TỔNG CỘNG: ${totalPrice.toLocaleString('vi-VN')}đ
+
+📍 ĐỊA CHỈ GIAO HÀNG:
+${shippingAddress.recipientName}
+${shippingAddress.phoneNumber}
+${shippingAddress.street || ''}, ${shippingAddress.ward || ''}, ${shippingAddress.district || ''}, ${shippingAddress.city}
+
+Bạn có thể theo dõi đơn hàng tại: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/order/${createdOrder._id}
+
+Cảm ơn bạn đã tin tưởng PhoneWorld!
+---
+PhoneWorld Support Team
+              `.trim();
+
+              await sendEmail({
+                email: user.email,
+                subject: `[PhoneWorld] Xác nhận đơn hàng #${createdOrder.orderId || createdOrder._id}`,
+                message: emailMessage
+              });
+              console.log('📧 Đã gửi email xác nhận đơn hàng cho:', user.email);
+            }
+          } catch (emailErr) {
+            console.log("⚠️ Lỗi gửi email xác nhận đơn hàng:", emailErr.message);
+          }
         } catch (err) {
           console.log("❌ Lỗi tạo notification:", err.message, err.stack);
         }
@@ -630,6 +675,7 @@ exports.updateOrderStatus = async (req, res) => {
           'Cancelled': 'Đơn hàng đã hủy'
         };
         if (statusMessages[status]) {
+          // Tạo notification trong app
           await Notification.createOrderNotification(
             order.accountId,
             order._id,
@@ -637,6 +683,38 @@ exports.updateOrderStatus = async (req, res) => {
             `${statusMessages[status]} (Mã: ${order.orderId || order._id})`
           );
           console.log(`🔔 Đã gửi thông báo cập nhật trạng thái ${status} cho user:`, order.accountId);
+
+          // GỬI EMAIL THÔNG BÁO
+          try {
+            const user = await User.findById(order.accountId);
+            if (user && user.email) {
+              const emailSubject = `[PhoneWorld] ${statusTitles[status]} - Đơn hàng #${order.orderId || order._id}`;
+              const emailMessage = `
+Xin chào ${user.name || 'Quý khách'},
+
+${statusMessages[status]}
+
+📦 Mã đơn hàng: ${order.orderId || order._id}
+💰 Tổng tiền: ${order.totalPrice?.toLocaleString('vi-VN')}đ
+📍 Địa chỉ giao: ${order.shippingAddress?.street || ''}, ${order.shippingAddress?.district || ''}, ${order.shippingAddress?.city || ''}
+
+Bạn có thể xem chi tiết đơn hàng tại: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/order/${order._id}
+
+Cảm ơn bạn đã mua hàng tại PhoneWorld!
+---
+PhoneWorld Support Team
+              `.trim();
+
+              await sendEmail({
+                email: user.email,
+                subject: emailSubject,
+                message: emailMessage
+              });
+              console.log(`📧 Đã gửi email thông báo trạng thái ${status} cho: ${user.email}`);
+            }
+          } catch (emailErr) {
+            console.log("⚠️ Lỗi gửi email (không ảnh hưởng đơn hàng):", emailErr.message);
+          }
         }
       } catch (err) {
         console.log("Lỗi tạo notification cập nhật trạng thái:", err.message);
