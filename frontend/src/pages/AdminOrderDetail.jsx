@@ -313,12 +313,22 @@ export default function AdminOrderDetail() {
             <div className="space-y-3 text-sm">
                 <div>
                     <div className="text-gray-500 text-xs uppercase font-bold">Họ tên</div>
-                    <div className="font-medium text-lg text-gray-900">{order.guestInfo?.name || order.shippingAddress?.recipientName || "Khách vãng lai"}</div>
+                    <div className="font-medium text-lg text-gray-900">
+                        {order.accountId?.name || order.guestInfo?.name || order.shippingAddress?.recipientName || "Khách vãng lai"}
+                    </div>
                 </div>
                 <div>
                     <div className="text-gray-500 text-xs uppercase font-bold">Email</div>
-                    <div className="text-blue-600 break-all">{order.guestInfo?.email || "N/A"}</div>
+                    <div className="text-blue-600 break-all">
+                        {order.accountId?.email || order.guestInfo?.email || "N/A"}
+                    </div>
                 </div>
+                {order.accountId?.phone && (
+                    <div>
+                        <div className="text-gray-500 text-xs uppercase font-bold">Số điện thoại</div>
+                        <div className="text-gray-900">{order.accountId.phone}</div>
+                    </div>
+                )}
                 {order.accountId && (
                     <div className="bg-blue-50 p-2 rounded border border-blue-100 mt-2">
                         <div className="text-xs text-blue-500 font-bold uppercase">Tài khoản thành viên</div>

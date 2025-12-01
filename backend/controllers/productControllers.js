@@ -76,8 +76,9 @@ exports.getProducts = async (req, res) => {
         : { $regex: brand, $options: 'i' };
     }
 
-    // ===== Search theo keyword =====
+    // ===== Search theo keyword với Fuzzy Search =====
     const hasKeyword = String(keyword).trim().length > 0;
+    console.log('🔍 Search keyword:', keyword, 'hasKeyword:', hasKeyword);
     const useText = hasKeyword && (String(searchMode).toLowerCase() === 'text');
     if (hasKeyword) {
       if (useText) {
@@ -85,11 +86,36 @@ exports.getProducts = async (req, res) => {
       } else {
         const kw = String(keyword).trim()
           .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        baseMatch.$or = [
-          { productNameNorm: { $regex: kw, $options: 'i' } },
-          { productDescriptionNorm: { $regex: kw, $options: 'i' } },
-          { brandNorm: { $regex: kw, $options: 'i' } },
+        
+        // Tạo nhiều fuzzy patterns để tìm kiếm linh hoạt hơn
+        // Pattern 1: Cho phép có ký tự bất kỳ giữa các ký tự (thiếu chữ)
+        // "laptp" -> "l.*a.*p.*t.*p" sẽ match "laptop"
+        const fuzzyPattern1 = kw.split('').join('.*');
+        
+        // Pattern 2: Cho phép skip 1-2 ký tự (gõ thừa hoặc sai)
+        const fuzzyPattern2 = kw.split('').join('.?');
+        
+        // Pattern 3: Tìm theo các ký tự consonant chính (bỏ qua nguyên âm)
+        const consonants = kw.replace(/[aeiou]/gi, '');
+        const consonantPattern = consonants.length >= 3 ? consonants.split('').join('.*') : null;
+        
+        // Dùng đúng tên field trong schema: productName, productDescription, brand
+        const orConditions = [
+          { productName: { $regex: kw, $options: 'i' } },              // Exact match tên
+          { productDescription: { $regex: kw, $options: 'i' } },      // Exact match mô tả
+          { brand: { $regex: kw, $options: 'i' } },                    // Exact match brand
+          { productName: { $regex: fuzzyPattern1, $options: 'i' } },  // Fuzzy - thiếu ký tự
+          { productName: { $regex: fuzzyPattern2, $options: 'i' } },  // Fuzzy - thừa ký tự
+          { brand: { $regex: fuzzyPattern1, $options: 'i' } },        // Fuzzy brand
         ];
+        
+        // Thêm consonant pattern nếu có đủ phụ âm
+        if (consonantPattern) {
+          orConditions.push({ productName: { $regex: consonantPattern, $options: 'i' } });
+          orConditions.push({ brand: { $regex: consonantPattern, $options: 'i' } });
+        }
+        
+        baseMatch.$or = orConditions;
       }
     }
 
@@ -643,22 +669,72 @@ exports.searchProducts = async (req, res) => {
       return res.json({ success: true, products: [] });
     }
 
-    // Tạo Regex tìm kiếm không phân biệt hoa thường (case-insensitive)
-    const regex = new RegExp(keyword, 'i');
-
-    const products = await Product.find({
+    const searchTerm = keyword.trim();
+    const searchTermNorm = searchTerm.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    
+    // Tạo các fuzzy patterns
+    const fuzzyPattern1 = searchTermNorm.split('').join('.*');  // Cho phép thiếu ký tự: "lptp" -> "l.*p.*t.*p" matches "laptop"
+    const fuzzyPattern2 = searchTermNorm.split('').join('.?');  // Cho phép thừa ký tự
+    
+    // Tạo regex objects
+    const exactRegex = new RegExp(searchTerm, 'i');
+    const fuzzyRegex1 = new RegExp(fuzzyPattern1, 'i');
+    const fuzzyRegex2 = new RegExp(fuzzyPattern2, 'i');
+    
+    // Tìm với tất cả patterns cùng lúc - dùng đúng field trong schema
+    let products = await Product.find({
       $or: [
-        { name: regex },
-        { productName: regex }, // Support cả 2 tên trường nếu có
-        { brand: regex },
-        { code: regex }
+        // Exact match
+        { productName: exactRegex },
+        { brand: exactRegex },
+        { productDescription: exactRegex },
+        // Fuzzy match - thiếu ký tự
+        { productName: fuzzyRegex1 },
+        { brand: fuzzyRegex1 },
+        // Fuzzy match - thừa ký tự  
+        { productName: fuzzyRegex2 },
+        { brand: fuzzyRegex2 },
       ]
     })
-    // ⚡ CHỈ LẤY CÁC TRƯỜNG CẦN THIẾT ĐỂ TỐI ƯU TỐC ĐỘ
-    .select('name productName image images price slug productId _id brand')
-    .limit(10); // Giới hạn 10 kết quả gợi ý
+    .select('productName productDescription images price productId _id brand variants')
+    .limit(10);
 
-    return res.json({ success: true, products });
+    // Fallback: Tìm theo từng từ riêng lẻ
+    if (products.length === 0 && searchTerm.includes(' ')) {
+      const words = searchTerm.split(/\s+/).filter(w => w.length >= 2);
+      const wordPatterns = words.map(w => new RegExp(w, 'i'));
+      
+      products = await Product.find({
+        $or: wordPatterns.map(pattern => ({ productName: pattern }))
+      })
+      .select('productName productDescription images price productId _id brand variants')
+      .limit(10);
+    }
+
+    // Fallback: Tìm theo ký tự đầu của mỗi từ (viết tắt)
+    if (products.length === 0 && searchTerm.length >= 2) {
+      // VD: "atg" -> tìm "ASUS TUF Gaming"
+      const abbreviationPattern = searchTerm.split('').map(c => `\\b${c}`).join('.*');
+      const abbreviationRegex = new RegExp(abbreviationPattern, 'i');
+      
+      products = await Product.find({ productName: abbreviationRegex })
+        .select('productName productDescription images price productId _id brand variants')
+        .limit(10);
+    }
+
+    // Map để tính giá từ variants và chuẩn hóa response
+    const productsWithPrice = products.map(p => {
+      const doc = p.toObject();
+      // Thêm alias name = productName để FE dùng được
+      doc.name = doc.productName;
+      // Tính minPrice từ variants nếu price không có
+      if (!doc.price && doc.variants && doc.variants.length > 0) {
+        doc.price = Math.min(...doc.variants.map(v => v.price || 0));
+      }
+      return doc;
+    });
+
+    return res.json({ success: true, products: productsWithPrice });
 
   } catch (e) {
     console.error("Search Error:", e);

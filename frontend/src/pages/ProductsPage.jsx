@@ -28,6 +28,7 @@ export default function ProductsPage() {
 
   // --- FILTER STATE ---
   const [filter, setFilter] = useState({
+    keyword: searchParams.get("search") || "", // Đọc từ khóa tìm kiếm từ URL
     brand: (searchParams.get("brand") || "").split(",").filter(Boolean),
     minPrice: searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined,
     maxPrice: searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined,
@@ -38,6 +39,14 @@ export default function ProductsPage() {
     page: Number(searchParams.get("page") || 1),
     limit: Number(searchParams.get("limit") || 12),
   });
+
+  // Sync URL search params to filter state (khi navigate từ Header search)
+  useEffect(() => {
+    const urlKeyword = searchParams.get("search") || "";
+    if (urlKeyword !== filter.keyword) {
+      setFilter(prev => ({ ...prev, keyword: urlKeyword, page: 1 }));
+    }
+  }, [searchParams]);
 
   // 1. Load Facets
   useEffect(() => {
@@ -61,6 +70,7 @@ export default function ProductsPage() {
   // 2. Memo query params
   const queryParams = useMemo(() => {
     const qp = new URLSearchParams();
+    if (filter.keyword) qp.set("search", filter.keyword); // Thêm từ khóa tìm kiếm
     if (filter.brand?.length) qp.set("brand", filter.brand.join(","));
     if (filter.categoryId?.length) qp.set("categoryId", filter.categoryId.join(","));
     if (filter.minPrice != null) qp.set("minPrice", filter.minPrice);
@@ -144,9 +154,24 @@ export default function ProductsPage() {
             <main>
                 {/* TOOLBAR (Thanh công cụ) */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <h1 className="text-lg font-bold text-gray-800">
-                        Sản phẩm <span className="text-sm font-normal text-gray-500 ml-1">({meta.total} kết quả)</span>
-                    </h1>
+                    <div>
+                        <h1 className="text-lg font-bold text-gray-800">
+                            {filter.keyword ? (
+                                <>Kết quả tìm kiếm cho: <span className="text-blue-600">"{filter.keyword}"</span></>
+                            ) : (
+                                <>Sản phẩm</>
+                            )}
+                            <span className="text-sm font-normal text-gray-500 ml-2">({meta.total} kết quả)</span>
+                        </h1>
+                        {filter.keyword && (
+                            <button 
+                                onClick={() => setFilter(s => ({...s, keyword: "", page: 1}))}
+                                className="text-sm text-blue-600 hover:underline mt-1"
+                            >
+                                ← Xem tất cả sản phẩm
+                            </button>
+                        )}
+                    </div>
 
                     <div className="flex items-center gap-3">
                         <div className="relative">
@@ -191,10 +216,34 @@ export default function ProductsPage() {
                 ) : items.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 bg-white rounded-xl border border-dashed border-gray-300 shadow-sm">
                         <img src="/img/empty-box.png" onError={(e) => e.target.style.display='none'} className="w-32 opacity-50 mb-4" alt="Empty"/>
-                        <p className="text-gray-500 text-lg font-medium">Không tìm thấy sản phẩm nào.</p>
-                        <button onClick={() => setFilter(s => ({...s, brand: [], categoryId: [], minPrice: undefined, maxPrice: undefined}))} className="mt-4 text-blue-600 font-medium hover:underline">
-                            Xóa bộ lọc để thử lại
-                        </button>
+                        {filter.keyword ? (
+                            <>
+                                <p className="text-gray-700 text-lg font-medium">
+                                    Không tìm thấy sản phẩm nào với từ khóa "{filter.keyword}"
+                                </p>
+                                <p className="text-gray-500 text-sm mt-2">Gợi ý:</p>
+                                <ul className="text-gray-500 text-sm list-disc list-inside mt-1">
+                                    <li>Kiểm tra chính tả của từ khóa</li>
+                                    <li>Thử dùng từ khóa ngắn hơn hoặc tổng quát hơn</li>
+                                    <li>Thử tìm kiếm theo tên thương hiệu hoặc loại sản phẩm</li>
+                                </ul>
+                                <div className="flex gap-4 mt-6">
+                                    <button 
+                                        onClick={() => setFilter(s => ({...s, keyword: "", page: 1}))}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                    >
+                                        Xem tất cả sản phẩm
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-gray-500 text-lg font-medium">Không tìm thấy sản phẩm nào.</p>
+                                <button onClick={() => setFilter(s => ({...s, brand: [], categoryId: [], minPrice: undefined, maxPrice: undefined}))} className="mt-4 text-blue-600 font-medium hover:underline">
+                                    Xóa bộ lọc để thử lại
+                                </button>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <div className={

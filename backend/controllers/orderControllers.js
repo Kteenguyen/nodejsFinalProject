@@ -330,18 +330,28 @@ exports.listOrders = async (req, res) => {
     if (status && status !== 'ALL' && status !== '') filterQuery.status = status;
 
     const [orders, totalOrders] = await Promise.all([
-      Order.find(filterQuery).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Order.find(filterQuery)
+        .populate('accountId', 'name email phone userName') // Populate thông tin user
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       Order.countDocuments(filterQuery)
     ]);
 
     const formattedOrders = orders.map(o => {
         let customerName = "Khách vãng lai";
         let customerEmail = "N/A";
-        if (o.guestInfo && o.guestInfo.name) {
+        
+        // Ưu tiên lấy từ accountId (user đã đăng nhập)
+        if (o.accountId && typeof o.accountId === 'object') {
+            customerName = o.accountId.name || o.accountId.userName || "Thành viên";
+            customerEmail = o.accountId.email || "";
+        } 
+        // Fallback: lấy từ guestInfo
+        else if (o.guestInfo && o.guestInfo.name) {
             customerName = o.guestInfo.name;
             customerEmail = o.guestInfo.email || "";
-        } else if (o.accountId) {
-            customerName = "Thành viên";
         }
         return {
             _id: o._id,
@@ -657,10 +667,16 @@ exports.updateOrderStatus = async (req, res) => {
     if (status) $set.status = status;
     const pushHistory = { statusHistory: { status: status || 'Updated', updatedAt: new Date() } };
 
-    let updatedOrder = await Order.findOneAndUpdate(query, { $set, $push: pushHistory }, { new: true });
+    // Update và populate lại để trả về đầy đủ thông tin
+    let updatedOrder = await Order.findOneAndUpdate(query, { $set, $push: pushHistory }, { new: true })
+      .populate('accountId', 'name email phone avatar userName')
+      .populate('items.productId', 'name images price');
+
+    // Lấy accountId để gửi notification/email (có thể là ObjectId hoặc object)
+    const accountIdForNotif = order.accountId?._id || order.accountId;
 
     // TẠO THÔNG BÁO KHI CẬP NHẬT TRẠNG THÁI
-    if (status && order.accountId && status !== oldStatus) {
+    if (status && accountIdForNotif && status !== oldStatus) {
       try {
         const statusMessages = {
           'Confirmed': 'Đơn hàng đã được xác nhận và đang được chuẩn bị.',
@@ -677,16 +693,16 @@ exports.updateOrderStatus = async (req, res) => {
         if (statusMessages[status]) {
           // Tạo notification trong app
           await Notification.createOrderNotification(
-            order.accountId,
+            accountIdForNotif,
             order._id,
             statusTitles[status],
             `${statusMessages[status]} (Mã: ${order.orderId || order._id})`
           );
-          console.log(`🔔 Đã gửi thông báo cập nhật trạng thái ${status} cho user:`, order.accountId);
+          console.log(`🔔 Đã gửi thông báo cập nhật trạng thái ${status} cho user:`, accountIdForNotif);
 
           // GỬI EMAIL THÔNG BÁO
           try {
-            const user = await User.findById(order.accountId);
+            const user = await User.findById(accountIdForNotif);
             if (user && user.email) {
               const emailSubject = `[PhoneWorld] ${statusTitles[status]} - Đơn hàng #${order.orderId || order._id}`;
               const emailMessage = `
