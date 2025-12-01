@@ -49,11 +49,24 @@ const AddressForm = ({
 }) => {
 
     // === HÀM XỬ LÝ KHI CHỌN ===
-    // (Lấy cả 'code' và 'name' từ event)
-    const handleSelectChange = (handler) => (e) => {
+    // Nhận event từ select, trích code và name
+    const handleProvinceSelect = (e) => {
         const selectedCode = e.target.value;
         const selectedName = e.target.options[e.target.selectedIndex].text;
-        handler(selectedCode, selectedName);
+        // Gọi handler với event-like object
+        onProvinceChange({ target: { value: selectedCode } });
+    };
+
+    const handleDistrictSelect = (e) => {
+        const selectedCode = e.target.value;
+        const selectedName = e.target.options[e.target.selectedIndex].text;
+        onDistrictChange({ target: { value: selectedCode } });
+    };
+
+    const handleWardSelect = (e) => {
+        const selectedCode = e.target.value;
+        const selectedName = e.target.options[e.target.selectedIndex].text;
+        onWardChange({ target: { value: selectedCode } });
     };
 
     return (
@@ -64,9 +77,8 @@ const AddressForm = ({
                 <select
                     id="province"
                     name="province"
-                    // === FIX LỖI: KIỂM TRA NULL TRƯỚC KHI TRUY CẬP .code ===
-                    value={selectedProvince?.code || ''}
-                    onChange={handleSelectChange(onProvinceChange)}
+                    value={selectedProvince || ''}
+                    onChange={handleProvinceSelect}
                     required
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -83,11 +95,10 @@ const AddressForm = ({
                 <select
                     id="district"
                     name="district"
-                    // === FIX LỖI (DÒNG 63): KIỂM TRA NULL TRƯỚC KHI TRUY CẬP .code ===
-                    value={selectedDistrict?.code || ''}
-                    onChange={handleSelectChange(onDistrictChange)}
+                    value={selectedDistrict || ''}
+                    onChange={handleDistrictSelect}
                     required
-                    disabled={districts.length === 0} // Vô hiệu hóa nếu chưa có Tỉnh
+                    disabled={districts.length === 0}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                     <option value="" disabled>-- Chọn Quận/Huyện --</option>
@@ -103,11 +114,10 @@ const AddressForm = ({
                 <select
                     id="ward"
                     name="ward"
-                    // === FIX LỖI: KIỂM TRA NULL TRƯỚC KHI TRUY CẬP .code ===
-                    value={selectedWard?.code || ''}
-                    onChange={handleSelectChange(onWardChange)}
+                    value={selectedWard || ''}
+                    onChange={handleWardSelect}
                     required
-                    disabled={wards.length === 0} // Vô hiệu hóa nếu chưa có Huyện
+                    disabled={wards.length === 0}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                     <option value="" disabled>-- Chọn Phường/Xã --</option>

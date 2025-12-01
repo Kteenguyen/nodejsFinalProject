@@ -1,21 +1,23 @@
 // frontend/src/pages/Auth/RegisterAddress.jsx
 import { useNavigate } from "react-router-dom";
 import AddressForm from "../components/Home/AddressForm"; // Lưu ý check đường dẫn này
-import { AuthController } from "../controllers/AuthController"; 
-import { UserController } from "../controllers/userController"; 
-import { useState, useEffect, useCallback } from "react"; 
+import Calendar from "../components/common/Calendar"; // 👈 Thêm Calendar
+import { AuthController } from "../controllers/AuthController";
+import { UserController } from "../controllers/userController";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
-import {  toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AuthSide from "../components/common/AuthSide"; // Import Component mới
 
 const RegisterAddress = () => {
     const navigate = useNavigate();
-    const { user, checkAuthStatus } = useAuth(); 
-    
-    // State cho form (Họ tên, SĐT)
+    const { user } = useAuth();
+
+    // State cho form (Họ tên, SĐT, Ngày sinh)
     const [fullName, setFullName] = useState(user?.name || "");
     const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
+    const [dateOfBirth, setDateOfBirth] = useState("");
 
     // State cho AddressForm
     const [addressDetail, setAddressDetail] = useState("");
@@ -35,9 +37,11 @@ const RegisterAddress = () => {
         const fetchProvinces = async () => {
             try {
                 const data = await UserController.getProvinces();
+                console.log('📦 Provinces data:', data);
+                console.log('📦 First province:', data?.[0]);
                 setProvinces(Array.isArray(data) ? data : []);
             } catch (error) {
-                console.error("Lỗi tải tỉnh thành:", error);
+                console.error("❌ Lỗi tải tỉnh thành:", error);
             }
         };
         fetchProvinces();
@@ -82,45 +86,90 @@ const RegisterAddress = () => {
     }, []);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-
-        if (!user || !user._id) {
-            toast.error("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            const provinceName = provinces.find(p => p.id === selectedProvince)?.full_name || "";
-            const districtName = districts.find(d => d.id === selectedDistrict)?.full_name || "";
-            const wardName = wards.find(w => w.id === selectedWard)?.full_name || "";
+            e.preventDefault();
+            setIsLoading(true);
 
-            const fullAddress = `${addressDetail}, ${wardName}, ${districtName}, ${provinceName}`;
+            if (!user || !user._id) {
+                toast.error("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
+                setIsLoading(false);
+                return;
+            }
 
+            // Validate required fields
+            if (!fullName.trim()) {
+                toast.error("Vui lòng nhập họ tên.");
+                setIsLoading(false);
+                return;
+            }
+            if (!phoneNumber.trim()) {
+                toast.error("Vui lòng nhập số điện thoại.");
+                setIsLoading(false);
+                return;
+            }
+            if (!addressDetail.trim()) {
+                toast.error("Vui lòng nhập chi tiết địa chỉ.");
+                setIsLoading(false);
+                return;
+            }
+            if (!selectedProvince) {
+                toast.error("Vui lòng chọn Tỉnh/Thành phố.");
+                setIsLoading(false);
+                return;
+            }
+            if (!selectedDistrict) {
+                toast.error("Vui lòng chọn Quận/Huyện.");
+                setIsLoading(false);
+                return;
+            }
+            if (!selectedWard) {
+                toast.error("Vui lòng chọn Phường/Xã.");
+                setIsLoading(false);
+                return;
+            }
+
+            // Tìm tên tỉnh/quận/phường từ code (convert string to number)
+            const provinceCode = parseInt(selectedProvince, 10);
+            const districtCode = parseInt(selectedDistrict, 10);
+            const wardCode = parseInt(selectedWard, 10);
+
+            const provinceName = provinces.find(p => p.code === provinceCode)?.name || "";
+            const districtName = districts.find(d => d.code === districtCode)?.name || "";
+            const wardName = wards.find(w => w.code === wardCode)?.name || "";
+
+            console.log('📍 Sending address:', {
+                selectedProvince, selectedDistrict, selectedWard,
+                provinceName, districtName, wardName, addressDetail, fullName, phoneNumber
+            });
+
+            if (!provinceName || !districtName || !wardName) {
+                toast.error("Không tìm thấy thông tin Tỉnh/Quận/Phường. Vui lòng chọn lại.");
+                setIsLoading(false);
+                return;
+            }
+
+            // Format data theo cấu trúc mà backend mong đợi
             const addressData = {
-                userId: user._id,
-                name: fullName,
-                phone: phoneNumber,
-                province: provinceName,
+                fullName: fullName.trim(),
+                phoneNumber: phoneNumber.trim(),
+                address: addressDetail.trim(),
+                city: provinceName,
                 district: districtName,
                 ward: wardName,
-                specificAddress: addressDetail,
                 isDefault: isDefault
             };
 
-            console.log("Sending address data:", addressData); 
+            console.log("📦 Sending address data:", addressData);
             await UserController.addAddress(addressData);
-            
+
             toast.success("Lưu địa chỉ thành công!");
-            await checkAuthStatus(); 
 
             setTimeout(() => {
                 navigate("/");
             }, 1500);
 
         } catch (error) {
-            console.error("Lỗi submit:", error);
+            console.error("❌ Lỗi submit:", error);
             toast.error(error.message || "Có lỗi xảy ra khi lưu địa chỉ");
         } finally {
             setIsLoading(false);
@@ -133,14 +182,14 @@ const RegisterAddress = () => {
 
     return (
         <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-             
+
             {/* SỬ DỤNG COMPONENT MỚI */}
             {/* Bạn có thể dùng chung hình register hoặc một hình khác như address-illustration */}
             <AuthSide imgSrc="/img/register-illustration.svg" />
 
             {/* Right Side - Form */}
             <div className="flex flex-col justify-start items-center w-full md:w-1/2 px-8 py-10 overflow-y-auto bg-white">
-                
+
                 {/* Logo Mobile */}
                 <div className="md:hidden absolute top-6 left-6 flex items-center space-x-2">
                     <img src="/img/logo.svg" alt="Logo" className="h-24 w-auto" />
@@ -180,6 +229,15 @@ const RegisterAddress = () => {
                                     />
                                 </div>
                             </div>
+
+                            {/* Ngày sinh - Calendar Component */}
+                            <Calendar
+                                value={dateOfBirth}
+                                onChange={setDateOfBirth}
+                                label="Ngày sinh (Tùy chọn)"
+                                placeholder="Chọn ngày sinh..."
+                                enableTime={false}
+                            />
                         </div>
 
                         {/* Form Địa chỉ - Component con */}
@@ -187,11 +245,11 @@ const RegisterAddress = () => {
                             provinces={provinces}
                             districts={districts}
                             wards={wards}
-                            
+
                             selectedProvince={selectedProvince}
                             selectedDistrict={selectedDistrict}
                             selectedWard={selectedWard}
-                            
+
                             onProvinceChange={handleProvinceChange}
                             onDistrictChange={handleDistrictChange}
                             onWardChange={handleWardChange}
@@ -209,7 +267,7 @@ const RegisterAddress = () => {
                         <div className="mt-8 flex flex-col gap-3 pt-4">
                             <button
                                 type="submit"
-                                disabled={isLoading || !selectedProvince || !selectedDistrict || !selectedWard} 
+                                disabled={isLoading || !selectedProvince || !selectedDistrict || !selectedWard}
                                 className="w-full bg-blue-600 text-white rounded-md py-3 font-medium hover:bg-blue-700 transition disabled:bg-blue-300"
                             >
                                 {isLoading ? "Đang lưu..." : "Lưu địa chỉ"}

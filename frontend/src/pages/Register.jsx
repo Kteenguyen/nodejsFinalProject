@@ -2,15 +2,15 @@
 import { AuthController } from "../controllers/AuthController";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Link } from "react-router-dom"; 
+import { Link } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
 import { FiEye, FiEyeOff } from "react-icons/fi";
-import {  toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AuthSide from "../components/common/AuthSide";
 
 const Register = ({ onSuccess, onClose, context }) => {
-    
+
     // 1. Xác định context
     const isModal = context === 'admin';
 
@@ -36,68 +36,94 @@ const Register = ({ onSuccess, onClose, context }) => {
 
     // 3. Handlers
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        try {
+            if (!e?.target) {
+                console.warn('⚠️ handleChange: e.target is undefined', e);
+                return;
+            }
+            setFormData({
+                ...formData,
+                [e.target.name]: e.target.value
+            });
+        } catch (err) {
+            console.error('❌ handleChange error:', err);
+        }
     };
 
     const handleAvatarChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setAvatarFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarPreview(reader.result);
+        try {
+            if (!e?.target?.files) {
+                console.warn('⚠️ handleAvatarChange: e.target.files is undefined', e);
+                return;
             }
-            reader.readAsDataURL(file);
-        } else {
-            setAvatarFile(null);
-            setAvatarPreview(null);
+            const file = e.target.files[0];
+            if (file) {
+                setAvatarFile(file);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setAvatarPreview(reader.result);
+                }
+                reader.readAsDataURL(file);
+            } else {
+                setAvatarFile(null);
+                setAvatarPreview(null);
+            }
+        } catch (err) {
+            console.error('❌ handleAvatarChange error:', err);
         }
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-
-        if (formData.password !== formData.confirmPassword) {
-            toast.error("Mật khẩu và xác nhận mật khẩu không khớp!");
-            setLoading(false);
-            return;
-        }
-
         try {
-            const registerFormData = new FormData();
-            for (const key in formData) {
-                if (key !== 'confirmPassword') {
-                    registerFormData.append(key, formData[key]);
+            if (!e?.preventDefault) {
+                console.warn('⚠️ handleSubmit: e object is invalid', e);
+                return;
+            }
+            e.preventDefault();
+            setLoading(true);
+
+            if (formData.password !== formData.confirmPassword) {
+                toast.error("Mật khẩu và xác nhận mật khẩu không khớp!");
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const registerFormData = new FormData();
+                for (const key in formData) {
+                    if (key !== 'confirmPassword') {
+                        registerFormData.append(key, formData[key]);
+                    }
                 }
-            }
-            if (avatarFile) {
-                registerFormData.append('avatar', avatarFile);
-            }
+                if (avatarFile) {
+                    registerFormData.append('avatar', avatarFile);
+                }
 
-            const data = await AuthController.register(registerFormData);
+                const data = await AuthController.register(registerFormData);
 
-            // Backend trả về { success, user, ... }
-            if (data?.user) {
-                if (isModal && onSuccess) {
-                    onSuccess();
+                // Backend trả về { success, user, ... }
+                if (data?.user) {
+                    if (isModal && onSuccess) {
+                        onSuccess();
+                    } else {
+                        await login(data.user);
+                        toast.success("Đăng ký thành công! Hãy thêm địa chỉ của bạn.");
+                        setTimeout(() => {
+                            navigate("/register-address");
+                        }, 2000);
+                    }
                 } else {
-                    await login(data.user);
-                    toast.success("Đăng ký thành công! Hãy thêm địa chỉ của bạn.");
-                    setTimeout(() => {
-                        navigate("/register-address");
-                    }, 2000);
+                    throw new Error(data?.message || "Đăng ký thất bại");
                 }
-            } else {
-                throw new Error(data?.message || "Đăng ký thất bại");
-            }
 
-        } catch (error) {
-            toast.error(error.message);
-        } finally {
+            } catch (error) {
+                console.error('❌ handleSubmit register error:', error);
+                toast.error(error.message);
+            } finally {
+                setLoading(false);
+            }
+        } catch (err) {
+            console.error('❌ handleSubmit outer error:', err);
             setLoading(false);
         }
     };
@@ -256,7 +282,7 @@ const Register = ({ onSuccess, onClose, context }) => {
     );
 
     // === 5. RENDER CHÍNH ===
-    
+
     // Trường hợp Modal (Admin)
     if (isModal) {
         return (
