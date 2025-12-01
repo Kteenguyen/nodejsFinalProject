@@ -46,6 +46,7 @@ export default function ProductsPage() {
     if (urlKeyword !== filter.keyword) {
       setFilter(prev => ({ ...prev, keyword: urlKeyword, page: 1 }));
     }
+    // eslint-disable-next-line
   }, [searchParams]);
 
   // 1. Load Facets
@@ -65,6 +66,7 @@ export default function ProductsPage() {
       }
     })();
     return () => ctrl.abort();
+    // eslint-disable-next-line
   }, []);
 
   // 2. Memo query params
@@ -103,6 +105,7 @@ export default function ProductsPage() {
       } finally {
         setLoading(false);
       }
+      // eslint-disable-next-line
     })();
     
     window.scrollTo({ top: 0, behavior: 'smooth' });

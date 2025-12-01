@@ -51,7 +51,12 @@ const Login = () => {
             const data = await AuthController.login(identifier, password);
             handleLoginSuccess(data.user); // 👈 Gọi hàm chung
         } catch (error) {
-            toast.error(error.message);
+            // 👈 NÂNG CẤP: Kiểm tra flag isBanned chính xác hơn
+            if (error.isBanned) {
+                toast.error("Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ");
+            } else {
+                toast.error(error.message);
+            }
         }
     };
     // 2. Đăng nhập Google
@@ -62,7 +67,12 @@ const Login = () => {
                 const data = await AuthController.googleLogin(tokenResponse.access_token);
                 handleLoginSuccess(data.user); // 👈 Gọi hàm chung
             } catch (error) {
-                toast.error("Lỗi đăng nhập Google: " + error.message);
+                // 👈 NÂNG CẤP: Kiểm tra flag isBanned chính xác hơn
+                if (error.isBanned) {
+                    toast.error("Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ");
+                } else {
+                    toast.error("Lỗi đăng nhập Google: " + error.message);
+                }
             }
         },
         onError: () => toast.error("Đăng nhập Google thất bại"),
@@ -76,7 +86,12 @@ const Login = () => {
                 const data = await AuthController.facebookLogin(response.accessToken, response.userID);
                 handleLoginSuccess(data.user); // 👈 Gọi hàm chung
             } catch (error) {
-                toast.error(error.message || "Đăng nhập Facebook thất bại!");
+                // 👈 NÂNG CẤP: Kiểm tra flag isBanned chính xác hơn
+                if (error.isBanned) {
+                    toast.error("Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ");
+                } else {
+                    toast.error(error.message || "Đăng nhập Facebook thất bại!");
+                }
             }
         } else {
             toast.error("Không lấy được access token từ Facebook.");

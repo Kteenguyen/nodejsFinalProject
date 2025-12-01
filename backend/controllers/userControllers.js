@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const asyncHandler = require('express-async-handler'); // dùng để bắt lỗi async
 const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken'); 
+const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 // =============================================================
 // HÀM DÀNH CHO USER
@@ -235,7 +235,7 @@ exports.updateShippingAddress = async (req, res) => {
 
         const user = await User.findById(req.user._id);
         if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
-        
+
         // Tìm địa chỉ bằng _id (ObjectId được chuyển thành string)
         const address = user.shippingAddresses.id(addressId);
 
@@ -271,7 +271,7 @@ exports.deleteAddress = asyncHandler(async (req, res) => {
         res.status(404);
         throw new Error('Không tìm thấy địa chỉ.');
     }
-    
+
     const wasDefault = address.isDefault;
     address.deleteOne(); // Xóa sub-document
 
@@ -416,16 +416,16 @@ exports.getUserById = async (req, res) => {
  */
 exports.updateUserByAdmin = async (req, res) => {
     try {
-        const { name, email, phoneNumber, dateOfBirth, role, loyaltyPoints } = req.body; 
-        
+        const { name, email, phoneNumber, dateOfBirth, role, loyaltyPoints } = req.body;
+
         // 2. Sửa logic: Dùng findById(req.params.id)
-        const user = await User.findById(req.params.id); 
+        const user = await User.findById(req.params.id);
         // ============================
 
         if (!user) {
             return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
         }
-        
+
         // (Cập nhật các trường...)
         user.name = name || user.name;
         user.email = email || user.email;
@@ -438,7 +438,7 @@ exports.updateUserByAdmin = async (req, res) => {
 
         const updatedUser = await user.save();
         // ... (trả về response)
-        
+
     } catch (error) {
         res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
     }
@@ -495,11 +495,15 @@ exports.banUser = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Bạn không thể tự cấm chính mình.');
     }
-    
+
     // 3. Đảo ngược trạng thái cấm (toggle)
-    user.isBanned = !user.isBanned; 
-    
+    // 👈 FIX: Nếu isBanned là undefined (user cũ), mặc định thành false trước khi toggle
+    const currentBanStatus = user.isBanned || false;
+    user.isBanned = !currentBanStatus;
+
     await user.save();
+
+    console.log(`🔄 Ban toggle for user ${user.email}: ${currentBanStatus} -> ${user.isBanned}`);
 
     res.status(200).json({
         success: true,

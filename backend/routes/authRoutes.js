@@ -11,10 +11,12 @@ const {
     forgotPassword,
     changePassword,
     resetPassword,
-    emergencyReset
- } = require('../controllers/authController.js');
+    emergencyReset,
+    checkBanStatus,
+    migrateIsBanned
+} = require('../controllers/authController.js');
 
-const { protect } = require("../middleware/authMiddleware.js");
+const { protect, admin } = require("../middleware/authMiddleware.js");
 
 // === CÁC ROUTE CÔNG KHAI ===
 
@@ -35,5 +37,7 @@ router.post("/logout", logout);
 router.post('/forgot-password', forgotPassword);
 router.put('/change-password', protect, changePassword);
 router.put('/reset-password/:token', resetPassword);
+router.post('/check-ban-status', checkBanStatus); // 👈 Route kiểm tra ban
+router.post('/migrate-is-banned', protect, admin, migrateIsBanned); // 👈 Route migrate (chỉ admin)
 router.get('/emergency-reset', emergencyReset); // Nhớ import hàm ở trên
 module.exports = router;
