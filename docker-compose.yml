@@ -57,12 +57,18 @@ services:
       MONGODB_URI: mongodb://admin:phoneworld123@mongodb:27017/phoneworld?authSource=admin
       ELASTIC_URL: http://elasticsearch:9200
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      JWT_EXPIRE: 7d
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
       CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASS: ${EMAIL_PASS}
+      EMAIL_FROM: ${EMAIL_FROM:-"PhoneWorld Support" <noreply@phoneworld.com>}
+      GOOGLE_CLIENT_ID: ${REACT_APP_GOOGLE_CLIENT_ID}
+      FACEBOOK_APP_ID: ${REACT_APP_FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE}
       VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET}
       VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
