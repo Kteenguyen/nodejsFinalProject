@@ -1,15 +1,16 @@
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
     ChevronLeft, LogOut, ClipboardList, Store, Ticket, List, 
-    ChevronRight, Gift, Zap // Import icon Flash Sale
+    ChevronRight, Gift, Zap, BarChart3 // Import icon Flash Sale & Statistics
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 
 // --- CẤU HÌNH MENU ---
-const statisticsItems = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/admin/dashboard" },
+const overviewItems = [
+    { label: "Tổng quan", icon: LayoutDashboard, path: "/admin/dashboard" },
+    { label: "Thống kê", icon: BarChart3, path: "/admin/statistics" },
 ];
 
 const managementItems = [
@@ -20,10 +21,6 @@ const managementItems = [
     { label: "Mã giảm giá", icon: Ticket, path: "/admin/discounts" },
     { label: "Quà đổi điểm", icon: Gift, path: "/admin/loyalty-rewards" },
     { label: "Flash Sale", icon: Zap, path: "/admin/flash-sales" },
-];
-
-const otherItems = [
-    { label: "Cài đặt", icon: Settings, path: "/admin/settings" },
 ];
 
 const SideBar = ({ onToggle }) => {
@@ -43,11 +40,6 @@ const SideBar = ({ onToggle }) => {
     useEffect(() => {
         setActive(location.pathname);
     }, [location.pathname]);
-
-    // --- Xác định loại trang hiện tại ---
-    const isStatisticsPage = location.pathname === '/admin/dashboard';
-    const isManagementPage = ['/admin/management', '/admin/orders', '/admin/users', '/admin/products', '/admin/categories', '/admin/discounts', '/admin/loyalty-rewards', '/admin/flash-sales'].some(path => location.pathname.startsWith(path));
-    const isSettingsPage = location.pathname === '/admin/settings';
 
     const handleLogout = async () => {
         if (window.confirm("Bạn có chắc chắn muốn đăng xuất quyền Admin?")) {
@@ -152,49 +144,17 @@ const SideBar = ({ onToggle }) => {
 
             {/* === MENU BODY === */}
             <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-6 space-y-6 custom-scrollbar">
-                {/* THỐNG KÊ VÀ BIỂU ĐỒ - Chỉ hiển thị khi ở /admin/dashboard */}
-                {isStatisticsPage && (
-                    <div className="space-y-1">
-                        {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">📊 Thống kê & Biểu đồ</p>}
-                        {statisticsItems.map((item) => <NavItem key={item.path} item={item} />)}
-                    </div>
-                )}
+                {/* TỔNG QUAN & THỐNG KÊ */}
+                <div className="space-y-1">
+                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">📊 Tổng quan</p>}
+                    {overviewItems.map((item) => <NavItem key={item.path} item={item} />)}
+                </div>
 
-                {/* QUẢN LÝ CỬA HÀNG - Chỉ hiển thị khi ở quản lý */}
-                {isManagementPage && (
-                    <div className="space-y-1">
-                        {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">🏪 Quản lý cửa hàng</p>}
-                        {managementItems.map((item) => <NavItem key={item.path} item={item} />)}
-                    </div>
-                )}
-
-                {/* CÀI ĐẶT - Chỉ hiển thị khi ở settings */}
-                {isSettingsPage && (
-                    <div className="space-y-1">
-                        {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">⚙️ Hệ thống</p>}
-                        {otherItems.map((item) => <NavItem key={item.path} item={item} />)}
-                    </div>
-                )}
-
-                {/* MỤC KHÁC - Luôn hiển thị nút dashboard và quay lại */}
-                {!isStatisticsPage && !isManagementPage && !isSettingsPage && (
-                    <>
-                        <div className="space-y-1">
-                            {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">Tổng quan</p>}
-                            {statisticsItems.map((item) => <NavItem key={item.path} item={item} />)}
-                        </div>
-
-                        <div className="space-y-1">
-                            {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Quản lý cửa hàng</p>}
-                            {managementItems.map((item) => <NavItem key={item.path} item={item} />)}
-                        </div>
-
-                        <div className="space-y-1">
-                            {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-4 truncate">Hệ thống</p>}
-                            {otherItems.map((item) => <NavItem key={item.path} item={item} />)}
-                        </div>
-                    </>
-                )}
+                {/* QUẢN LÝ CỬA HÀNG */}
+                <div className="space-y-1">
+                    {!collapsed && <p className="px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 truncate">🏪 Quản lý cửa hàng</p>}
+                    {managementItems.map((item) => <NavItem key={item.path} item={item} />)}
+                </div>
             </nav>
 
             {/* === FOOTER === */}

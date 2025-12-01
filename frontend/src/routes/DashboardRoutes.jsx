@@ -9,25 +9,27 @@ import AdminProductEditPage from "../pages/AdminProductEditPage";
 import AdminProductNewPage from "../pages/AdminProductNewPage";
 import AdminOrderDetail from "../pages/AdminOrderDetail";
 import DiscountManagement from "../pages/DiscountManagement";
-import AdminManagement from "../pages/AdminManagement";
 import CategoriesManagement from "../pages/CategoriesManagement";
 import OrderDetailPage from "../pages/OrderDetailPage";
 import AdminNotifications from "../pages/AdminNotifications";
 import NotificationDetailPage from "../pages/NotificationDetailPage";
 import LoyaltyRewardsManagement from "../pages/LoyaltyRewardsManagement";
 import AdminFlashSaleManagement from "../pages/AdminFlashSaleManagement";
+import AdminOverview from "../pages/AdminOverview";
 
 export default function DashboardRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />}>
 
-        {/* Route mặc định: Chuyển hướng về /admin/dashboard */}
+        {/* Route mặc định: Trang tổng quan Admin */}
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
 
-        {/* Các trang chức năng */}
-        <Route path="dashboard" element={<DashboardAdvanced />} />
-        <Route path="management" element={<AdminManagement />} />
+        {/* Trang tổng quan - hiển thị menu các chức năng */}
+        <Route path="dashboard" element={<AdminOverview />} />
+        
+        {/* Trang thống kê & biểu đồ */}
+        <Route path="statistics" element={<DashboardAdvanced />} />
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
         <Route path="categories" element={<CategoriesManagement />} />

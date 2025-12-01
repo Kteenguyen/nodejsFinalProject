@@ -45,10 +45,11 @@ export default function AdminProductEditPage() {
     variants: [emptyVariant()],
   });
 
+  // Load danh mục từ Category model (giống trang New)
   useEffect(() => {
-    api.get('/products/categories')
-      .then((res) => { if (res.data.success) setCategories(res.data.categories); })
-      .catch((err) => console.error(err));
+    import('../controllers/categoryController').then(({ CategoryController }) => {
+      CategoryController.getAll().then((cats) => setCategories(cats)).catch((err) => console.error(err));
+    });
   }, []);
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export default function AdminProductEditPage() {
   const handleCategorySelect = (e) => { 
       const val = e.target.value; 
       if(val==="NEW"){setIsNewCategory(true);setProduct(p=>({...p,category:{categoryId:"",name:""}}))}
-      else{setIsNewCategory(false);const s=categories.find(c=>c.id===val);setProduct(p=>({...p,category:s?{categoryId:s.id,name:s.name}:{categoryId:"",name:""}}))}
+      else{setIsNewCategory(false);const s=categories.find(c=>c.categoryId===val);setProduct(p=>({...p,category:s?{categoryId:s.categoryId,name:s.name||s.categoryName}:{categoryId:"",name:""}}))}
   };
   const handleImageChange = (index, value) => { const img=[...product.images]; img[index]=value; setProduct(p=>({...p,images:img})) };
   const addImageField = () => setProduct(p=>({...p,images:[...p.images,""]}));
@@ -173,7 +174,7 @@ export default function AdminProductEditPage() {
           <div><label className="block text-sm font-medium mb-1">Tên sản phẩm</label><input className="w-full border rounded px-3 py-2" value={product.productName} onChange={e => updateField("productName", e.target.value)} required /></div>
           <div><label className="block text-sm font-medium mb-1">Mã (Read-only)</label><input className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-500" value={product.productId} disabled /></div>
           <div><label className="block text-sm font-medium mb-1">Thương hiệu</label><input className="w-full border rounded px-3 py-2" value={product.brand} onChange={e => updateField("brand", e.target.value)} /></div>
-          <div><label className="block text-sm font-medium mb-1">Danh mục</label>{!isNewCategory ? (<select className="w-full border rounded px-3 py-2 bg-white" onChange={handleCategorySelect} value={product.category?.categoryId || ""}><option value="">-- Chọn --</option>{categories.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}<option value="NEW" className="font-bold text-blue-600 bg-blue-50">+ Tạo mới...</option></select>) : (<div className="flex gap-2"><input className="w-full border rounded px-3 py-2 flex-1" placeholder="Nhập tên..." value={product.category?.name || ""} onChange={e => updateField("category", { ...(product.category||{}), name: e.target.value })} autoFocus /><button type="button" onClick={()=>setIsNewCategory(false)} className="px-3 border rounded text-red-500">Hủy</button></div>)}</div>
+          <div><label className="block text-sm font-medium mb-1">Danh mục</label><select className="w-full border rounded px-3 py-2 bg-white" onChange={handleCategorySelect} value={product.category?.categoryId || ""}><option value="">-- Chọn --</option>{categories.map((c) => (<option key={c.categoryId} value={c.categoryId}>{c.name || c.categoryName}</option>))}</select></div>
         </div>
 
         <div><label className="block text-sm font-medium mb-1">Mô tả</label><textarea className="w-full border rounded px-3 py-2 h-24" value={product.description} onChange={e => updateField("description", e.target.value)} /></div>

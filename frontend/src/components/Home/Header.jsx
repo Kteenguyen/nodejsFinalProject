@@ -508,21 +508,10 @@ const Header = () => {
                           <div className="p-2 space-y-1">
                             {isAdmin && (
                               <>
-                                {/* Thống kê - vào Dashboard */}
-                                <Link to="/admin/dashboard" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 group transition-colors">
-                                  <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform shadow-sm">
-                                    <FaChartBar className="text-sm" />
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold text-gray-800 text-sm">Thống kê</p>
-                                    <p className="text-[10px] text-gray-400 font-medium">Dashboard & Báo cáo</p>
-                                  </div>
-                                </Link>
-                                
-                                {/* Quản trị hệ thống - vào trang quản lý chính */}
-                                <Link to="/admin/products" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 group transition-colors">
+                                {/* Quản trị hệ thống - vào trang tổng quan admin */}
+                                <Link to="/admin/dashboard" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 group transition-colors">
                                   <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform shadow-sm">
-                                    <FaBox className="text-sm" />
+                                    <FaChartBar className="text-sm" />
                                   </div>
                                   <div>
                                     <p className="font-semibold text-gray-800 text-sm">Quản trị hệ thống</p>
@@ -564,109 +553,9 @@ const Header = () => {
                   </div>
                 )}
               </div>
-
-              {/* Mobile Toggle */}
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-indigo-600 transition-colors ml-1"
-              >
-                <FaBars className="text-xl" />
-              </button>
             </div>
           </div>
         </div>
-
-        {/* 4. MOBILE MENU DRAWER */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
-                onClick={() => setIsMobileMenuOpen(false)}
-              />
-
-              <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="fixed top-0 right-0 h-full w-[85%] max-w-[320px] bg-white shadow-2xl z-50 md:hidden overflow-y-auto flex flex-col"
-              >
-                <div className="p-5 flex justify-between items-center border-b border-gray-100 bg-gray-50/50">
-                  <span className="font-bold text-xl text-gray-800 tracking-tight">Menu</span>
-                  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-white rounded-full shadow-sm text-gray-500 hover:text-red-500 transition-colors">
-                    <FaTimes />
-                  </button>
-                </div>
-
-                <nav className="p-4 space-y-1 flex-1">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.name}
-                      to={link.path}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`
-                        flex items-center px-4 py-3.5 rounded-xl text-base font-bold transition-all mb-1
-                        ${location.pathname === link.path
-                          ? 'bg-indigo-50 text-indigo-600 shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600'
-                        }
-                      `}
-                    >
-                      <link.icon className={`mr-3 text-lg ${location.pathname === link.path ? 'text-indigo-600' : 'text-gray-400'}`} />
-                      {link.name}
-                    </Link>
-                  ))}
-
-                  <div className="border-t border-gray-100 pt-4 mt-4 space-y-3">
-                    {isAuthenticated ? (
-                      <>
-                        <div className="px-4 py-2 bg-indigo-50/50 rounded-xl mx-2 border border-indigo-100/50">
-                          <p className="text-xs text-gray-400 uppercase font-bold">Tài khoản đang dùng</p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-indigo-600 font-bold text-lg shadow-sm">
-                              {displayName.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="overflow-hidden">
-                              <p className="font-bold text-gray-800 truncate">{displayName}</p>
-                              <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <Link to="/profile" className="flex items-center px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-purple-50 hover:text-purple-600 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                          <FaUserCircle className="mr-3 text-xl text-purple-500" />Hồ sơ cá nhân
-                        </Link>
-
-                        {isAdmin && (
-                          <Link to="/admin/dashboard" className="flex items-center px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-blue-50 hover:text-blue-600 transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-                            <FaChartBar className="mr-3 text-xl text-blue-500" /> Quản trị hệ thống
-                          </Link>
-                        )}
-
-                        <button onClick={handleLogout} className="w-full flex items-center px-4 py-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-colors font-bold mt-2">
-                          <FaSignOutAlt className="mr-3 text-xl" />Đăng xuất
-                        </button>
-                      </>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3 mt-4 px-2">
-                        <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex justify-center items-center py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition">
-                          Đăng nhập
-                        </Link>
-                        <Link to="/register" onClick={() => setIsMobileMenuOpen(false)} className="flex justify-center items-center py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition shadow-md shadow-indigo-200">
-                          Đăng ký
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                </nav>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
       </header>
 
       {/* ✅ SPACER DIV: Giúp nội dung không bị che mất bởi Header Fixed */}

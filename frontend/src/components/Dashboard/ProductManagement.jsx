@@ -1,12 +1,9 @@
 // src/components/Dashboard/ProductManagement.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { ProductController } from '../../controllers/productController';
 import { toast } from "react-toastify";
-import { getImageUrl } from '../../services/api';
-
-const API_BASE = "https://localhost:3001/api";
+import api, { getImageUrl } from '../../services/api';
 
 const fmtVND = (n) =>
   (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN") + " đ";
@@ -197,9 +194,8 @@ export default function ProductManagement() {
                           )
                             return;
                           try {
-                            await axios.delete(
-                              `${API_BASE}/products/${encodeURIComponent(r.id)}`,
-                              { withCredentials: true }
+                            await api.delete(
+                              `/products/${encodeURIComponent(r.id)}`
                             );
                             toast.success("Xóa sản phẩm thành công");
                             setRows((prev) =>
