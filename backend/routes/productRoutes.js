@@ -62,6 +62,9 @@ router.post('/batch', productController.batchProductLines);
 // Upload image endpoint
 router.post('/upload-image', uploadPaymentProof.single('image'), productController.uploadImage);
 
+// Tìm kiếm sản phẩm
+router.get('/search', productController.searchProducts); 
+
 // Chi tiết
 router.get('/:slug', productController.getProductDetails);
 

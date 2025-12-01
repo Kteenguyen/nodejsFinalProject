@@ -635,3 +635,33 @@ exports.uploadImage = async (req, res) => {
     });
   }
 };
+exports.searchProducts = async (req, res) => {
+  try {
+    const { keyword } = req.query;
+
+    if (!keyword || keyword.trim() === "") {
+      return res.json({ success: true, products: [] });
+    }
+
+    // Tạo Regex tìm kiếm không phân biệt hoa thường (case-insensitive)
+    const regex = new RegExp(keyword, 'i');
+
+    const products = await Product.find({
+      $or: [
+        { name: regex },
+        { productName: regex }, // Support cả 2 tên trường nếu có
+        { brand: regex },
+        { code: regex }
+      ]
+    })
+    // ⚡ CHỈ LẤY CÁC TRƯỜNG CẦN THIẾT ĐỂ TỐI ƯU TỐC ĐỘ
+    .select('name productName image images price slug productId _id brand')
+    .limit(10); // Giới hạn 10 kết quả gợi ý
+
+    return res.json({ success: true, products });
+
+  } catch (e) {
+    console.error("Search Error:", e);
+    return res.status(500).json({ success: false, message: e.message });
+  }
+};

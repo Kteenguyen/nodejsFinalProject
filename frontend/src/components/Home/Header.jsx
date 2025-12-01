@@ -5,7 +5,7 @@ import {
   FaShoppingCart, FaSearch, FaBars, FaTimes,
   FaHome, FaBox, FaInfoCircle, FaPhoneAlt,
   FaSignOutAlt, FaAngleDown,
-  FaUserCircle, FaChartBar, FaBell, FaCommentDots
+  FaUserCircle, FaChartBar, FaBell, FaCommentDots, FaUserPlus
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -165,7 +165,7 @@ const Header = () => {
 
             return (
               <div
-                key={product._id}
+                key={product._id || product.productId || product.id || product.slug}
                 onClick={() => handleSuggestionClick(product)}
                 className="flex items-center gap-3 p-3 hover:bg-indigo-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
               >
