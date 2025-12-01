@@ -168,7 +168,7 @@ const Header = () => {
 
             return (
               <div
-                key={product._id}
+                key={product._id || product.productId || product.id || product.slug}
                 onClick={() => handleSuggestionClick(product)}
                 className="flex items-center gap-3 p-3 hover:bg-indigo-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
               >
