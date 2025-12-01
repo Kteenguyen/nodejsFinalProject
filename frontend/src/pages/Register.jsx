@@ -8,6 +8,7 @@ import { FiEye, FiEyeOff } from "react-icons/fi";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AuthSide from "../components/common/AuthSide";
+import Calendar from "../components/common/Calendar";
 
 const Register = ({ onSuccess, onClose, context }) => {
 
@@ -216,11 +217,12 @@ const Register = ({ onSuccess, onClose, context }) => {
                         />
                     </div>
                     <div className="w-full sm:w-1/2">
-                        <label className="block text-sm font-medium mb-1">Ngày sinh <span className="text-gray-500 text-xs">(tùy chọn)</span></label>
-                        <input
-                            type="date" name="dateOfBirth"
-                            value={formData.dateOfBirth} onChange={handleChange}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        <Calendar
+                            label="Ngày sinh"
+                            value={formData.dateOfBirth}
+                            onChange={(date) => setFormData({ ...formData, dateOfBirth: date })}
+                            placeholder="Chọn ngày sinh..."
+                            enableTime={false}
                         />
                     </div>
                 </div>

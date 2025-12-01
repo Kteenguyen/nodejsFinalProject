@@ -51,14 +51,16 @@ const Calendar = ({
                     placeholder={placeholder}
                 />
 
-                {/* Icon bên phải */}
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500 z-0">
-                    {enableTime ? <Clock size={18} /> : <CalendarIcon size={18} />}
-                </div>
+                {/* Icon bên phải - ẩn nếu có rightContent */}
+                {!rightContent && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500 z-0">
+                        {enableTime ? <Clock size={18} /> : <CalendarIcon size={18} />}
+                    </div>
+                )}
 
                 {/* Content tùy chỉnh bên phải */}
                 {rightContent && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 pointer-events-auto">
                         {rightContent}
                     </div>
                 )}
