@@ -1,7 +1,7 @@
 // MongoDB Initialization Script
 // This script runs when the MongoDB container starts for the first time
 
-db = db.getSiblingDB('phoneworld');
+db = db.getSiblingDB('shop');
 
 // Create collections with validation
 db.createCollection('users', {
@@ -37,4 +37,4 @@ db.conversations.createIndex({ customerId: 1, createdAt: -1 });
 db.discounts.createIndex({ code: 1 }, { unique: true });
 db.discounts.createIndex({ startDate: 1, endDate: 1 });
 
-print('✅ PhoneWorld database initialized successfully');
+print('✅ Shop database initialized successfully');
