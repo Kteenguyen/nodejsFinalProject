@@ -648,7 +648,7 @@ const Header = () => {
       </header>
 
       {/* ✅ SPACER DIV: Giúp nội dung không bị che mất bởi Header Fixed */}
-      <div className="h-14 md:h-16 w-full" />
+      <div className="h-[80px] md:h-[80px]" />
     </>
   );
 };
