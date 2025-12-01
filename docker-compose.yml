@@ -7,7 +7,7 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: phoneworld123
-      MONGO_INITDB_DATABASE: shop
+      MONGO_INITDB_DATABASE: phoneworld
     ports:
       - "27017:27017"
     volumes:
@@ -16,7 +16,7 @@ services:
     networks:
       - phoneworld-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/shop --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/phoneworld --quiet
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,7 +28,7 @@ services:
     restart: unless-stopped
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=falsez
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
@@ -54,7 +54,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      MONGODB_URI: mongodb://admin:phoneworld123@mongodb:27017/shop?authSource=admin
+      MONGODB_URI: mongodb://admin:phoneworld123@mongodb:27017/phoneworld?authSource=admin
       ELASTIC_URL: http://elasticsearch:9200
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
