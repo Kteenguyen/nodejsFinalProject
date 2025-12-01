@@ -28,6 +28,7 @@ import ContactPage from '../pages/ContactPage';
 import RedeemVouchersPage from '../pages/RedeemVouchersPage';
 import FlashSalePage from '../pages/FlashSalePage';
 import NotificationsPage from '../pages/NotificationsPage';
+import ChatBubble from '../components/common/ChatBubble';
 
 function App() {
   const location = useLocation();
@@ -117,6 +118,9 @@ function App() {
         {/* Admin */}
         <Route path="/admin/*" element={<DashboardRoutes />} />
       </Routes>
+      
+      {/* Chat Bubble - hiển thị ở tất cả trang trừ admin */}
+      {!location.pathname.startsWith('/admin') && <ChatBubble />}
     </div>
   );
 }

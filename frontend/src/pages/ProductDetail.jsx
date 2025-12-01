@@ -4,7 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { ProductController } from '../controllers/productController';
 import { useCart } from '../context/CartContext';
 import { toast } from 'react-toastify';
-import io from 'socket.io-client';
+import { initSocket, onEvent, offEvent } from '../services/socket';
 import { 
     ShoppingCart, ShieldCheck, RefreshCw, 
     Gift, ChevronRight, Star as StarIcon, Send, CheckCircle, Package
@@ -12,10 +12,6 @@ import {
 
 const money = (n) => `${(Number(n) || 0).toLocaleString("vi-VN")} đ`;
 const isAbort = (e) => e?.name === "AbortError" || /abort/i.test(String(e?.message || ""));
-
-const SOCKET_URL = process.env.REACT_APP_API_URL 
-    ? process.env.REACT_APP_API_URL.replace('/api', '') 
-    : "https://localhost:3001";
 
 function Star({ filled = false, onClick, size = 20 }) {
   return (
@@ -79,15 +75,24 @@ export default function ProductDetail() {
 
   // --- 2. SOCKET REALTIME ---
   useEffect(() => {
-      const socket = io(SOCKET_URL, { withCredentials: true, transports: ['websocket', 'polling'] });
-      socket.on('new_activity', (data) => {
+      // Sử dụng socket service chung
+      initSocket();
+      
+      const handleNewActivity = (data) => {
           const currentId = product?._id || product?.productId;
           if (data.productSlug === urlId || data.productId === urlId || data.mongoId === currentId) {
               refetch(); 
               if (data.type === 'comment') toast.info("💬 Có bình luận mới!");
           }
-      });
-      return () => socket.disconnect();
+      };
+      
+      // Lắng nghe event 'new_activity'
+      onEvent('new_activity', handleNewActivity);
+      
+      // Cleanup: remove listener khi component unmount
+      return () => {
+          offEvent('new_activity', handleNewActivity);
+      };
       // eslint-disable-next-line
   }, [urlId, product]);
 

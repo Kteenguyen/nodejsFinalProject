@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
     ChevronLeft, LogOut, ClipboardList, Store, Ticket, List, 
-    ChevronRight, Gift, Zap, BarChart3 // Import icon Flash Sale & Statistics
+    ChevronRight, Gift, Zap, BarChart3, MessageSquare // Import icon Flash Sale, Statistics & Chat
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -21,6 +21,7 @@ const managementItems = [
     { label: "Mã giảm giá", icon: Ticket, path: "/admin/discounts" },
     { label: "Quà đổi điểm", icon: Gift, path: "/admin/loyalty-rewards" },
     { label: "Flash Sale", icon: Zap, path: "/admin/flash-sales" },
+    { label: "Chat khách hàng", icon: MessageSquare, path: "/admin/chat" },
 ];
 
 const SideBar = ({ onToggle, isMobileMenuOpen, onMobileClose }) => {

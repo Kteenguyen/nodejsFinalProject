@@ -378,15 +378,6 @@ const Header = () => {
                 <FaSearch className="text-lg" />
               </button>
 
-              {/* Chat Button */}
-              <Link
-                to="/profile?tab=chat"
-                className="relative w-10 h-10 rounded-full flex items-center justify-center text-gray-500 hover:bg-purple-50 hover:text-purple-600 transition-all"
-                title="Tin nhắn"
-              >
-                <FaCommentDots className="text-xl" />
-              </Link>
-
               {/* Notifications */}
               {isAuthenticated && (
                 <div className="relative" ref={notificationMenuRef}>

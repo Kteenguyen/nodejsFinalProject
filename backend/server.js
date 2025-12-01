@@ -71,11 +71,79 @@ const io = new Server(server, {
 // Lắng nghe kết nối
 io.on('connection', (socket) => {
     console.log('⚡ Client connected:', socket.id);
+    
+    // ============ CHAT SOCKET EVENTS ============
+    
+    // Admin join room để nhận thông báo tin nhắn mới
+    socket.on('admin-join', () => {
+        socket.join('admin-room');
+        console.log(`👤 Admin joined admin-room: ${socket.id}`);
+    });
+    
+    // Customer join room conversation của mình
+    socket.on('join-conversation', (conversationId) => {
+        socket.join(`conversation-${conversationId}`);
+        console.log(`💬 User joined conversation-${conversationId}: ${socket.id}`);
+    });
+    
+    // Leave conversation room
+    socket.on('leave-conversation', (conversationId) => {
+        socket.leave(`conversation-${conversationId}`);
+        console.log(`🚪 User left conversation-${conversationId}: ${socket.id}`);
+    });
+    
+    // Admin join conversation cụ thể để chat
+    socket.on('admin-join-conversation', (conversationId) => {
+        socket.join(`conversation-${conversationId}`);
+        console.log(`👤 Admin joined conversation-${conversationId}: ${socket.id}`);
+    });
+    
+    // Typing indicators
+    socket.on('typing-start', ({ conversationId, sender, senderName }) => {
+        socket.to(`conversation-${conversationId}`).emit('user-typing', { 
+            conversationId, 
+            sender, 
+            senderName 
+        });
+        // Notify admin room nếu là customer đang gõ
+        if (sender === 'user') {
+            socket.to('admin-room').emit('user-typing', { 
+                conversationId, 
+                sender, 
+                senderName 
+            });
+        }
+    });
+    
+    socket.on('typing-stop', ({ conversationId, sender }) => {
+        socket.to(`conversation-${conversationId}`).emit('user-stop-typing', { 
+            conversationId, 
+            sender 
+        });
+        if (sender === 'user') {
+            socket.to('admin-room').emit('user-stop-typing', { 
+                conversationId, 
+                sender 
+            });
+        }
+    });
+    
+    // ============================================
+    
     socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 
 // Gắn io vào app để dùng trong Controller
 app.set('socketio', io);
+
+// --- HEALTH CHECK ENDPOINT (for Docker) ---
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'ok', 
+        message: 'PhoneWorld API is running',
+        timestamp: new Date().toISOString()
+    });
+});
 
 // --- ROUTES ---
 app.use('/api', siteRoutes);

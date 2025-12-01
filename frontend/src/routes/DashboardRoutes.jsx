@@ -16,6 +16,7 @@ import NotificationDetailPage from "../pages/NotificationDetailPage";
 import LoyaltyRewardsManagement from "../pages/LoyaltyRewardsManagement";
 import AdminFlashSaleManagement from "../pages/AdminFlashSaleManagement";
 import AdminOverview from "../pages/AdminOverview";
+import AdminChatManagement from "../pages/AdminChatManagement";
 
 export default function DashboardRoutes() {
   return (
@@ -58,6 +59,9 @@ export default function DashboardRoutes() {
 
         {/* --- FLASH SALE --- */}
         <Route path="flash-sales" element={<AdminFlashSaleManagement />} />
+
+        {/* --- QUẢN LÝ CHAT --- */}
+        <Route path="chat" element={<AdminChatManagement />} />
 
         {/* --- FALLBACK (CHỐNG LỖI LẶP) --- */}
         {/* Nếu đường dẫn sai, buộc quay về trang chủ Dashboard tuyệt đối */}
