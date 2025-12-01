@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { toast } from 'react-toastify';
+import api from '../../services/api';
 
 // 👇 IMPORT CONTROLLER THAY VÌ API TRỰC TIẾP
 import { ProductController } from '../../controllers/productController';
@@ -33,11 +34,51 @@ const Header = () => {
 
   // Notifications
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: "Đơn hàng #1234", message: "Đã giao thành công", isRead: false, time: "2 giờ trước" },
-    { id: 2, title: "Khuyến mãi", message: "Giảm 50% cho iPhone 15", isRead: true, time: "1 ngày trước" }
-  ]);
+  const [notifications, setNotifications] = useState([]);
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  // Fetch notifications from API
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!isAuthenticated) return;
+      
+      try {
+        const res = await api.get('/notifications');
+        if (res.data?.notifications) {
+          const notifs = res.data.notifications.slice(0, 5).map(n => ({
+            id: n._id,
+            title: n.title,
+            message: n.message,
+            isRead: n.isRead,
+            time: getTimeAgo(n.createdAt),
+            actionUrl: n.actionUrl,
+            type: n.type
+          }));
+          setNotifications(notifs);
+        }
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+      }
+    };
+
+    fetchNotifications();
+  }, [isAuthenticated]);
+
+  // Helper function to get time ago
+  const getTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+  };
 
   // Refs
   const avatarMenuRef = useRef(null);

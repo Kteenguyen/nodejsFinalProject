@@ -6,6 +6,22 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // Container với max-width cố định để tránh content bị giãn quá rộng
+      container: {
+        center: true,
+        padding: {
+          DEFAULT: '1rem',
+          sm: '1.5rem',
+          lg: '2rem',
+        },
+        screens: {
+          sm: '640px',
+          md: '768px',
+          lg: '1024px',
+          xl: '1280px',
+          '2xl': '1400px', // Giới hạn max-width ở 1400px cho màn hình lớn
+        },
+      },
       // 1. Mở rộng bảng màu của Tailwind
       colors: {
         // 2. Đặt tên semantic (dễ nhớ) và trỏ vào CSS Variable

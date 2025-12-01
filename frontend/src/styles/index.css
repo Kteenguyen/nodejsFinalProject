@@ -29,9 +29,14 @@
     @apply bg-background text-text-primary;
     font-family: 'Inter', sans-serif;
   }
+
+  /* 3. Giới hạn max-width cho container trên màn hình lớn */
+  .container {
+    max-width: 1400px !important;
+  }
 }
 
-/* 3. TAILWIND @apply CHO CÁC LỚP TIỆN ÍCH */
+/* 4. TAILWIND @apply CHO CÁC LỚP TIỆN ÍCH */
 @layer components {
 
   /* ---- Input Fields (Đã sửa lỗi focus ring) ---- */

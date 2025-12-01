@@ -131,19 +131,19 @@ const FlashSaleSection = () => {
     return (
         <div className="bg-gradient-to-r from-red-600 via-red-500 to-orange-500 rounded-lg shadow-xl overflow-hidden mb-8">
             {/* Header với tabs kiểu Shopee */}
-            <div className="bg-gradient-to-r from-red-700 to-red-600 px-6 py-4">
-                <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="bg-gradient-to-r from-red-700 to-red-600 px-4 md:px-6 py-3 md:py-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
                     {/* Logo + Title */}
-                    <div className="flex items-center gap-3">
-                        <span className="text-4xl animate-pulse">⚡</span>
-                        <h2 className="text-2xl md:text-3xl font-bold text-white tracking-wider">FLASH SALE</h2>
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <span className="text-2xl md:text-4xl animate-pulse">⚡</span>
+                        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white tracking-wider">FLASH SALE</h2>
                     </div>
 
                     {/* Tabs: Đang diễn ra | Sắp tới | Ngày mai */}
-                    <div className="flex bg-red-800/50 rounded-lg p-1">
+                    <div className="flex bg-red-800/50 rounded-lg p-1 overflow-x-auto w-full md:w-auto">
                         <button
                             onClick={() => handleTabChange('active')}
-                            className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${
+                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
                                 activeTab === 'active'
                                     ? 'bg-white text-red-600 shadow-md'
                                     : 'text-white hover:bg-white/10'
@@ -159,7 +159,7 @@ const FlashSaleSection = () => {
                         </button>
                         <button
                             onClick={() => handleTabChange('upcoming')}
-                            className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${
+                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
                                 activeTab === 'upcoming'
                                     ? 'bg-white text-red-600 shadow-md'
                                     : 'text-white hover:bg-white/10'
@@ -175,7 +175,7 @@ const FlashSaleSection = () => {
                         </button>
                         <button
                             onClick={() => handleTabChange('tomorrow')}
-                            className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${
+                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
                                 activeTab === 'tomorrow'
                                     ? 'bg-white text-red-600 shadow-md'
                                     : 'text-white hover:bg-white/10'
@@ -191,24 +191,26 @@ const FlashSaleSection = () => {
                         </button>
                     </div>
 
-                    {/* Countdown */}
-                    {countdown && selectedSlot && (
-                        <div className="flex items-center gap-2">
-                            <span className="text-white/80 text-sm">{countdown.label}:</span>
-                            <FlashSaleCountdown 
-                                endTime={countdown.time} 
-                                onExpire={fetchFlashSales}
-                            />
-                        </div>
-                    )}
+                    {/* Countdown + View All */}
+                    <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                        {countdown && selectedSlot && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-white/80 text-xs md:text-sm">{countdown.label}:</span>
+                                <FlashSaleCountdown 
+                                    endTime={countdown.time} 
+                                    onExpire={fetchFlashSales}
+                                />
+                            </div>
+                        )}
 
-                    {/* View All Button */}
-                    <button
-                        onClick={() => navigate('/flash-sale')}
-                        className="bg-white text-red-600 px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-100 transition-colors shadow-md"
-                    >
-                        Xem tất cả →
-                    </button>
+                        {/* View All Button */}
+                        <button
+                            onClick={() => navigate('/flash-sale')}
+                            className="bg-white text-red-600 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm hover:bg-gray-100 transition-colors shadow-md whitespace-nowrap"
+                        >
+                            Xem tất cả →
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -253,7 +255,7 @@ const FlashSaleSection = () => {
                         )}
 
                         {/* Products */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
                             {selectedSlot.products.slice(0, 12).map((product) => (
                                 <FlashSaleCard
                                     key={product.productId?._id || product._id}

@@ -1,4 +1,5 @@
 const Notification = require('../models/notificationModel');
+const mongoose = require('mongoose');
 
 // Lấy tất cả thông báo của user
 exports.getNotifications = async (req, res) => {
@@ -6,7 +7,14 @@ exports.getNotifications = async (req, res) => {
     const userId = req.user._id || req.user.id;
     const { page = 1, limit = 20, type, unreadOnly } = req.query;
 
-    const query = { userId };
+    console.log('🔔 Fetching notifications for userId:', userId);
+
+    // Đảm bảo userId là ObjectId
+    const userObjectId = mongoose.Types.ObjectId.isValid(userId) 
+      ? new mongoose.Types.ObjectId(userId) 
+      : userId;
+
+    const query = { userId: userObjectId };
     
     if (type && ['order', 'promotion', 'system', 'other'].includes(type)) {
       query.type = type;
@@ -16,13 +24,17 @@ exports.getNotifications = async (req, res) => {
       query.isRead = false;
     }
 
+    console.log('🔔 Query:', JSON.stringify(query));
+
     const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
+    console.log('🔔 Found notifications:', notifications.length);
+
     const total = await Notification.countDocuments(query);
-    const unreadCount = await Notification.countDocuments({ userId, isRead: false });
+    const unreadCount = await Notification.countDocuments({ userId: userObjectId, isRead: false });
 
     res.json({
       success: true,

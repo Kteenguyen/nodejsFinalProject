@@ -25,10 +25,14 @@ const NotificationsPage = () => {
     setLoading(true);
     try {
       const res = await api.get('/notifications');
+      console.log('🔔 Frontend received:', res.data);
       if (res.data?.notifications) {
+        console.log('🔔 Setting notifications:', res.data.notifications.length);
         setNotifications(res.data.notifications);
+        return; // Return để không chạy vào fallback
       }
     } catch (err) {
+      console.error('🔔 Error fetching notifications:', err);
       // Lấy từ đơn hàng của user
       try {
         const orderRes = await api.get('/orders/my-orders');
