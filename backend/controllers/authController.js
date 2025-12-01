@@ -91,6 +91,16 @@ exports.login = async (req, res) => {
             return res.status(401).json({ message: 'Email hoặc username không tồn tại.' });
         }
 
+        // 👈 NÂNG CẤP: Kiểm tra trạng thái ban tài khoản TRƯỚC khi check mật khẩu
+        console.log(`🔍 DEBUG Login - User data: ${JSON.stringify({ email: user.email, isBanned: user.isBanned, type: typeof user.isBanned })}`);
+        if (user.isBanned === true) {
+            console.log(`🚫 Tài khoản bị ban đã cố gắng đăng nhập: ${user.email}`);
+            return res.status(403).json({
+                message: 'Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ',
+                isBanned: true
+            });
+        }
+
         if (user.provider.includes('google') || user.provider.includes('facebook')) {
             if (user.password === null) {
                 return res.status(401).json({ message: `Tài khoản này được đăng ký qua ${user.provider.join(', ')}. Vui lòng đăng nhập bằng phương thức đó.` });
@@ -215,6 +225,15 @@ exports.googleLogin = async (req, res) => {
                 user.provider.push('google');
                 await user.save();
             }
+
+            // 👈 NÂNG CẤP: Kiểm tra trạng thái ban tài khoản
+            if (user.isBanned) {
+                return res.status(403).json({
+                    message: 'Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ',
+                    isBanned: true
+                });
+            }
+
             // 👈 NÂNG CẤP: Gửi response và DỪNG LẠI (return)
             // (Đây là cách sửa lỗi `foundUser` và lỗi "headers already sent")
             return sendTokenResponse(user, 200, res, "Đăng nhập Google thành công");
@@ -233,6 +252,14 @@ exports.googleLogin = async (req, res) => {
                 role: 'user',
             });
             await user.save();
+
+            // 👈 NÂNG CẤP: Kiểm tra trạng thái ban tài khoản (dù tạo mới thì bình thường không bị ban)
+            if (user.isBanned) {
+                return res.status(403).json({
+                    message: 'Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ',
+                    isBanned: true
+                });
+            }
 
             // 👈 NÂNG CẤP: Gửi response và DỪNG LẠI (return)
             return sendTokenResponse(user, 201, res, "Tạo tài khoản Google thành công");
@@ -318,6 +345,14 @@ exports.facebookLogin = asyncHandler(async (req, res) => {
                 userId: uuidv4(),
                 provider: ['facebook'],
                 shippingAddresses: []
+            });
+        }
+
+        // 👈 NÂNG CẤP: Kiểm tra trạng thái ban tài khoản
+        if (user.isBanned) {
+            return res.status(403).json({
+                message: 'Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ',
+                isBanned: true
             });
         }
 
@@ -434,24 +469,31 @@ exports.resetPassword = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 4. Cập nhật trực tiếp vào DB (Bỏ qua pre-save hook để tránh lỗi hash kép)
-        await User.findByIdAndUpdate(
-            user._id,
-            {
-                password: hashedPassword,
-                passwordResetToken: undefined, // Xóa token sau khi dùng
-                passwordResetExpires: undefined
-            },
-            { new: true }
-        );
+        // 4. Cập nhật user object
+        user.password = hashedPassword;
+        user.passwordResetToken = undefined; // Xóa token sau khi dùng
+        user.passwordResetExpires = undefined;
 
+        // 5. Lưu vào DB với validateBeforeSave: false (tránh pre-save hook hash lại)
+        await user.save({ validateBeforeSave: false });
+
+        // 6. Verify rằng password đã được lưu
+        const verify = await User.findById(user._id).select('+password');
+        const isPasswordMatch = await require('bcryptjs').compare(password, verify.password);
         console.log(`✅ Reset mật khẩu thành công cho: ${user.email}`);
+        console.log(`✅ Verify password match: ${isPasswordMatch}`);
+
         res.status(200).json({ success: true, message: 'Đặt lại mật khẩu thành công! Hãy đăng nhập ngay.' });
 
     } catch (error) {
         console.error("Reset Password Error:", error);
         res.status(500).json({ message: 'Lỗi server khi đặt lại mật khẩu.' });
     }
+
+} catch (error) {
+    console.error("Reset Password Error:", error);
+    res.status(500).json({ message: 'Lỗi server khi đặt lại mật khẩu.' });
+}
 };
 // Kiểm tra token từ cookie HOẶC Authorization header
 exports.checkSession = asyncHandler(async (req, res) => {
@@ -562,5 +604,77 @@ exports.logout = async (req, res) => {
     } catch (error) {
         console.error('Lỗi khi đăng xuất:', error);
         res.status(500).json({ success: false, message: 'Lỗi server khi đăng xuất' });
+    }
+};
+
+// --- HÀM CHECK BAN STATUS (MỚI) ---
+exports.checkBanStatus = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: 'Email là bắt buộc' });
+        }
+
+        const user = await User.findOne({ email }).select('+isBanned');
+
+        if (!user) {
+            return res.status(404).json({ message: 'Tài khoản không tồn tại' });
+        }
+
+        console.log(`✅ Check ban status cho: ${email}, isBanned: ${user.isBanned}`);
+        res.status(200).json({
+            success: true,
+            email: user.email,
+            isBanned: user.isBanned || false,
+            message: user.isBanned ? 'Tài khoản đã bị cấm' : 'Tài khoản bình thường'
+        });
+
+    } catch (error) {
+        console.error('Check Ban Status Error:', error);
+        res.status(500).json({ message: 'Lỗi server khi kiểm tra trạng thái cấm' });
+    }
+};
+
+// --- HÀM MIGRATE ISBANNED (MỚI) ---
+// Thêm field isBanned = false cho tất cả users cũ chưa có field này
+exports.migrateIsBanned = async (req, res) => {
+    try {
+        console.log('🔄 Bắt đầu migrate isBanned field...');
+
+        // Chỉ admin có quyền chạy migration này
+        if (req.user?.role !== 'admin') {
+            return res.status(403).json({ message: 'Chỉ admin mới có quyền thực hiện' });
+        }
+
+        // Thêm isBanned = false cho tất cả users chưa có field này
+        const result = await User.updateMany(
+            { isBanned: { $exists: false } },
+            { $set: { isBanned: false } }
+        );
+
+        console.log(`✅ Migration hoàn tất - Modified: ${result.modifiedCount}, Matched: ${result.matchedCount}`);
+
+        // List tất cả users sau migration
+        const allUsers = await User.find({}).select('email isBanned name');
+        const bannedUsers = allUsers.filter(u => u.isBanned);
+        const activeUsers = allUsers.filter(u => !u.isBanned);
+
+        res.status(200).json({
+            success: true,
+            message: 'Migration isBanned hoàn tất!',
+            stats: {
+                totalUsers: allUsers.length,
+                activeUsers: activeUsers.length,
+                bannedUsers: bannedUsers.length,
+                modifiedCount: result.modifiedCount,
+                matchedCount: result.matchedCount
+            },
+            bannedUsersList: bannedUsers.map(u => ({ email: u.email, name: u.name }))
+        });
+
+    } catch (error) {
+        console.error('❌ Migrate isBanned Error:', error);
+        res.status(500).json({ message: 'Lỗi server khi migrate isBanned', error: error.message });
     }
 };

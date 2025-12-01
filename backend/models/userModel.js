@@ -53,11 +53,21 @@ const userSchema = new mongoose.Schema({
 });
 userSchema.pre('save', async function (next) {
     // Chỉ hash nếu password có sự thay đổi (đổi pass hoặc tạo mới)
+    // ❗ QUAN TRỌNG: Nếu password đã được hash trước (e.g. reset password)
+    // thì không hash lại (sẽ trở thành hash của hash)
+
+    // Kiểm tra xem password có phải đã hash chưa (hash bắt đầu bằng $2a$ hoặc $2b$)
     if (!this.isModified('password')) {
         return next();
     }
 
-    // Hash password
+    // Nếu password bắt đầu bằng $2a$ hoặc $2b$ thì đã hash rồi, skip
+    if (this.password && (this.password.startsWith('$2a$') || this.password.startsWith('$2b$'))) {
+        console.log('⏭️ Password đã hash, bỏ qua pre-save hook');
+        return next();
+    }
+
+    // Hash password nếu chưa hash
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
