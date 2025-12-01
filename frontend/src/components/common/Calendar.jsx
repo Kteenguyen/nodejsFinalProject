@@ -1,32 +1,32 @@
-// frontend/src/components/common/Calendar.jsx
 import React from 'react';
 import Flatpickr from 'react-flatpickr';
-// Import CSS của Flatpickr (Nếu bạn chưa import ở index.js/App.js thì giữ dòng này)
 import "flatpickr/dist/themes/material_blue.css"; 
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
-import { Vietnamese } from "flatpickr/dist/l10n/vn.js"; // Import tiếng Việt cho lịch
+import { Vietnamese } from "flatpickr/dist/l10n/vn.js"; 
 
 const Calendar = ({
     value,
     onChange,
     disabled = false,
-    label = "Chọn thời gian",
-    enableTime = false, // True: Chọn Ngày + Giờ | False: Chỉ Ngày
-    placeholder = "Chọn..."
+    label, // 👈 Đã bỏ giá trị mặc định "Chọn thời gian"
+    enableTime = false, 
+    placeholder = "Chọn thời gian...",
+    rightContent = null // Hỗ trợ render content bên phải (như badge tuổi)
 }) => {
     return (
         <div className="space-y-2 w-full">
+            {/* Chỉ hiển thị label khi có props truyền vào */}
             {label && (
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     {enableTime ? <Clock size={16} className="text-blue-600"/> : <CalendarIcon size={16} />}
                     {label}
                 </label>
             )}
+            
             <div className="relative">
                 <Flatpickr
                     value={value}
                     onChange={([date]) => {
-                        // Trả về chuỗi ISO (2023-11-20T14:30:00.000Z) để Backend dễ xử lý
                         onChange(date ? date.toISOString() : "");
                     }}
                     disabled={disabled}
@@ -37,18 +37,27 @@ const Calendar = ({
                         }
                     `}
                     options={{
-                        dateFormat: enableTime ? "d/m/Y H:i" : "d/m/Y", // Hiển thị kiểu Việt Nam
+                        dateFormat: enableTime ? "d/m/Y H:i" : "d/m/Y",
                         enableTime: enableTime,
                         time_24hr: true,
                         disableMobile: "true",
                         allowInput: true,
-                        locale: Vietnamese // Set tiếng Việt
+                        locale: Vietnamese
                     }}
                     placeholder={placeholder}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+
+                {/* Icon mặc định bên phải (nếu không có rightContent) */}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 z-0">
                     {enableTime ? <Clock size={18} /> : <CalendarIcon size={18} />}
                 </div>
+
+                {/* Content tùy chỉnh bên phải (ví dụ: Badge tuổi) */}
+                {rightContent && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+                        {rightContent}
+                    </div>
+                )}
             </div>
         </div>
     );

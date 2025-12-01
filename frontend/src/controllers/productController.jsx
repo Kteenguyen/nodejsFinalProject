@@ -29,19 +29,19 @@ const getProducts = async (options = {}) => {
 
     try {
         const params = {};
-        
+
         // Phân trang
         if (page) params.page = page;
         if (limit) params.limit = limit;
-        
+
         // Sắp xếp
         if (sortBy) params.sortBy = sortBy;
         if (sortOrder) params.sortOrder = sortOrder;
-        
+
         // Tìm kiếm
         const searchQuery = search || keyword;
         if (searchQuery) params.keyword = searchQuery;
-        
+
         // Lọc brand - support cả string và array
         if (brand) {
             if (Array.isArray(brand)) {
@@ -50,7 +50,7 @@ const getProducts = async (options = {}) => {
                 params.brand = brand;
             }
         }
-        
+
         // Lọc category - support cả string và array
         if (categoryId) {
             if (Array.isArray(categoryId)) {
@@ -59,14 +59,14 @@ const getProducts = async (options = {}) => {
                 params.categoryId = categoryId;
             }
         }
-        
+
         // Lọc giá
         if (minPrice != null) params.minPrice = minPrice;
         if (maxPrice != null) params.maxPrice = maxPrice;
-        
+
         // Lọc rating
         if (ratingMin != null) params.minRating = ratingMin;
-        
+
         // Lọc tình trạng
         if (inStock === true || inStock === "true") params.inStock = "true";
         if (isNew === true || isNew === "true") params.isNew = "true";
@@ -76,9 +76,9 @@ const getProducts = async (options = {}) => {
 
         // Gọi trực tiếp endpoint
         const response = await api.get('/products', { params });
-        
+
         console.log('✅ Products fetched:', response.data.products?.length, 'items');
-        
+
         // Backend trả về: { success, products, pagination, totalProducts, totalPages } hoặc { items, ... }
         // Chuẩn hóa dữ liệu trả về để View dễ dùng
         return {
@@ -102,20 +102,16 @@ const getProducts = async (options = {}) => {
  * Tìm kiếm sản phẩm (Ưu tiên ES, fallback về thường)
  * Thay thế cho: searchProducts
  */
-const searchProducts = async (query = {}) => {
-    const qs = new URLSearchParams();
-    Object.entries(query).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== "") qs.append(k, v);
-    });
-
+const searchProducts = async (keyword) => {
     try {
-        // Ưu tiên gọi API Search (ElasticSearch)
-        const response = await api.get(`/search/products?${qs.toString()}`);
-        return response.data;
+        if (!keyword) return [];
+        const response = await api.get('/products/search', {
+            params: { keyword }
+        });
+        return response.data.products || [];
     } catch (error) {
-        // Fallback: Nếu API search lỗi, gọi API thường
-        console.warn("ES search failed, fallback to normal API");
-        return getProducts(query);
+        console.error("Lỗi tìm kiếm sản phẩm:", error);
+        return [];
     }
 };
 
@@ -143,15 +139,15 @@ const getProductsByCategory = async (categoryId, options = {}) => {
         if (options.sortOrder) params.append('sortOrder', options.sortOrder);
         if (options.page) params.append('page', options.page);
         if (options.limit) params.append('limit', options.limit);
-        
+
         const url = `/products/category/${categoryId}${params.toString() ? '?' + params.toString() : ''}`;
         console.log('📂 Fetching category products:', { categoryId, url, options });
-        
+
         const response = await api.get(url);
         const items = response.data.products || [];
-        
+
         console.log('✅ Category products fetched:', items.length, 'items');
-        
+
         return {
             products: items,
             totalProducts: items.length,
@@ -171,7 +167,7 @@ const getProductsByCategory = async (categoryId, options = {}) => {
 const getNewProducts = async () => {
     try {
         // Gọi endpoint collection hoặc filter
-        const response = await api.get("/products/collections/new"); 
+        const response = await api.get("/products/collections/new");
         // Hoặc: await getProducts({ productType: 'new', limit: 8 });
         return response.data.products || [];
     } catch (error) {
@@ -257,12 +253,12 @@ function getImageUrl(src) {
         console.log('❌ No image source provided, returning placeholder');
         return "/img/default.png";
     }
-    
+
     if (src.startsWith('http')) {
         console.log('✅ Image is already a full URL:', src);
         return src;
     }
-    
+
     // Tự động sử dụng protocol của trang hiện tại
     const protocol = window.location.protocol; // http: hoặc https:
     const BASE_URL = `${protocol}//localhost:3001`;
