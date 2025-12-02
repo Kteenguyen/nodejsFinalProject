@@ -46,11 +46,11 @@ async function migrateData() {
       // Get all documents
       const documents = await localCollection.find({}).toArray();
 
-      // Check if Docker collection exists and has data
+      // Delete existing documents in Docker first (to ensure clean migration)
       const dockerCount = await dockerCollection.countDocuments();
       if (dockerCount > 0) {
-        console.log(`   ⏭️  Already has ${dockerCount} documents, skipping\n`);
-        continue;
+        await dockerCollection.deleteMany({});
+        console.log(`   🗑️  Deleted ${dockerCount} existing documents`);
       }
 
       // Insert documents

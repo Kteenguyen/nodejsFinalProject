@@ -34,8 +34,8 @@ FROM nginx:alpine
 # Install OpenSSL for generating certificates
 RUN apk add --no-cache openssl
 
-# Copy built files from builder stage (react-scripts builds to 'build' folder)
-COPY --from=builder /app/build /usr/share/nginx/html
+# Copy built files from builder stage (Vite builds to 'dist' folder)
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
