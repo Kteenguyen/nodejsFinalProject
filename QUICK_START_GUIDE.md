@@ -1,6 +1,16 @@
 # 🎓 HƯỚNG DẪN CHẠY ĐỒ ÁN - DÀNH CHO GIẢNG VIÊN
 
-## ⚡ Quick Start (3 bước)
+## ⚡ Quick Start (4 bước)
+
+### Bước 0: Khởi động Docker Desktop ⚠️
+```bash
+# QUAN TRỌNG: Mở Docker Desktop và đợi nó khởi động hoàn tất
+# Kiểm tra Docker Desktop đã chạy bằng icon ở system tray
+# Hoặc chạy lệnh test:
+docker ps
+```
+
+**Lỗi thường gặp:** Nếu thấy lỗi "cannot find the file specified" hoặc "pipe/dockerDesktopLinuxEngine", nghĩa là Docker Desktop chưa chạy.
 
 ### Bước 1: Cấu hình Environment
 ```bash
@@ -33,8 +43,33 @@ docker compose ps
 
 ## 🌐 Truy Cập Ứng Dụng
 
-- **Website**: http://localhost:3000
-- **API Health Check**: http://localhost:3001/api/health
+### ⚠️ LƯU Ý: HTTPS với Self-Signed Certificate
+
+Dự án này sử dụng HTTPS với chứng chỉ tự ký (self-signed certificate). Browser sẽ cảnh báo "Not Secure".
+
+**Truy cập từ Browser (Khuyến nghị):**
+- **Website HTTPS**: https://localhost:8443
+- **Backend API**: https://localhost:3001/api/health
+
+**Bỏ qua cảnh báo SSL:**
+1. Mở https://localhost:8443
+2. Thấy cảnh báo "Your connection is not private" 
+3. Click "Advanced" → "Proceed to localhost (unsafe)"
+4. Website sẽ load bình thường
+
+**Truy cập từ Docker Desktop:**
+- ❌ Link mặc định trong Docker Desktop dùng HTTP và sẽ lỗi
+- ✅ **Giải pháp:** Click link trong Docker Desktop, nó sẽ mở browser với HTTP, sau đó:
+  - Browser tự động redirect sang HTTPS
+  - Bỏ qua cảnh báo SSL là xong
+- ✅ Hoặc gõ trực tiếp: `https://localhost:8443` vào browser
+
+**Lưu ý:** Port 3080 (hiển thị trong Docker Desktop) là HTTP redirect port, nó sẽ tự động chuyển sang HTTPS port 8443.
+
+**Ports:**
+- `8443` - Frontend HTTPS (website chính)
+- `3080` - HTTP redirect → HTTPS
+- `3001` - Backend HTTPS API
 
 ---
 
@@ -105,8 +140,23 @@ netstat -ano | findstr :3001
 
 ### Lỗi: Docker daemon not running
 ```bash
-# Mở Docker Desktop và đợi nó khởi động
-# Sau đó chạy lại: docker compose up -d
+# ⚠️ LỖI PHỔ BIẾN NHẤT - Docker Desktop chưa chạy!
+# 
+# Triệu chứng:
+# - "cannot find the file specified"
+# - "open //./pipe/dockerDesktopLinuxEngine"
+# - "unable to get image"
+#
+# Giải pháp:
+# 1. Mở Docker Desktop (tìm trong Start Menu)
+# 2. Đợi 30-60 giây cho Docker khởi động
+# 3. Kiểm tra icon Docker ở system tray (góc dưới phải màn hình)
+# 4. Khi icon không còn "loading", chạy lại: docker compose up -d
+#
+# Kiểm tra Docker đã sẵn sàng:
+docker ps
+# Nếu thấy danh sách containers (có thể rỗng) = OK
+# Nếu thấy lỗi = Docker chưa chạy
 ```
 
 ### Lỗi: Cannot connect to database
@@ -121,13 +171,26 @@ docker compose restart mongodb backend
 ### Website hiển thị lỗi API
 ```bash
 # 1. Kiểm tra backend có chạy
-curl http://localhost:3001/api/health
-# hoặc mở browser: http://localhost:3001/api/health
+# ⚠️ Chú ý: Dùng HTTPS, không phải HTTP
+curl https://localhost:3001/api/health -k
+# hoặc mở browser: https://localhost:3001/api/health
 
 # 2. Xem logs backend
 docker compose logs backend -f
 
 # 3. Kiểm tra file .env đã điền đúng chưa
+```
+
+### Lỗi: Browser hiển thị "400 Bad Request" 
+```bash
+# Nguyên nhân: Truy cập HTTP thay vì HTTPS
+# Giải pháp: Đổi URL từ http:// thành https://
+# 
+# ❌ SAI: http://localhost:3000
+# ✅ ĐÚNG: https://localhost:8443
+#
+# ❌ SAI: http://localhost:3001
+# ✅ ĐÚNG: https://localhost:3001
 ```
 
 ---

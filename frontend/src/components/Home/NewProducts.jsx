@@ -15,9 +15,18 @@ const NewProducts = () => {
             try {
                 // Gọi hàm từ ProductController
                 const products = await ProductController.getNewProducts();
+                console.log('🎁 NewProducts fetched:', products.length, 'items');
+                if (products.length > 0) {
+                    console.log('📦 First product data:', {
+                        name: products[0].productName,
+                        hasImages: !!products[0].images,
+                        imagesLength: Array.isArray(products[0].images) ? products[0].images.length : 0,
+                        images: products[0].images
+                    });
+                }
                 setNewProducts(products);
             } catch (err) {
-                console.error("Lỗi fetch sản phẩm mới (Component):", err.message);
+                console.error("❌ Lỗi fetch sản phẩm mới (Component):", err.message);
                 setError('Không thể tải sản phẩm mới. Vui lòng thử lại.');
                 setNewProducts([]);
             } finally {

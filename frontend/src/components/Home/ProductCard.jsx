@@ -47,36 +47,33 @@ export default function ProductCard({ product, viewMode = "grid" }) {
 
   // ========== 2. Ảnh hiển thị ==========
   const imageUrl = (() => {
-    // Debug: xem dữ liệu từ backend
-    console.log('🖼️ Product data:', {
-      name: p.productName,
-      image: p.image,
-      images: p.images,
-      thumbnail: p.thumbnail,
-      mainImage: p.mainImage
-    });
-    
-    // Ưu tiên: image (string từ backend) > thumbnail > mainImage > images[0] > placeholder
-    if (p.image && typeof p.image === 'string' && p.image.trim()) {
-      console.log('✅ Using p.image:', p.image);
-      // Nếu đường dẫn bắt đầu bằng /images thì thêm BACKEND_URL
-      const url = p.image.startsWith('/images') ? `${BACKEND_URL}${p.image}` : p.image;
-      console.log('📍 Final URL:', url);
+    // Ưu tiên: images array > image string > thumbnail > mainImage > placeholder
+    // Backend trả về images array từ CDN TGDD
+    if (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) {
+      const imgPath = p.images[0];
+      console.log(`🖼️ [${p.productName}] Using images[0]:`, imgPath);
+      // Nếu đường dẫn bắt đầu bằng /images thì thêm BACKEND_URL (local images)
+      const url = imgPath.startsWith('/images') ? `${BACKEND_URL}${imgPath}` : imgPath;
+      console.log(`📍 Final URL:`, url);
       return url;
     }
+    
+    // Fallback: single image field
+    if (p.image && typeof p.image === 'string' && p.image.trim()) {
+      console.log(`🖼️ [${p.productName}] Using p.image`);
+      const url = p.image.startsWith('/images') ? `${BACKEND_URL}${p.image}` : p.image;
+      return url;
+    }
+    
     if (p.thumbnail) {
       return p.thumbnail.startsWith('/images') ? `${BACKEND_URL}${p.thumbnail}` : p.thumbnail;
     }
     if (p.mainImage) {
       return p.mainImage.startsWith('/images') ? `${BACKEND_URL}${p.mainImage}` : p.mainImage;
     }
-    if (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) {
-      console.log('✅ Using p.images[0]:', p.images[0]);
-      const url = p.images[0].startsWith('/images') ? `${BACKEND_URL}${p.images[0]}` : p.images[0];
-      return url;
-    }
+    
     // Fallback to placeholder
-    console.log('⚠️ Using placeholder');
+    console.log(`⚠️ [${p.productName}] No image found, using placeholder`);
     return "/img/placeholder.png";
   })();
 

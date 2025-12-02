@@ -94,12 +94,15 @@ const AdminFlashSaleManagement = () => {
         if (selectedProducts.find(p => p.productId === productId)) {
             setSelectedProducts(selectedProducts.filter(p => p.productId !== productId));
         } else {
+            // Lấy giá từ variant đầu tiên (vì product không có trường price trực tiếp)
+            const originalPrice = product.variants?.[0]?.price || product.price || 0;
             setSelectedProducts([
                 ...selectedProducts,
                 {
                     productId: productId,
-                    flashPrice: Math.round(product.price * 0.7), // Default 30% discount
-                    originalPrice: product.price,
+                    flashPrice: Math.round(originalPrice * 0.7), // Default 30% discount
+                    originalPrice: originalPrice, // Lấy từ product.variants[0].price
+                    discountPercent: 30, // Default 30%
                     totalStock: 50,
                     productName: product.productName || product.name || product.title || 'Sản phẩm',
                     productImage: product.images?.[0] || product.image || ''
@@ -109,11 +112,38 @@ const AdminFlashSaleManagement = () => {
     };
 
     const updateSelectedProduct = (productId, field, value) => {
-        setSelectedProducts(selectedProducts.map(p => 
-            p.productId === productId 
-                ? { ...p, [field]: parseInt(value) || 0 }
-                : p
-        ));
+        setSelectedProducts(selectedProducts.map(p => {
+            if (p.productId !== productId) return p;
+            
+            const numValue = parseInt(value) || 0;
+            
+            // Nếu thay đổi % giảm giá → tính lại flashPrice
+            if (field === 'discountPercent') {
+                const percent = Math.max(0, Math.min(100, numValue)); // Giới hạn 0-100%
+                const newFlashPrice = Math.round(p.originalPrice * (100 - percent) / 100);
+                return { 
+                    ...p, 
+                    discountPercent: percent,
+                    flashPrice: newFlashPrice
+                };
+            }
+            
+            // Nếu thay đổi flashPrice → tính lại % giảm giá
+            if (field === 'flashPrice') {
+                const newFlashPrice = Math.max(0, numValue);
+                const newPercent = p.originalPrice > 0 
+                    ? Math.round((1 - newFlashPrice / p.originalPrice) * 100)
+                    : 0;
+                return { 
+                    ...p, 
+                    flashPrice: newFlashPrice,
+                    discountPercent: Math.max(0, Math.min(100, newPercent))
+                };
+            }
+            
+            // Các field khác (totalStock)
+            return { ...p, [field]: numValue };
+        }));
     };
 
     const openCreateModal = () => {
@@ -141,14 +171,23 @@ const AdminFlashSaleManagement = () => {
             products: flashSale.products
         });
         const flashProducts = Array.isArray(flashSale.products) ? flashSale.products : [];
-        setSelectedProducts(flashProducts.map(p => ({
-            productId: p.productId._id || p.productId,
-            flashPrice: p.flashPrice,
-            originalPrice: p.originalPrice,
-            totalStock: p.totalStock,
-            productName: p.productId?.productName || p.productName || 'Sản phẩm',
-            productImage: p.productId?.images?.[0] || p.productImage || ''
-        })));
+        setSelectedProducts(flashProducts.map(p => {
+            const originalPrice = p.originalPrice || 0;
+            const flashPrice = p.flashPrice || 0;
+            const discountPercent = originalPrice > 0 
+                ? Math.round((1 - flashPrice / originalPrice) * 100)
+                : 0;
+            
+            return {
+                productId: p.productId._id || p.productId,
+                flashPrice: flashPrice,
+                originalPrice: originalPrice,
+                discountPercent: discountPercent, // Tính % từ giá hiện tại
+                totalStock: p.totalStock,
+                productName: p.productId?.productName || p.productName || 'Sản phẩm',
+                productImage: p.productId?.images?.[0] || p.productImage || ''
+            };
+        }));
         setShowModal(true);
     };
 
@@ -470,7 +509,9 @@ const AdminFlashSaleManagement = () => {
                                                     />
                                                     <div className="flex-1">
                                                         <p className="text-sm font-medium line-clamp-2">{product.productName || 'N/A'}</p>
-                                                        <p className="text-sm text-gray-600">{(product.price || 0).toLocaleString()}₫</p>
+                                                        <p className="text-sm text-gray-600">
+                                                            {((product.variants?.[0]?.price || product.price || 0)).toLocaleString()}₫
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -494,7 +535,7 @@ const AdminFlashSaleManagement = () => {
                                             💰 Bước 3: Cấu hình giá Flash Sale
                                         </h3>
                                         <p className="text-sm text-red-700">
-                                            Nhập giá Flash Sale, giá gốc và số lượng cho mỗi sản phẩm. % giảm giá sẽ tự động tính.
+                                            ✨ <strong>Giá gốc</strong> tự động lấy từ sản phẩm. Bạn chỉ cần nhập <strong>% giảm giá</strong> HOẶC <strong>giá Flash Sale</strong> (giá còn lại sẽ tự động tính).
                                         </p>
                                     </div>
                                     <div className="space-y-3 max-h-80 overflow-y-auto border-2 border-red-200 rounded-lg p-4 bg-red-50">
@@ -508,55 +549,74 @@ const AdminFlashSaleManagement = () => {
                                                     />
                                                     <div className="flex-1">
                                                         <h4 className="font-bold text-gray-800 mb-3">{product.productName}</h4>
-                                                        <div className="grid grid-cols-3 gap-3">
+                                                        
+                                                        {/* Giá gốc - Read Only - Full width */}
+                                                        <div className="mb-3 bg-blue-50 border-2 border-blue-300 rounded-lg px-4 py-3">
+                                                            <label className="block text-xs font-bold text-blue-700 mb-1">💵 Giá gốc</label>
+                                                            <div className="text-2xl font-bold text-blue-900">
+                                                                {product.originalPrice.toLocaleString('vi-VN')}₫
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-3 gap-4">
                                                             <div>
-                                                                <label className="block text-sm font-bold text-red-700 mb-1">
+                                                                <label className="block text-sm font-bold text-green-700 mb-2">
+                                                                    💚 Giảm % *
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={product.discountPercent || 0}
+                                                                    onChange={(e) => updateSelectedProduct(product.productId, 'discountPercent', e.target.value)}
+                                                                    className="w-full border-2 border-green-300 rounded-lg px-3 py-3 text-center text-lg font-bold focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                                                                    min="0"
+                                                                    max="100"
+                                                                    placeholder="30"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-sm font-bold text-red-700 mb-2">
                                                                     💸 Giá Flash Sale *
                                                                 </label>
                                                                 <input
-                                                                    type="number"
-                                                                    value={product.flashPrice}
-                                                                    onChange={(e) => updateSelectedProduct(product.productId, 'flashPrice', e.target.value)}
-                                                                    className="w-full border-2 border-red-300 rounded px-3 py-2 focus:border-red-500 focus:outline-none"
-                                                                    min="0"
-                                                                    placeholder="VD: 150000"
+                                                                    type="text"
+                                                                    value={product.flashPrice.toLocaleString('vi-VN')}
+                                                                    onChange={(e) => {
+                                                                        const value = e.target.value.replace(/\D/g, '');
+                                                                        updateSelectedProduct(product.productId, 'flashPrice', value);
+                                                                    }}
+                                                                    className="w-full border-2 border-red-300 rounded-lg px-3 py-3 text-center text-lg font-bold focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+                                                                    placeholder="20.000.000"
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <label className="block text-sm font-bold text-gray-700 mb-1">
-                                                                    💵 Giá gốc *
-                                                                </label>
-                                                                <input
-                                                                    type="number"
-                                                                    value={product.originalPrice}
-                                                                    onChange={(e) => updateSelectedProduct(product.productId, 'originalPrice', e.target.value)}
-                                                                    className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
-                                                                    min="0"
-                                                                    placeholder="VD: 200000"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-sm font-bold text-gray-700 mb-1">
+                                                                <label className="block text-sm font-bold text-gray-700 mb-2">
                                                                     📦 Số lượng *
                                                                 </label>
                                                                 <input
                                                                     type="number"
                                                                     value={product.totalStock}
                                                                     onChange={(e) => updateSelectedProduct(product.productId, 'totalStock', e.target.value)}
-                                                                    className="w-full border-2 border-gray-300 rounded px-3 py-2 focus:border-blue-500 focus:outline-none"
+                                                                    className="w-full border-2 border-gray-300 rounded-lg px-3 py-3 text-center text-lg font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                                                                     min="1"
-                                                                    placeholder="VD: 50"
+                                                                    placeholder="50"
                                                                 />
                                                             </div>
                                                         </div>
-                                                        <div className="mt-3 flex items-center justify-between">
-                                                            <div className="text-sm">
-                                                                <span className="font-bold text-red-600 text-lg">
-                                                                    Giảm {product.originalPrice > 0 ? Math.round((1 - (product.flashPrice || 0) / product.originalPrice) * 100) : 0}%
-                                                                </span>
-                                                                <span className="text-gray-600 ml-2">
-                                                                    (Tiết kiệm: {((product.originalPrice || 0) - (product.flashPrice || 0)).toLocaleString()}₫)
-                                                                </span>
+                                                        <div className="mt-4 flex items-center justify-between">
+                                                            <div className="bg-gradient-to-r from-red-50 to-green-50 px-4 py-3 rounded-lg border-2 border-red-300 flex-1 mr-3">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div>
+                                                                        <span className="font-bold text-red-600 text-xl">
+                                                                            Giảm {product.discountPercent || 0}%
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <div className="text-xs text-gray-600">Tiết kiệm</div>
+                                                                        <div className="font-bold text-green-600 text-lg">
+                                                                            {((product.originalPrice || 0) - (product.flashPrice || 0)).toLocaleString('vi-VN')}₫
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                             <button
                                                                 type="button"

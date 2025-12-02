@@ -59,6 +59,13 @@ export default function ProductDetail() {
         const data = j?.data || j?.product || j;
         if (!data || j?.success === false) throw new Error("Không tìm thấy sản phẩm.");
         
+        console.log('📦 ProductDetail loaded - Product data:', {
+          name: data.productName,
+          hasImages: !!data.images,
+          imagesLength: Array.isArray(data.images) ? data.images.length : 'N/A',
+          images: data.images
+        });
+        
         setProduct(data);
         setActiveIdx(0);
         // Tự động chọn biến thể đầu tiên
@@ -155,8 +162,15 @@ export default function ProductDetail() {
   // --- HELPERS HIỂN THỊ ---
   const images = useMemo(() => {
     const arr = (Array.isArray(product?.images) ? product.images : []).filter(Boolean);
+    console.log('🖼️ ProductDetail - images from product:', {
+      hasImages: !!product?.images,
+      isArray: Array.isArray(product?.images),
+      length: Array.isArray(product?.images) ? product.images.length : 'N/A',
+      images: product?.images
+    });
     const conv = arr.map(img => ProductController.getImageUrl(img));
     while (conv.length < 1) conv.push("/img/default.png");
+    console.log('📸 Final converted images:', conv);
     return conv.slice(0, 8);
   }, [product]);
 

@@ -50,6 +50,12 @@ export default function ProductManagement() {
           }
 
           const isOutOfStock = calculatedStock <= 0;
+          
+          // DEBUG: Log image data
+          const rawImage = (Array.isArray(p.images) && p.images[0]) || p.image;
+          if (!rawImage) {
+            console.warn(`⚠️ No image for ${p.productName}:`, { hasImages: Array.isArray(p.images), imagesLength: p.images?.length, p_image: p.image });
+          }
 
           return {
             id: p.productId || p._id,
@@ -57,7 +63,7 @@ export default function ProductManagement() {
             category: p.category?.categoryName || p.category?.name || "—",
             brand: p.brand || "—",
             lowestPrice: p.lowestPrice ?? p.minPrice ?? 0,
-            image: getImageUrl((Array.isArray(p.images) && p.images[0]) || p.image || "/img/no_image.png"),
+            image: getImageUrl(rawImage || "/img/no_image.png"),
 
             // Cập nhật giá trị cuối cùng vào đây
             totalStock: p.totalStock || 0,
