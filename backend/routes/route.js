@@ -15,6 +15,7 @@ const loyaltyRoutes = require('./loyaltyRoutes');
 const flashSaleRoutes = require('./flashSaleRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const chatRoutes = require('./chatRoutes');
+const imageProxyRoutes = require('./imageProxyRoutes');
 
 // ===========================================
 // === LOGGING: ĐỂ XEM REQUEST ĐÃ VÀO ROUTE.JS CHƯA ===
@@ -37,5 +38,6 @@ router.use('/loyalty', loyaltyRoutes);
 router.use('/flash-sales', flashSaleRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/chat', chatRoutes);
+router.use('/image-proxy', imageProxyRoutes);
 
 module.exports = router;

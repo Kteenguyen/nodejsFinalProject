@@ -48,11 +48,12 @@ export default function ProductCard({ product, viewMode = "grid" }) {
   // ========== 2. Ảnh hiển thị ==========
   const imageUrl = (() => {
     // Ưu tiên: images array > image string > thumbnail > mainImage > placeholder
-    // Backend trả về images array từ CDN TGDD
+    // Backend trả về images array từ Pexels CDN
     if (Array.isArray(p.images) && p.images.length > 0 && p.images[0]) {
       const imgPath = p.images[0];
       console.log(`🖼️ [${p.productName}] Using images[0]:`, imgPath);
-      // Nếu đường dẫn bắt đầu bằng /images thì thêm BACKEND_URL (local images)
+      
+      // Pexels URLs can be used directly (no proxy needed)
       const url = imgPath.startsWith('/images') ? `${BACKEND_URL}${imgPath}` : imgPath;
       console.log(`📍 Final URL:`, url);
       return url;

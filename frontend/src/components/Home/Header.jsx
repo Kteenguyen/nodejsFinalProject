@@ -539,12 +539,12 @@ const Header = () => {
                     </AnimatePresence>
                   </div>
                 ) : (
-                  <div className="hidden md:flex items-center gap-3">
-                    <Link to="/login" className="text-gray-600 hover:text-indigo-600 font-bold text-sm px-5 py-2.5 rounded-full hover:bg-gray-100 transition-all">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <Link to="/login" className="text-gray-600 hover:text-indigo-600 font-bold text-sm px-4 py-2.5 rounded-full hover:bg-gray-100 transition-all border border-gray-200 hover:border-indigo-300">
                       Đăng nhập
                     </Link>
-                    <Link to="/register" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-indigo-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2">
-                      <FaUserPlus /> <span>Đăng ký</span>
+                    <Link to="/register" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-2.5 rounded-full text-sm font-bold shadow-md shadow-indigo-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 whitespace-nowrap">
+                      <FaUserPlus /> Đăng ký
                     </Link>
                   </div>
                 )}

@@ -121,8 +121,119 @@ docker exec phoneworld-backend sh -c 'wget --no-check-certificate -qO- "https://
 ---
 
 **Status:** ✅ COMPLETED
-**Date Fixed:** December 2, 2025
+**Date Fixed:** December 2-3, 2025
 **Backend Container:** Rebuilt and healthy
 **Database:** phoneworld (MongoDB)
 **API Endpoint:** https://localhost:3001/api/products
 **Frontend URL:** https://localhost:8443
+
+---
+
+# Updates - December 3, 2025
+
+## Session 3: Image CDN & UI Polish
+
+### Changes Made
+
+#### 1. Header Layout Fix (Tablet Responsive)
+**File:** `frontend/src/components/Home/Header.jsx`
+- ✅ Fixed Login/Register buttons visibility on tablet (≥640px)
+- Changed from `hidden md:flex` to always visible with responsive sizing
+- Both buttons now show with proper spacing on all screen sizes
+
+#### 2. Product Image CDN Selection
+Tested multiple CDN solutions:
+- ❌ TGDD CDN - Blocked from localhost
+- ❌ Unsplash API - 401 auth error
+- ❌ Unsplash Source - Proxied but slow
+- ❌ Picsum Photos - Random images
+- ❌ Pixabay - CORS issues
+- ✅ **Pexels CDN** - Free, no auth, high quality (SELECTED)
+
+#### 3. Image Proxy Route
+**File:** `backend/routes/imageProxyRoutes.js` (NEW)
+- Created backend proxy to fetch remote images
+- Route: `GET /image-proxy?url=ENCODED_URL`
+- Caches images 24 hours
+
+#### 4. Product Images Updated
+**Scripts Created:**
+- `backend/scripts/fetchFromPexels.js` - Main image fetcher
+- `backend/scripts/updateSpecificProducts.js` - Fix specific products
+- `backend/scripts/restorePexelsAndRemoveImages.js` - Restore + cleanup
+
+**Products Status:**
+- ✅ iPhone 15 Pro Max - 3 Pexels images
+- ✅ iPhone 14 Pro - 3 Pexels images
+- ✅ Samsung Galaxy S24 Ultra - 3 Pexels images
+- ✅ iPad Pro M2 12.9 - 3 Pexels images
+- ✅ AirPods Pro Gen 2 - 3 Pexels images
+- ✅ Samsung Galaxy Tab S9 - 3 Pexels images
+- ✅ Apple Watch Series 9 - 3 Pexels images
+- ❌ Dell Inspiron 15 3520 - Placeholder (image issues)
+- ❌ MacBook Pro 14 M3 - Placeholder (image issues)
+
+#### 5. Code Cleanup
+**Created:** `backend/scripts/` directory
+- Consolidated 23 test/seed/check files
+- Added `scripts/README.md` with usage guide
+- Files moved:
+  - Check scripts: `checkAllData.js`, `checkImages.js`, etc.
+  - Test scripts: `testBackendAPI.js`, `testNewProducts.js`, etc.
+  - Seed scripts: `seedCategoriesFromTGDD.js`, etc.
+  - Fetch/Update: All image fetch and update scripts
+  - Total: 23 files organized
+
+### CDN Configuration
+
+**Current CDN:** Pexels (Free, Opensource)
+```
+Format: https://images.pexels.com/photos/{id}/{filename}.jpeg?auto=compress&cs=tinysrgb&w=400
+License: Free for commercial use
+Auth: None required
+Quality: High-resolution product images
+```
+
+### Frontend Changes
+**ProductCard.jsx:**
+- Removed image proxy logic (direct Pexels URLs work)
+- Simplified to direct CDN usage
+- Added fallback to placeholder if no images
+
+### Test & Verification
+
+```bash
+# Update images from Pexels
+node backend/scripts/fetchFromPexels.js
+
+# Check all products have images
+db.products.find({}, {productName: 1, images: {$size: 1}})
+
+# Test API returns images
+curl https://localhost:3001/api/products
+```
+
+### Known Issues & Limitations
+
+1. **Dell & MacBook Images**
+   - Pexels returned people images instead of laptops
+   - Removed images to show placeholder instead
+   - User can add real images later
+
+2. **Image Proxy**
+   - Created but not actively used (direct Pexels URLs work)
+   - Available as fallback if needed
+
+3. **CDN Alternatives**
+   - Pixabay: Free but had CORS issues
+   - Unsplash: Requires auth for API
+   - Can be restored if needed
+
+---
+
+**Status:** ✅ COMPLETED
+**Last Update:** December 3, 2025
+**Frontend Build:** Success (45.7s)
+**Backend Status:** Healthy
+**Database:** 9 products, 7 with Pexels images, 2 placeholders
+**Code Quality:** 23 test files organized in scripts/
