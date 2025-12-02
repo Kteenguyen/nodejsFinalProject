@@ -77,6 +77,16 @@ const checkOrderStatus = async (orderId) => {
     }
 };
 
+// 🆕 5. Hủy đơn hàng (User)
+const cancelOrder = async (orderId, { reason }) => {
+    try {
+        const response = await api.post(`${BASE_URL}/${orderId}/cancel`, { reason });
+        return response.data; // { success: true, message: "Đã hủy...", order: {...} }
+    } catch (error) {
+        throw new Error(error.response?.data?.message || "Lỗi hủy đơn hàng");
+    }
+};
+
 export const OrderController = {
     getMyOrders,
     getAllOrdersForAdmin,
@@ -84,5 +94,6 @@ export const OrderController = {
     updateOrderStatus,
     createOrder,
     validateCoupon,
-    checkOrderStatus
+    checkOrderStatus,
+    cancelOrder
 };

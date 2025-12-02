@@ -39,4 +39,7 @@ router.post('/:orderId/mark-paid', orderCtrl.markOrderAsPaid);
 router.get('/:orderId', protect, orderCtrl.getOrder);
 router.put('/:orderId/status', protect, admin, orderCtrl.updateOrderStatus);
 
+// 🆕 HỦY ĐƠN HÀNG (User)
+router.post('/:orderId/cancel', protect, orderCtrl.cancelOrder);
+
 module.exports = router;

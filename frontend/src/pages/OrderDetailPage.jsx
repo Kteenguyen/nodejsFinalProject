@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { OrderController } from '../controllers/OrderController';
-import { ArrowLeft, MapPin, CreditCard, Package, Truck, Calendar, DollarSign } from 'lucide-react';
+import { ArrowLeft, MapPin, CreditCard, Package, Truck, Calendar, DollarSign, X } from 'lucide-react';
 import { getImageUrl } from '../services/api';
 
 const OrderDetailPage = () => {
@@ -10,6 +10,10 @@ const OrderDetailPage = () => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+    const [cancelling, setCancelling] = useState(false);
+    const [cancelError, setCancelError] = useState('');
 
     useEffect(() => {
         const fetchOrderDetail = async () => {
@@ -25,6 +29,39 @@ const OrderDetailPage = () => {
         };
         fetchOrderDetail();
     }, [id]);
+
+    // 🆕 Kiểm tra có thể hủy đơn không (trong vòng 24 giờ, trạng thái Pending/Confirmed)
+    const canCancel = order && 
+        ['Pending', 'Confirmed'].includes(order.status) && 
+        (new Date() - new Date(order.createdAt)) < 24 * 60 * 60 * 1000;
+
+    // 🆕 Hủy đơn hàng
+    const handleCancelOrder = async () => {
+        if (!cancelReason.trim()) {
+            setCancelError('Vui lòng cung cấp lý do hủy đơn hàng');
+            return;
+        }
+
+        setCancelling(true);
+        setCancelError('');
+        try {
+            const result = await OrderController.cancelOrder(order.orderId || id, { reason: cancelReason });
+            alert('✅ ' + result.message);
+            setShowCancelModal(false);
+            // Cập nhật trạng thái đơn hàng
+            setOrder(prev => ({
+                ...prev,
+                status: 'Cancelled',
+                cancelReason: cancelReason,
+                cancelledAt: new Date().toISOString()
+            }));
+        } catch (err) {
+            setCancelError(err.message || 'Lỗi hủy đơn hàng');
+            console.error('❌ Cancel error:', err);
+        } finally {
+            setCancelling(false);
+        }
+    };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center">Đang tải chi tiết đơn hàng...</div>;
     if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
@@ -49,14 +86,25 @@ const OrderDetailPage = () => {
         <div className="min-h-screen bg-gray-50 py-8 px-4">
             <div className="max-w-4xl mx-auto">
                 {/* Header: Nút back & Title */}
-                <div className="flex items-center gap-4 mb-6">
-                    <Link to="/profile" className="p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 text-gray-600">
-                        <ArrowLeft size={20} />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Chi tiết đơn hàng</h1>
-                        <p className="text-sm text-gray-500">Mã đơn: <span className="font-mono font-bold text-blue-600">#{order.orderId || order._id}</span></p>
+                <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-4">
+                        <Link to="/profile" className="p-2 bg-white rounded-full shadow-sm hover:bg-gray-100 text-gray-600">
+                            <ArrowLeft size={20} />
+                        </Link>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">Chi tiết đơn hàng</h1>
+                            <p className="text-sm text-gray-500">Mã đơn: <span className="font-mono font-bold text-blue-600">#{order.orderId || order._id}</span></p>
+                        </div>
                     </div>
+                    {/* 🆕 Nút hủy đơn */}
+                    {canCancel && (
+                        <button
+                            onClick={() => setShowCancelModal(true)}
+                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition duration-200 text-sm"
+                        >
+                            Hủy đơn hàng
+                        </button>
+                    )}
                 </div>
 
                 {/* Thông tin chính */}
@@ -204,6 +252,69 @@ const OrderDetailPage = () => {
                 </div>
 
             </div>
+
+            {/* 🆕 MODAL HỦY ĐƠN HÀNG */}
+            {showCancelModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-gray-800">Hủy đơn hàng</h2>
+                            <button
+                                onClick={() => {
+                                    setShowCancelModal(false);
+                                    setCancelError('');
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                            <p className="text-sm text-orange-700">
+                                ⚠️ Bạn chỉ có thể hủy đơn hàng trong vòng <strong>24 giờ</strong> kể từ khi đặt.
+                            </p>
+                        </div>
+
+                        <label className="block mb-2 font-medium text-gray-700">
+                            Lý do hủy đơn <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            placeholder="Vui lòng cho biết lý do hủy đơn hàng..."
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 mb-3 resize-none"
+                            rows="4"
+                        />
+
+                        {cancelError && (
+                            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-sm text-red-700">{cancelError}</p>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowCancelModal(false);
+                                    setCancelError('');
+                                }}
+                                disabled={cancelling}
+                                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition disabled:opacity-50"
+                            >
+                                Quay lại
+                            </button>
+                            <button
+                                onClick={handleCancelOrder}
+                                disabled={cancelling || !cancelReason.trim()}
+                                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition disabled:opacity-50"
+                            >
+                                {cancelling ? 'Đang xử lý...' : 'Xác nhận hủy'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

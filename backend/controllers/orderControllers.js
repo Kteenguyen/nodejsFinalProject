@@ -935,10 +935,16 @@ exports.getDashboardStats = async (req, res) => {
 exports.cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
+    const { reason } = req.body;
     const userId = req.user?._id || req.user?.id;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+    }
+
+    // Kiểm tra lý do hủy (bắt buộc)
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp lý do hủy đơn hàng' });
     }
 
     // Tìm đơn hàng
@@ -953,6 +959,18 @@ exports.cancelOrder = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền hủy đơn hàng này' });
     }
 
+    // 🆕 Kiểm tra 24 giờ kể từ khi tạo đơn
+    const now = new Date();
+    const createdAt = new Date(order.createdAt);
+    const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
+    
+    if (hoursDiff > 24) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Bạn chỉ có thể hủy đơn hàng trong vòng 24 giờ kể từ khi đặt' 
+      });
+    }
+
     // Chỉ cho phép hủy nếu đơn hàng đang ở trạng thái Pending hoặc Confirmed
     if (!['Pending', 'Confirmed'].includes(order.status)) {
       return res.status(400).json({ 
@@ -962,8 +980,10 @@ exports.cancelOrder = async (req, res) => {
     }
 
     // Cập nhật trạng thái sang Cancelled
+    const oldStatus = order.status;
     order.status = 'Cancelled';
     order.cancelledAt = new Date();
+    order.cancelReason = reason;
     await order.save();
 
     // Hoàn lại điểm thưởng nếu đã dùng
@@ -971,10 +991,11 @@ exports.cancelOrder = async (req, res) => {
       await User.findByIdAndUpdate(userId, {
         $inc: { loyaltyPoints: order.loyaltyPoints.pointsUsed }
       });
+      console.log(`💰 Hoàn lại ${order.loyaltyPoints.pointsUsed} điểm cho user ${userId}`);
     }
 
     // Hoàn lại số lượng sản phẩm vào kho (chỉ cần nếu đơn đã ở trạng thái Shipping)
-    if (order.status === 'Shipping') {
+    if (oldStatus === 'Shipping') {
       for (const item of order.items) {
         const product = await Product.findById(item.productId);
         if (product) {
@@ -985,9 +1006,34 @@ exports.cancelOrder = async (req, res) => {
       }
     }
 
+    // 🆕 Gửi email thông báo hủy đơn
+    const user = await User.findById(userId);
+    if (user && user.email) {
+      try {
+        const emailContent = `
+          <h2 style="color: #d32f2f;">Đơn hàng của bạn đã bị hủy</h2>
+          <p><strong>Mã đơn hàng:</strong> #${order.orderId}</p>
+          <p><strong>Trạng thái:</strong> Cancelled</p>
+          <p><strong>Tổng tiền:</strong> ${order.totalPrice.toLocaleString('vi-VN')} đ</p>
+          <p><strong>Lý do hủy:</strong> ${reason}</p>
+          <p><strong>Thời gian hủy:</strong> ${new Date().toLocaleString('vi-VN')}</p>
+          ${order.loyaltyPoints && order.loyaltyPoints.pointsUsed > 0 ? 
+            `<p style="color: green;"><strong>✓ Đã hoàn lại ${order.loyaltyPoints.pointsUsed} điểm thưởng</strong></p>` : 
+            ''}
+          <p>Nếu bạn có câu hỏi, vui lòng liên hệ với chúng tôi.</p>
+        `;
+        
+        await sendEmail(user.email, 'Đơn hàng #' + order.orderId + ' đã bị hủy', emailContent);
+        console.log(`📧 Gửi email hủy đơn cho ${user.email}`);
+      } catch (emailErr) {
+        console.error('❌ Lỗi gửi email:', emailErr);
+        // Không throw error, vì hủy đơn đã thành công
+      }
+    }
+
     res.json({ 
       success: true, 
-      message: 'Đã hủy đơn hàng thành công',
+      message: 'Đã hủy đơn hàng thành công. Email xác nhận đã được gửi.',
       order 
     });
 

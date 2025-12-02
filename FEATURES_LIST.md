@@ -9,6 +9,10 @@
 | **Other Requirements** | 2.0 | 2.0 | 0 | 0 |
 | **TOTAL** | **11.0** | **~7.0** | **~3.0** | **~1.0** |
 
+**NEW FEATURES ADDED:**
+- 🆕 Gợi ý voucher (Auto-suggest discounts)
+- 🆕 Hủy đơn hàng (User can cancel within 24h)
+
 ### Completed Features (✅)
 1. Social Media Authentication (Google, Facebook) ✅
 2. User Profile Management ✅
@@ -178,6 +182,13 @@
 - [ ] 7.2. Xem chi tiết đơn hàng
 - [ ] 7.3. Theo dõi trạng thái đơn hàng
 - [ ] 7.4. Hủy đơn hàng (User)
+- [ ] **7.4.1. 🆕 HỦY ĐƠN HÀNG (USER)**
+  - User có thể hủy đơn trong 24h sau khi đặt
+  - Tự động hoàn tiền/điểm loyalty
+  - Reason: Bắt buộc phải nhập lý do hủy
+  - Trạng thái order → "Cancelled"
+  - Email notification: "Đơn hàng #123 đã hủy thành công"
+  - File: `frontend/pages/OrderDetailPage.jsx`, `backend/controllers/orderControllers.js`
 - [ ] 7.5. **Xem tất cả đơn hàng (Admin)**
 - [ ] 7.6. **Cập nhật trạng thái đơn (Admin)**
 - [ ] 7.7. **Xác nhận đơn hàng (Admin)**
@@ -209,6 +220,11 @@
 - [ ] 10.3. **Tạo voucher mới (Admin)**
 - [ ] 10.4. **Quản lý vouchers (Admin)**
 - [ ] 10.5. Voucher giới hạn số lượng/thời gian
+- [ ] **10.6. 🆕 GỢI Ý VOUCHER KHUYẾN MÃI**
+  - Auto-suggest discounts khi checkout
+  - Hiển thị available vouchers dựa trên order amount
+  - Smart recommendation (VD: order 1M → suggest 10% discount)
+  - File: `frontend/pages/CheckoutPage.jsx`, `backend/controllers/discountControllers.js`
 
 ### 1️⃣1️⃣ **NOTIFICATIONS** (4 tính năng)
 - [ ] 11.1. Thông báo đơn hàng mới

@@ -6,14 +6,10 @@ services:
     restart: unless-stopped
     environment:
       MONGO_INITDB_DATABASE: shop
-      # [FIX] Thêm user/pass để bảo mật
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: phoneworld123
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-      - ./backend/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     networks:
       - phoneworld-network
     healthcheck:
@@ -67,8 +63,8 @@ services:
       VIRTUAL_HOST: localhost
       VIRTUAL_PORT: 3001
       VIRTUAL_PROTO: https
-      # [FIX] Cập nhật connection string có auth
-      MONGODB_URI: mongodb://admin:phoneworld123@mongodb:27017/phoneworld?authSource=admin
+      # [FINAL] Kết nối vào LOCAL MongoDB qua Docker bridge gateway (IP 172.17.0.1)
+      MONGODB_URI: mongodb://172.17.0.1:27017/shop
       ELASTIC_URL: http://elasticsearch:9200
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}

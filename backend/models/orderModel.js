@@ -47,6 +47,8 @@ const orderSchema = new mongoose.Schema({
         status: { type: String },
         updatedAt: { type: Date, default: Date.now }
     }],
+    cancelledAt: { type: Date },
+    cancelReason: { type: String },
     isPaid: { type: Boolean, default: false },
     paidAt: { type: Date },
     // Ảnh chứng từ chuyển khoản (cho payment method = banking)
