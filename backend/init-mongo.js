@@ -3,23 +3,8 @@
 
 db = db.getSiblingDB('shop');
 
-// Create collections with validation
-db.createCollection('users', {
-  validator: {
-    $jsonSchema: {
-      bsonType: 'object',
-      required: ['email', 'password', 'fullName'],
-      properties: {
-        email: { bsonType: 'string' },
-        password: { bsonType: 'string' },
-        fullName: { bsonType: 'string' },
-        role: { enum: ['user', 'admin'] },
-        isActive: { bsonType: 'bool' }
-      }
-    }
-  }
-});
-
+// Create collections (validator disabled for flexibility with Mongoose)
+db.createCollection('users');
 db.createCollection('products');
 db.createCollection('orders');
 db.createCollection('carts');
