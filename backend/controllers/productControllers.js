@@ -188,7 +188,7 @@ exports.getProducts = async (req, res) => {
                     else: null
                   }
                 },
-                images: { $slice: ['$images', 1] }, // Giữ array cho compatibility
+                images: '$images', // Return all images
                 variants: 1, // Thêm variants để frontend biết stock của từng variant
                 minPrice: 1,
                 lowestPrice: '$minPrice',
@@ -363,7 +363,7 @@ exports.getBestSellers = async (_req, res) => {
           productName: 1,
           name: '$productName',
           brand: 1,
-          images: { $slice: ['$images', 1] },
+          images: '$images',
           lowestPrice: '$minPrice',
           totalStock: 1 // <-- Quan trọng
         }
@@ -416,7 +416,7 @@ exports.getNewProducts = async (_req, res) => {
           productName: 1,
           name: '$productName',
           brand: 1,
-          images: { $slice: ['$images', 1] },
+          images: '$images',
           lowestPrice: '$minPrice',
           totalStock: 1,
           createdAt: 1,
@@ -468,7 +468,7 @@ exports.getProductsByCategory = async (req, res) => {
             productName: 1,
             name: '$productName',
             brand: 1,
-            images: { $slice: ['$images', 1] },
+            images: '$images',
             lowestPrice: '$minPrice',
             minPrice: 1,
             totalStock: 1
@@ -499,6 +499,8 @@ exports.getProductsByCategory = async (req, res) => {
 /** ADMIN */
 exports.createProduct = async (req, res) => {
   try {
+    console.log('📦 [CREATE PRODUCT] Request body:', JSON.stringify(req.body, null, 2));
+    
     const {
       productId, productName, brand, productDescription, category, images = [],
       status = 'available', isNewProduct = false, isBestSeller = false, variants = [],
@@ -506,12 +508,18 @@ exports.createProduct = async (req, res) => {
     } = req.body;
 
     if (!productId || !productName || !category?.categoryId || !variants?.length) {
+      console.log('❌ [CREATE PRODUCT] Validation failed:', {
+        hasProductId: !!productId,
+        hasProductName: !!productName,
+        hasCategoryId: !!category?.categoryId,
+        hasVariants: !!variants?.length
+      });
       return res.status(400).json({ success: false, message: 'Thiếu dữ liệu bắt buộc/biến thể.' });
     }
 
-    const processedVariants = variants.map(v => ({
+    const processedVariants = variants.map((v, index) => ({
       variantId: v.variantId || uuidv4(),
-      name: v.name,
+      name: v.name && v.name.trim() ? v.name.trim() : `Phiên bản ${index + 1}`, // Auto-generate name nếu thiếu
       price: v.price,
       oldPrice: v.oldPrice || 0,
       discount: Number(v.discount) || 0,
@@ -530,8 +538,11 @@ exports.createProduct = async (req, res) => {
 
     const created = await Product.create(productData);
 
+    console.log('✅ [CREATE PRODUCT] Product created successfully:', created.productId);
     res.status(201).json({ success: true, product: created });
   } catch (e) {
+    console.error('❌ [CREATE PRODUCT] Error:', e);
+    console.error('❌ [CREATE PRODUCT] Stack:', e.stack);
     res.status(500).json({ success: false, message: 'Lỗi server', error: e.message });
   }
 };

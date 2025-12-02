@@ -24,9 +24,9 @@ const FlashSalePage = () => {
 
     const fetchFlashSales = async () => {
         try {
-            const [activeRes, upcomingRes] = await Promise.all([
-                fetch('http://localhost:3001/api/flash-sales/active'),
-                fetch('http://localhost:3001/api/flash-sales/upcoming')
+            const [activeResponse, upcomingResponse] = await Promise.all([
+                fetch('/api/flash-sales/active'),
+                fetch('/api/flash-sales/upcoming')
             ]);
 
             const activeData = await activeRes.json();

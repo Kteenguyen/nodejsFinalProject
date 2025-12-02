@@ -96,7 +96,7 @@ exports.login = async (req, res) => {
         if (user.isBanned === true) {
             console.log(`🚫 Tài khoản bị ban đã cố gắng đăng nhập: ${user.email}`);
             return res.status(403).json({
-                message: 'Tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ',
+                message: 'tài khoản của bạn đã bị cấm do có hành vi bất thường. Vui lòng liên hệ hotline để được hỗ trợ',
                 isBanned: true
             });
         }

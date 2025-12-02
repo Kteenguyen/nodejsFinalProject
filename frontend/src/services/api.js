@@ -1,15 +1,13 @@
 // frontend/src/services/api.js
 import axios from 'axios';
 
-// 1. Force lấy protocol hiện tại mỗi lần gọi (không cache)
+// Use relative paths - nginx will proxy to backend
 const getBaseUrl = () => {
-    const protocol = window.location.protocol; // 'http:' hoặc 'https:'
-    return `${protocol}//localhost:3001/api`;
+    return '/api';
 };
 
 const getBackendUrl = () => {
-    const protocol = window.location.protocol;
-    return `${protocol}//localhost:3001`;
+    return '';
 };
 
 export const API_BASE_URL = getBaseUrl();

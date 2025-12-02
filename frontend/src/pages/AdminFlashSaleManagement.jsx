@@ -174,7 +174,7 @@ const AdminFlashSaleManagement = () => {
 
         try {
             const token = sessionStorage.getItem('token');
-            const baseUrl = `${window.location.protocol}//localhost:3001/api/flash-sales`;
+            const baseUrl = '/api/flash-sales';
             const url = editingFlashSale 
                 ? `${baseUrl}/${editingFlashSale._id}`
                 : baseUrl;
@@ -210,7 +210,7 @@ const AdminFlashSaleManagement = () => {
 
         try {
             const token = sessionStorage.getItem('token');
-            const baseUrl = `${window.location.protocol}//localhost:3001/api/flash-sales`;
+            const baseUrl = '/api/flash-sales';
             const response = await fetch(`${baseUrl}/${id}`, {
                 method: 'DELETE',
                 headers: {
