@@ -101,7 +101,13 @@
 - [ ] 2.6. Xem lịch sử đơn hàng
 - [ ] 2.7. Theo dõi đơn hàng (Order tracking)
 - [x] 2.8. **Ban/Unban tài khoản (Admin)** ✅ TESTED
+  - Công nghệ: JWT + role-based access
+  - Test Note: Admin có thể ban users, banned user không thể login
+  - File: `backend/controllers/userControllers.js`, Frontend: `/admin/users`
 - [x] 2.9. **Message khi login bị ban: "tài khoản của bạn đã bị cấm..."** ✅ TESTED
+  - Hiển thị popup/toast message rõ ràng
+  - Test Note: Logout user khi account bị ban
+  - File: `frontend/pages/Login.jsx`, `backend/controllers/authController.js`
 - [ ] 2.10. Danh sách users (Admin)
 - [ ] 2.11. Tìm kiếm users (Admin)
 - [ ] 2.12. Phân quyền user/admin
@@ -118,11 +124,28 @@
 - [ ] 3.9. Sản phẩm mới (New Products - 30 ngày)
 - [ ] 3.10. Sản phẩm bán chạy (Best Sellers)
 - [x] 3.11. **Tạo sản phẩm mới (Admin)** ✅ TESTED
+  - Cloudinary integration cho upload ảnh
+  - Support multiple variants & images
+  - Test Note: Create product with 2+ variants, multiple images
+  - File: `frontend/components/Dashboard/Products.jsx`, `backend/controllers/productControllers.js`
 - [x] 3.12. **Sửa sản phẩm (Admin)** ✅ TESTED
+  - Update name, price, description, category, variants
+  - Test Note: Edit existing product, verify changes
+  - File: `frontend/components/Dashboard/Products.jsx`
 - [ ] 3.13. **Xóa sản phẩm (Admin)**
 - [x] 3.14. **Auto-naming variants (Phiên bản 1, 2, 3...)** ✅ TESTED
+  - System auto-generates variant names if not provided
+  - Test Note: Create product without variant names → auto-named as "Phiên bản 1", "Phiên bản 2"
+  - File: `backend/controllers/productControllers.js` line 95
 - [x] 3.15. **Upload nhiều ảnh sản phẩm** ✅ TESTED
+  - Each product can have 3+ images
+  - Cloudinary CDN integration
+  - Test Note: Upload 3 images per product, all display correctly
+  - File: `backend/controllers/productControllers.js`, `frontend/components/Dashboard/Products.jsx`
 - [x] 3.16. **Cập nhật hình ảnh sản phẩm** ✅ TESTED
+  - Replace existing images with new ones
+  - Test Note: Updated all 9 products with Pexels CDN images
+  - File: `backend/scripts/fetchFromPexels.js`
 
 ### 4️⃣ **CATEGORY MANAGEMENT** (5 tính năng)
 - [ ] 4.1. Xem danh sách danh mục
