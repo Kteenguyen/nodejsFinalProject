@@ -137,9 +137,6 @@ export default function AdminProductNewPage() {
     newPreviews[index] = value;
     setProduct((prev) => ({ ...prev, images: newImages, imagePreviews: newPreviews }));
   };
-<<<<<<< HEAD
-  const addImageField = () => setProduct((prev) => ({ ...prev, images: [...prev.images, ""] }));
-  const removeImageField = (index) => setProduct((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   
   // Xử lý upload file ảnh
   const handleFileUpload = async (index, event) => {
@@ -179,7 +176,6 @@ export default function AdminProductNewPage() {
       toast.error('Upload ảnh thất bại: ' + (error.response?.data?.message || error.message));
     }
   };
-=======
   
   const handleImageFileChange = (index, e) => {
     const file = e.target.files[0];
@@ -196,7 +192,6 @@ export default function AdminProductNewPage() {
   
   const addImageField = () => setProduct((prev) => ({ ...prev, images: [...prev.images, ""], imagePreviews: [...prev.imagePreviews, ""] }));
   const removeImageField = (index) => setProduct((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index), imagePreviews: prev.imagePreviews.filter((_, i) => i !== index) }));
->>>>>>> 399d2d510306d37538150cafe06201f702e32639
 
   // === LOGIC TÍNH GIÁ TỰ ĐỘNG (giống trang Edit) ===
   const updateVariantField = (index, field, value) => {
@@ -454,7 +449,6 @@ export default function AdminProductNewPage() {
         <div><label className="block text-sm font-medium mb-1">Mô tả</label><textarea className="w-full border rounded px-3 py-2 h-24" value={product.description} onChange={(e) => updateField("description", e.target.value)} /></div>
         
         <div className="border p-4 rounded bg-gray-50">
-<<<<<<< HEAD
           <div className="flex justify-between items-center mb-3">
             <label className="block text-sm font-bold text-gray-700">Hình ảnh</label>
             <button type="button" onClick={addImageField} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">+ Thêm ảnh</button>
@@ -538,45 +532,6 @@ export default function AdminProductNewPage() {
                   >
                     ✕
                   </button>
-=======
-          <div className="flex justify-between mb-4"><label className="font-bold text-sm">Hình ảnh sản phẩm (Tối thiểu 2 ảnh)</label><button type="button" onClick={addImageField} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">+ Thêm ảnh</button></div>
-          <div className="space-y-4">
-            {product.images.map((url, i) => (
-              <div key={i} className="border rounded p-3 bg-white">
-                <div className="flex gap-3">
-                  <div className="flex-1 space-y-2">
-                    {/* File Upload */}
-                    <div className="flex items-center justify-center w-full border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50 hover:bg-gray-100 cursor-pointer transition">
-                      <input 
-                        ref={el => variantImageRefs.current[`product_${i}`] = el}
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => handleImageFileChange(i, e)}
-                        className="hidden" 
-                      />
-                      <div className="text-center" onClick={() => variantImageRefs.current[`product_${i}`]?.click()}>
-                        <ImageIcon size={20} className="text-gray-400 mx-auto mb-1" />
-                        <p className="text-xs text-gray-600">Click để chọn ảnh</p>
-                      </div>
-                    </div>
-                    {/* URL Input */}
-                    <input 
-                      className="w-full border rounded px-2 py-1 text-sm" 
-                      value={url} 
-                      onChange={e=>handleImageChange(i,e.target.value)} 
-                      placeholder="Hoặc dán URL ảnh..."
-                    />
-                  </div>
-                  {/* Preview */}
-                  <div className="w-20 h-20 rounded border border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {product.imagePreviews[i] ? (
-                      <img src={product.imagePreviews[i]} alt="" className="w-full h-full object-cover" onError={() => {}} />
-                    ) : (
-                      <ImageIcon size={24} className="text-gray-400" />
-                    )}
-                  </div>
-                  <button type="button" onClick={()=>removeImageField(i)} className="text-red-500 font-bold hover:text-red-700">✕</button>
->>>>>>> 399d2d510306d37538150cafe06201f702e32639
                 </div>
               </div>
             ))}
