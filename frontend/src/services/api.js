@@ -1,13 +1,14 @@
 // frontend/src/services/api.js
 import axios from 'axios';
 
-// Use relative paths - nginx will proxy to backend
+// Use backend URL from env or default to localhost:3001
 const getBaseUrl = () => {
-    return '/api';
+    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    return `${backendUrl}/api`;
 };
 
 const getBackendUrl = () => {
-    return '';
+    return process.env.REACT_APP_API_URL || 'http://localhost:3001';
 };
 
 export const API_BASE_URL = getBaseUrl();

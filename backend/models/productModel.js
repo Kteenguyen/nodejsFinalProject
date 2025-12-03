@@ -9,6 +9,7 @@ const variantSchema = new mongoose.Schema(
     oldPrice: { type: Number, default: 0, min: 0 },
     discount: { type: Number, default: 0, min: 0, max: 100 },
     stock: { type: Number, default: 0, min: 0 },
+    images: [{ type: String, default: '' }], // Ảnh riêng cho biến thể
   },
   { _id: false }
 );

@@ -26,9 +26,10 @@ export const CategoryController = {
         }
     },
 
-    create: async (data) => {
+    create: async (data, isFormData = false) => {
         try {
-            const response = await api.post('/categories', data);
+            const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+            const response = await api.post('/categories', data, config);
             toast.success(response.data.message || 'Thêm danh mục thành công!');
             return response.data.category;
         } catch (error) {
@@ -39,9 +40,10 @@ export const CategoryController = {
         }
     },
 
-    update: async (id, data) => {
+    update: async (id, data, isFormData = false) => {
         try {
-            const response = await api.put(`/categories/${id}`, data);
+            const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+            const response = await api.put(`/categories/${id}`, data, config);
             toast.success(response.data.message || 'Cập nhật thành công!');
             return response.data.category;
         } catch (error) {
