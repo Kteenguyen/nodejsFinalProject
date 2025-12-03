@@ -114,15 +114,6 @@ const ProfilePage = () => {
         }
     }, []);
 
-    // Load vouchers khi switch to VOUCHERS tab
-    useEffect(() => {
-        if (activeTab === TABS.VOUCHERS) {
-            fetchAvailableVouchers();
-        } else if (activeTab === TABS.MY_VOUCHERS) {
-            fetchMyVouchers();
-        }
-    }, [activeTab, fetchAvailableVouchers, fetchMyVouchers]);
-
     // Fetch user's redeemed vouchers
     const fetchMyVouchers = useCallback(async () => {
         // Nội dung fetch API của bạn (giữ nguyên)
@@ -136,6 +127,15 @@ const ProfilePage = () => {
             setLoadingMyVouchers(false);
         }
     }, []);
+
+    // Load vouchers khi switch to VOUCHERS tab
+    useEffect(() => {
+        if (activeTab === TABS.VOUCHERS) {
+            fetchAvailableVouchers();
+        } else if (activeTab === TABS.MY_VOUCHERS) {
+            fetchMyVouchers();
+        }
+    }, [activeTab, fetchAvailableVouchers, fetchMyVouchers]);
 
     // Redeem voucher function
     const handleRedeemVoucher = async (voucher) => {
