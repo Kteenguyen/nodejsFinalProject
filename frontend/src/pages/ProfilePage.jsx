@@ -1,5 +1,5 @@
 // frontend/src/pages/ProfilePage.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect , useCallback} from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FaUser, FaLock, FaMapMarkerAlt, FaCamera, FaShoppingBag, FaGift, FaTicketAlt } from 'react-icons/fa';
 import { motion } from 'framer-motion';
@@ -101,20 +101,18 @@ const ProfilePage = () => {
     // =================================================
     
     // Fetch available vouchers
-    const fetchAvailableVouchers = async (forceRefresh = false) => {
-        if (availableVouchers && !forceRefresh) return; // Đã load rồi
-        
-        setIsLoadingVouchers(true);
+    const fetchAvailableVouchers = useCallback(async () => {
+        // Nội dung fetch API của bạn (giữ nguyên)
         try {
-            const response = await api.get('/discounts/available');
-            setAvailableVouchers(response.data.vouchers || []);
-        } catch (error) {
-            console.error('Error fetching vouchers:', error);
-            setAvailableVouchers([]);
+            setLoadingVouchers(true);
+            const res = await api.get('/vouchers/available');
+            setAvailableVouchers(res.data);
+        } catch (e) {
+            toast.error('Lỗi khi tải voucher khả dụng');
         } finally {
-            setIsLoadingVouchers(false);
+            setLoadingVouchers(false);
         }
-    };
+    }, []);
 
     // Load vouchers khi switch to VOUCHERS tab
     useEffect(() => {
@@ -126,20 +124,18 @@ const ProfilePage = () => {
     }, [activeTab, fetchAvailableVouchers, fetchMyVouchers]);
 
     // Fetch user's redeemed vouchers
-    const fetchMyVouchers = async () => {
-        if (myVouchers) return; // Đã load rồi
-        
-        setIsLoadingMyVouchers(true);
+    const fetchMyVouchers = useCallback(async () => {
+        // Nội dung fetch API của bạn (giữ nguyên)
         try {
-            // Lấy voucher từ user profile
-            setMyVouchers(user?.vouchers || []);
-        } catch (error) {
-            console.error('Error fetching my vouchers:', error);
-            setMyVouchers([]);
+            setLoadingMyVouchers(true);
+            const res = await api.get('/vouchers/my-vouchers');
+            setMyVouchers(res.data);
+        } catch (e) {
+            toast.error('Lỗi khi tải voucher của tôi');
         } finally {
-            setIsLoadingMyVouchers(false);
+            setLoadingMyVouchers(false);
         }
-    };
+    }, []);
 
     // Redeem voucher function
     const handleRedeemVoucher = async (voucher) => {
