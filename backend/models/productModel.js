@@ -1,6 +1,14 @@
 // backend/models/productModel.js
 const mongoose = require('mongoose');
 
+const specificationSchema = new mongoose.Schema(
+  {
+    label: { type: String, required: true, trim: true }, // Ví dụ: "Màn hình", "CPU", "RAM"
+    value: { type: String, required: true, trim: true }, // Ví dụ: "6.7 inch", "Snapdragon 8 Gen 2", "8GB"
+  },
+  { _id: false }
+);
+
 const variantSchema = new mongoose.Schema(
   {
     variantId: { type: String, required: true },
@@ -10,6 +18,9 @@ const variantSchema = new mongoose.Schema(
     discount: { type: Number, default: 0, min: 0, max: 100 },
     stock: { type: Number, default: 0, min: 0 },
     images: [{ type: String, default: '' }], // Ảnh riêng cho biến thể
+    color: { type: String, default: '' }, // Màu sắc
+    rom: { type: String, default: '' },   // ROM (bộ nhớ trong)
+    ram: { type: String, default: '' },   // RAM
   },
   { _id: false }
 );
@@ -46,6 +57,9 @@ const productSchema = new mongoose.Schema(
       categoryId: { type: String, required: true },
       categoryName: { type: String, default: '' },
     },
+
+    // Thông số kỹ thuật
+    specifications: { type: [specificationSchema], default: [] },
 
     images: [{ type: String }],
     status: { type: String, enum: ['available', 'unavailable'], default: 'available' },

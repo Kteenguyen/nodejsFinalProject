@@ -5,6 +5,16 @@ import { ProductController } from '../../controllers/productController';
 import { toast } from "react-toastify";
 import api, { getImageUrl } from '../../services/api';
 import { getStockStatus, StockStatusBadge, STOCK_STATUS } from '../../utils/stockStatus';
+import ProductVariantEditor from './ProductVariantEditor';
+
+
+// Làm tròn giá về bội số 990.000 gần nhất
+function roundTo990k(n) {
+  n = Number(n) || 0;
+  if (n <= 0) return 0;
+  // Làm tròn xuống bội số 990000 gần nhất
+  return Math.floor(n / 990000) * 990000;
+}
 
 const fmtVND = (n) =>
   (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN") + " đ";
@@ -64,7 +74,7 @@ export default function ProductManagement() {
             name: p.productName || p.name || "(Không tên)",
             category: p.category?.categoryName || p.category?.name || "—",
             brand: p.brand || "—",
-            lowestPrice: p.lowestPrice ?? p.minPrice ?? 0,
+            lowestPrice: roundTo990k(p.lowestPrice ?? p.minPrice ?? 0),
             image: getImageUrl(rawImage || "/img/no_image.png"),
 
             // Cập nhật giá trị cuối cùng vào đây

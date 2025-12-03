@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import api, { getImageUrl } from '../services/api';
+import api from '../services/api';
 import Calendar from '../components/common/Calendar';
 import { Image as ImageIcon } from 'lucide-react';
 
@@ -54,6 +54,7 @@ export default function AdminProductNewPage() {
     category: { categoryId: "", name: "" },
     categories: [], // Danh sách danh mục
     description: "",
+    specifications: [{ label: "", value: "" }], // Thông số kỹ thuật
     images: ["", "", ""],
     imagePreviews: ["", "", ""], // Preview khi upload file
     variants: [emptyVariant()],
@@ -138,45 +139,6 @@ export default function AdminProductNewPage() {
     setProduct((prev) => ({ ...prev, images: newImages, imagePreviews: newPreviews }));
   };
   
-  // Xử lý upload file ảnh
-  const handleFileUpload = async (index, event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Kiểm tra loại file
-    if (!file.type.startsWith('image/')) {
-      toast.error('Vui lòng chọn file ảnh!');
-      return;
-    }
-
-    // Kiểm tra kích thước file (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File ảnh quá lớn! Vui lòng chọn file nhỏ hơn 5MB.');
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-
-      // Upload file lên backend
-      const response = await api.post('/upload/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      // Cập nhật đường dẫn ảnh vào state
-      const imagePath = response.data.imagePath || response.data.path;
-      handleImageChange(index, imagePath);
-      toast.success('Upload ảnh thành công!');
-      
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('Upload ảnh thất bại: ' + (error.response?.data?.message || error.message));
-    }
-  };
-  
   const handleImageFileChange = (index, e) => {
     const file = e.target.files[0];
     if (file) {
@@ -230,6 +192,29 @@ export default function AdminProductNewPage() {
       variants: prev.variants.filter((_, i) => i !== index),
     }));
   };
+
+  // Specifications handlers
+  const updateSpecification = (index, field, value) => {
+    setProduct((prev) => {
+      const specs = [...prev.specifications];
+      specs[index] = { ...specs[index], [field]: value };
+      return { ...prev, specifications: specs };
+    });
+  };
+
+  const addSpecification = () => {
+    setProduct((prev) => ({
+      ...prev,
+      specifications: [...prev.specifications, { label: "", value: "" }]
+    }));
+  };
+
+  const removeSpecification = (index) => {
+    setProduct((prev) => ({
+      ...prev,
+      specifications: prev.specifications.filter((_, i) => i !== index)
+    }));
+  };
   
   const handleVariantImageChange = (variantIdx, imageIdx, value) => {
     const newVariants = [...product.variants];
@@ -277,6 +262,10 @@ export default function AdminProductNewPage() {
         productDescription: product.description || "",
         category: { categoryId: catId, categoryName: catName },
         images: validImages,
+        specifications: product.specifications.filter(s => s.label && s.value).map(s => ({
+          label: s.label.trim(),
+          value: s.value.trim()
+        })),
         variants: product.variants.map((v) => ({
           variantId: v.variantId.trim() || `v-${Date.now()}`,
           name: v.name.trim(),
@@ -416,11 +405,11 @@ export default function AdminProductNewPage() {
             )}
           </div>
 
-          {/* Danh sách danh mục */}
+          {/* Danh mục phụ đã chọn */}
           <div>
-            <label className="block text-sm font-medium mb-2">Danh sách danh mục</label>
+            <label className="block text-sm font-medium mb-2">Thêm danh mục khác (tùy chọn)</label>
             <div className="border rounded p-3 bg-gray-50 max-h-56 overflow-y-auto space-y-2">
-              {Array.isArray(categories) && fuzzySearch(primaryCategorySearch, categories).map((c) => {
+              {Array.isArray(categories) && categories.map((c) => {
                 const isSelected = Array.isArray(product.categories) && product.categories.some(cat => cat.categoryId === c.categoryId);
                 const isPrimary = product.category?.categoryId === c.categoryId;
                 return (
@@ -447,91 +436,74 @@ export default function AdminProductNewPage() {
         </div>
         
         <div><label className="block text-sm font-medium mb-1">Mô tả</label><textarea className="w-full border rounded px-3 py-2 h-24" value={product.description} onChange={(e) => updateField("description", e.target.value)} /></div>
+
+        {/* THÔNG SỐ KỸ THUẬT */}
+        <div className="border rounded p-4 bg-gray-50">
+          <div className="flex justify-between mb-4">
+            <label className="font-bold text-sm">Thông số kỹ thuật</label>
+            <button type="button" onClick={addSpecification} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">+ Thêm</button>
+          </div>
+          <div className="space-y-3">
+            {product.specifications.map((spec, i) => (
+              <div key={i} className="flex gap-2">
+                <input 
+                  type="text"
+                  className="flex-1 border rounded px-2 py-1 text-sm"
+                  placeholder="Label (ví dụ: RAM, CPU)"
+                  value={spec.label}
+                  onChange={(e) => updateSpecification(i, "label", e.target.value)}
+                />
+                <input 
+                  type="text"
+                  className="flex-1 border rounded px-2 py-1 text-sm"
+                  placeholder="Giá trị (ví dụ: 8GB, Snapdragon)"
+                  value={spec.value}
+                  onChange={(e) => updateSpecification(i, "value", e.target.value)}
+                />
+                <button type="button" onClick={() => removeSpecification(i)} className="text-red-500 hover:text-red-700">Xóa</button>
+              </div>
+            ))}
+          </div>
+        </div>
         
         <div className="border p-4 rounded bg-gray-50">
-          <div className="flex justify-between items-center mb-3">
-            <label className="block text-sm font-bold text-gray-700">Hình ảnh</label>
-            <button type="button" onClick={addImageField} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">+ Thêm ảnh</button>
-          </div>
+          <div className="flex justify-between mb-4"><label className="font-bold text-sm">Hình ảnh sản phẩm (Tối thiểu 2 ảnh)</label><button type="button" onClick={addImageField} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">+ Thêm ảnh</button></div>
           <div className="space-y-4">
-            {product.images.map((imgUrl, idx) => (
-              <div key={idx} className="border rounded p-3 bg-white">
-                <div className="flex gap-3 items-start">
-                  {/* Preview Image */}
-                  <div className="flex-shrink-0">
-                    {imgUrl && (
-                      <img 
-                        src={imgUrl.startsWith('http') ? imgUrl : (imgUrl.startsWith('/') ? `https://localhost:3001${imgUrl}` : imgUrl)} 
-                        alt="" 
-                        className="w-16 h-16 object-cover rounded border bg-white"
-                        onError={(e) => {
-                          e.target.src = '/img/default.png';
-                        }}
+            {product.images.map((url, i) => (
+              <div key={i} className="border rounded p-3 bg-white">
+                <div className="flex gap-3">
+                  <div className="flex-1 space-y-2">
+                    {/* File Upload */}
+                    <div className="flex items-center justify-center w-full border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50 hover:bg-gray-100 cursor-pointer transition">
+                      <input 
+                        ref={el => variantImageRefs.current[`product_${i}`] = el}
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleImageFileChange(i, e)}
+                        className="hidden" 
                       />
+                      <div className="text-center" onClick={() => variantImageRefs.current[`product_${i}`]?.click()}>
+                        <ImageIcon size={20} className="text-gray-400 mx-auto mb-1" />
+                        <p className="text-xs text-gray-600">Click để chọn ảnh</p>
+                      </div>
+                    </div>
+                    {/* URL Input */}
+                    <input 
+                      className="w-full border rounded px-2 py-1 text-sm" 
+                      value={url} 
+                      onChange={e=>handleImageChange(i,e.target.value)} 
+                      placeholder="Hoặc dán URL ảnh..."
+                    />
+                  </div>
+                  {/* Preview */}
+                  <div className="w-20 h-20 rounded border border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {product.imagePreviews[i] ? (
+                      <img src={product.imagePreviews[i]} alt="" className="w-full h-full object-cover" onError={() => {}} />
+                    ) : (
+                      <ImageIcon size={24} className="text-gray-400" />
                     )}
                   </div>
-                  
-                  {/* Input Options */}
-                  <div className="flex-1 space-y-2">
-                    {/* URL Input */}
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Đường dẫn ảnh hoặc URL</label>
-                      <input 
-                        type="text" 
-                        className="w-full border rounded px-3 py-2 text-sm" 
-                        value={imgUrl} 
-                        onChange={(e) => handleImageChange(idx, e.target.value)}
-                        placeholder="Nhập URL (https://...) hoặc đường dẫn (/images/...)"
-                      />
-                    </div>
-                    
-                    {/* File Upload */}
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Hoặc chọn file từ máy tính</label>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        className="w-full text-sm"
-                        onChange={(e) => handleFileUpload(idx, e)}
-                      />
-                    </div>
-                    
-                    {/* Quick Select from Backend Images */}
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Hoặc chọn từ thư viện có sẵn</label>
-                      <select 
-                        className="w-full border rounded px-3 py-2 text-sm"
-                        value=""
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleImageChange(idx, e.target.value);
-                          }
-                        }}
-                      >
-                        <option value="">-- Chọn ảnh có sẵn --</option>
-                        <option value="/images/ASUSTUFGamingF15.png">ASUS TUF Gaming F15</option>
-                        <option value="/images/MSIKatanaGF66.png">MSI Katana GF66</option>
-                        <option value="/images/AcerNitro5.jpg">Acer Nitro 5</option>
-                        <option value="/images/HPVictus16.png">HP Victus 16</option>
-                        <option value="/images/MacBookAirM2.png">MacBook Air M2</option>
-                        <option value="/images/LenovoThinkPadX1Carbon.jpg">ThinkPad X1 Carbon</option>
-                        <option value="/images/ASUSZenBookOLED.jpg">ASUS ZenBook OLED</option>
-                        <option value="/images/Samsung990Pro.jpg">Samsung 990 Pro SSD</option>
-                        <option value="/images/LGUltraGear27.jpg">LG UltraGear 27 Monitor</option>
-                        <option value="/images/AOC24G2.jpg">AOC 24G2 Monitor</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  {/* Remove Button */}
-                  <button 
-                    type="button" 
-                    onClick={() => removeImageField(idx)} 
-                    className="text-red-500 hover:text-red-700 font-bold px-2 py-1 text-sm"
-                    title="Xóa ảnh này"
-                  >
-                    ✕
-                  </button>
+                  <button type="button" onClick={()=>removeImageField(i)} className="text-red-500 font-bold hover:text-red-700">✕</button>
                 </div>
               </div>
             ))}

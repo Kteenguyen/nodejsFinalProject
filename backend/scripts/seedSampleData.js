@@ -1,9 +1,9 @@
 // Seed sample data cho testing
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Category = require('./models/categoryModel');
-const Product = require('./models/productModel');
-const FlashSale = require('./models/flashSaleModel');
+const Category = require('../models/categoryModel');
+const Product = require('../models/productModel');
+const FlashSale = require('../models/flashSaleModel');
 
 async function seedData() {
     try {

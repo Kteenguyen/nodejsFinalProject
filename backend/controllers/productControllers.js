@@ -481,6 +481,7 @@ exports.createProduct = async (req, res) => {
     const {
       productId, productName, brand, productDescription, category, images = [],
       status = 'available', isNewProduct = false, isBestSeller = false, variants = [],
+      specifications = [], // Thông số kỹ thuật
       createdAt, // Cho phép set ngày tạo tùy chỉnh
     } = req.body;
 
@@ -496,16 +497,29 @@ exports.createProduct = async (req, res) => {
 
     const processedVariants = variants.map((v, index) => ({
       variantId: v.variantId || uuidv4(),
-      name: v.name && v.name.trim() ? v.name.trim() : `Phiên bản ${index + 1}`, // Auto-generate name nếu thiếu
+      name: v.name && v.name.trim() ? v.name.trim() : `Phiên bản ${index + 1}`,
       price: v.price,
       oldPrice: v.oldPrice || 0,
       discount: Number(v.discount) || 0,
       stock: v.stock ?? 0,
+      color: v.color || '',
+      rom: v.rom || '',
+      ram: v.ram || '',
+      images: Array.isArray(v.images) ? v.images : [],
     }));
+
+    // Xử lý specifications
+    const processedSpecs = Array.isArray(specifications) 
+      ? specifications.filter(s => s.label && s.value).map(s => ({
+          label: s.label.trim(),
+          value: s.value.trim()
+        }))
+      : [];
 
     const productData = {
       productId, productName, brand, productDescription, category, images,
       status, isNewProduct, isBestSeller, variants: processedVariants,
+      specifications: processedSpecs,
     };
 
     // Nếu có createdAt từ request, sử dụng nó
@@ -533,6 +547,7 @@ exports.updateProduct = async (req, res) => {
     const {
       productName, brand, productDescription, category,
       images, status, isNewProduct, isBestSeller, variants,
+      specifications, // Thông số kỹ thuật
       createdAt, // Cho phép cập nhật ngày tạo
     } = req.body;
 
@@ -546,17 +561,29 @@ exports.updateProduct = async (req, res) => {
     if (typeof isBestSeller !== 'undefined') product.isBestSeller = isBestSeller;
     if (createdAt) product.createdAt = new Date(createdAt);
 
+    // Cập nhật specifications
+    if (Array.isArray(specifications)) {
+      product.specifications = specifications.filter(s => s.label && s.value).map(s => ({
+        label: s.label.trim(),
+        value: s.value.trim()
+      }));
+    }
+
     if (Array.isArray(variants)) {
       if (variants.length === 0) {
         return res.status(400).json({ success: false, message: 'Phải có ít nhất 1 biến thể.' });
       }
-      product.variants = variants.map(v => ({
+      product.variants = variants.map((v, index) => ({
         variantId: v.variantId || uuidv4(),
-        name: v.name,
+        name: v.name && v.name.trim() ? v.name.trim() : `Phiên bản ${index + 1}`,
         price: v.price,
         oldPrice: v.oldPrice || 0,
         discount: Number(v.discount) || 0,
         stock: v.stock ?? 0,
+        color: v.color || '',
+        rom: v.rom || '',
+        ram: v.ram || '',
+        images: Array.isArray(v.images) ? v.images : [],
       }));
     }
 
