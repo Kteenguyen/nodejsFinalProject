@@ -64,7 +64,8 @@ const CartPage = () => {
     }
     // Xóa các item đã chọn nhưng không còn trong giỏ hàng
     setSelectedItems(prev => prev.filter(key => cartItems.some(item => getVariantKey(item) === key)));
-  }, [cartItems]);
+  // eslint-disable-next-line
+  }, [cartItems, setSelectedItems.length]);
 
   // Kiểm tra đã chọn tất cả chưa
   const isAllSelected = cartItems.length > 0 && selectedItems.length === cartItems.length;

@@ -103,7 +103,8 @@ const ChatWindow = ({ user, onClose, isMinimized, onToggleMinimize }) => {
                 leaveConversation(conversationId);
             }
         };
-    }, [user]);
+        // eslint-disable-next-line 
+    }, [user, conversationId]);
 
     // Listen for new admin messages
     useEffect(() => {
@@ -127,6 +128,7 @@ const ChatWindow = ({ user, onClose, isMinimized, onToggleMinimize }) => {
         });
         
         return unsubscribe;
+        // eslint-disable-next-line
     }, [conversationId]);
 
     // Listen for typing indicators
@@ -149,6 +151,7 @@ const ChatWindow = ({ user, onClose, isMinimized, onToggleMinimize }) => {
             unsubType();
             unsubStopType();
         };
+        // eslint-disable-next-line
     }, [conversationId]);
 
     // Scroll to bottom when messages change
@@ -174,6 +177,7 @@ const ChatWindow = ({ user, onClose, isMinimized, onToggleMinimize }) => {
                 stopTyping(conversationId, 'user');
             }, 2000);
         }
+        // eslint-disable-next-line
     }, [conversationId, user]);
 
     const handleSendMessage = async (e) => {

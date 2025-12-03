@@ -257,7 +257,7 @@ const Header = () => {
       };
     }
     // eslint-disable-next-line
-  }, [isAuthenticated, user]);
+  }, [notifications,isAuthenticated, user]);
 
   // Lắng nghe event để refresh notifications (khi đặt hàng thành công)
   useEffect(() => {
@@ -582,7 +582,7 @@ const Header = () => {
       }
       clearInterval(interval);
     };
-  }, [isAdmin, user]);
+  }, [notifications, isAdmin, user]);
 
   const navLinks = [
     { name: 'Trang chủ', path: '/', icon: FaHome },

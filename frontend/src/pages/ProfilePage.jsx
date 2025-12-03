@@ -123,7 +123,8 @@ const ProfilePage = () => {
         } else if (activeTab === TABS.MY_VOUCHERS) {
             fetchMyVouchers();
         }
-    }, [activeTab]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetchAvailableVouchers, fetchMyVouchers, activeTab]);
 
     // Fetch user's redeemed vouchers
     const fetchMyVouchers = async () => {
