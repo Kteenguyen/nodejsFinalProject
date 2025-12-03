@@ -155,6 +155,25 @@ app.get('/api/health', (req, res) => {
 app.use('/api/upload', uploadRoutes);
 app.use('/api', siteRoutes);
 
+// --- SERVE STATIC FRONTEND (Production) ---
+if (process.env.NODE_ENV === 'production') {
+    // Serve static files from React build
+    app.use(express.static(path.join(__dirname, '../frontend/build')));
+    
+    // Handle React routing - return index.html for any non-API routes
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+    });
+} else {
+    // Development route
+    app.get('/', (req, res) => {
+        res.json({ 
+            message: 'PhoneWorld API Development Server',
+            frontend: 'Run separately on port 3000'
+        });
+    });
+}
+
 // Error Handlers
 app.use((req, res, next) => {
     console.log(`[404]: ${req.originalUrl}`);
