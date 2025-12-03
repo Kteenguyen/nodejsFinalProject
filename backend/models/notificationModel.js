@@ -40,6 +40,11 @@ const notificationSchema = new mongoose.Schema({
   actionUrl: {
     type: String,
     default: null
+  },
+  // Dữ liệu bổ sung cho notification
+  data: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true
@@ -56,7 +61,15 @@ notificationSchema.statics.createNotification = async function(data) {
 };
 
 // Static method tạo thông báo đơn hàng
-notificationSchema.statics.createOrderNotification = async function(userId, orderId, title, message) {
+notificationSchema.statics.createOrderNotification = async function(userId, orderId, title, message, orderNumber = null) {
+  // Xác định user role để tạo actionUrl phù hợp
+  const User = mongoose.model('User');
+  const user = await User.findById(userId);
+  
+  // Sử dụng orderNumber nếu có, nếu không thì dùng orderId
+  const orderIdentifier = orderNumber || orderId;
+  const actionUrl = user?.role === 'admin' ? `/admin/orders/${orderIdentifier}` : `/orders/${orderIdentifier}`;
+  
   return await this.createNotification({
     userId,
     title,
@@ -64,7 +77,7 @@ notificationSchema.statics.createOrderNotification = async function(userId, orde
     type: 'order',
     relatedId: orderId,
     relatedModel: 'Order',
-    actionUrl: `/order/${orderId}`
+    actionUrl: actionUrl
   });
 };
 

@@ -14,6 +14,26 @@ import api from '../../services/api';
 
 // 👇 IMPORT CONTROLLER THAY VÌ API TRỰC TIẾP
 import { ProductController } from '../../controllers/productController';
+import { getAllConversations, initSocket } from '../../controllers/ChatController';
+
+// Helper functions
+const getOrderTitle = (status) => {
+  const titles = {
+    'Pending': '🔔 Đơn hàng mới',
+    'Confirmed': '✅ Đơn hàng đã xác nhận',
+    'Shipping': '🚚 Đang giao hàng',
+    'Delivered': '📦 Đã giao hàng',
+    'Cancelled': '❌ Đơn hàng đã hủy'
+  };
+  return titles[status] || '📋 Cập nhật đơn hàng';
+};
+
+const formatPrice = (price) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(price || 0);
+};
 
 const Header = () => {
   const { isAuthenticated, logout, user } = useAuth();
@@ -36,27 +56,87 @@ const Header = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0); // Lấy từ API thay vì đếm local
+  const [chatNotifications, setChatNotifications] = useState([]);
+  const [totalUnreadChats, setTotalUnreadChats] = useState(0);
 
-  // Fetch notifications from API
+  // Fetch notifications from API (enhanced with chat support)
   const fetchNotifications = async () => {
     if (!isAuthenticated) return;
     
     try {
-      const res = await api.get('/notifications');
-      if (res.data?.notifications) {
-        const notifs = res.data.notifications.slice(0, 5).map(n => ({
-          id: n._id,
-          title: n.title,
-          message: n.message,
-          isRead: n.isRead,
-          time: getTimeAgo(n.createdAt),
-          actionUrl: n.actionUrl,
-          type: n.type
-        }));
-        setNotifications(notifs);
-        // Lấy unreadCount từ API (tổng số chưa đọc, không chỉ 5 cái đầu)
-        setUnreadCount(res.data.unreadCount || 0);
+      console.log('🔔 Header fetching notifications for user:', user);
+      
+      let allNotifications = [];
+      let apiUnreadCount = 0;
+      
+      // Both admin and regular users: fetch real notifications from API
+      try {
+        const res = await api.get('/notifications');
+        console.log('🔔 Header API response:', res.data);
+        
+        if (res.data?.notifications) {
+          const realNotifications = res.data.notifications.slice(0, 10).map(n => ({
+            id: n._id,
+            title: n.title,
+            message: n.message,
+            isRead: n.isRead,
+            time: getTimeAgo(n.createdAt),
+            actionUrl: n.actionUrl,
+            type: n.type,
+            data: n.data || {},
+            relatedId: n.relatedId
+          }));
+          allNotifications = [...realNotifications];
+          apiUnreadCount = res.data?.unreadCount || 0;
+          console.log('🔔 Header real notifications:', realNotifications.length);
+        }
+      } catch (apiError) {
+        console.error('Error fetching notifications from API:', apiError);
       }
+
+      // Fetch chat notifications for admin
+      let chatUnreadTotal = 0;
+      
+      if (user?.role === 'admin') {
+        try {
+          const chatData = await getAllConversations('all', 1, 20);
+          if (chatData.success) {
+            const unreadConversations = chatData.conversations.filter(conv => conv.unreadCount > 0);
+            const chatNotifs = unreadConversations.slice(0, 3).map(conv => ({
+              id: `chat-${conv._id}`,
+              title: '💬 Tin nhắn mới',
+              message: `${conv.userId?.name || conv.guestName || 'Khách'}: ${conv.lastMessage?.text || 'Đã gửi tin nhắn'}`,
+              isRead: false,
+              time: getTimeAgo(conv.updatedAt),
+              actionUrl: '/admin/chat',
+              type: 'chat',
+              unreadCount: conv.unreadCount,
+              conversationId: conv._id
+            }));
+            
+            chatUnreadTotal = chatData.unreadTotal || 0;
+            setChatNotifications(chatNotifs);
+            setTotalUnreadChats(chatUnreadTotal);
+            allNotifications = [...allNotifications, ...chatNotifs];
+          }
+        } catch (chatError) {
+          console.error('Error fetching chat notifications:', chatError);
+        }
+      }
+
+      setNotifications(allNotifications);
+      
+      // Calculate total unread count: API notifications + chat (for admin only)
+      const totalUnread = apiUnreadCount + (user?.role === 'admin' ? chatUnreadTotal : 0);
+      setUnreadCount(totalUnread);
+      
+      console.log('📊 Header notifications:', {
+        api: apiUnreadCount,
+        chat: chatUnreadTotal,
+        total: totalUnread,
+        notifications: allNotifications.length
+      });
+      
     } catch (err) {
       console.error('Error fetching notifications:', err);
     }
@@ -64,23 +144,145 @@ const Header = () => {
 
   useEffect(() => {
     fetchNotifications();
+    
+    // Setup real-time notifications for admin (NO AUTO REFRESH)
+    if (user?.role === 'admin') {
+      const socket = initSocket();
+      console.log('🔌 Header socket initialized:', socket ? 'SUCCESS' : 'FAILED');
+      
+      const handleNewMessage = (data) => {
+        // Create new chat notification
+        const newNotification = {
+          id: `chat-${data.conversationId}-${Date.now()}`,
+          title: '💬 Tin nhắn mới',
+          message: `${data.message.senderName || 'Khách'}: ${data.message.text}`,
+          isRead: false,
+          time: 'Vừa xong',
+          actionUrl: '/admin/chat',
+          type: 'chat',
+          conversationId: data.conversationId
+        };
+        
+        setNotifications(prev => [newNotification, ...prev.slice(0, 6)]);
+        setUnreadCount(prev => prev + 1);
+        
+        // Show toast notification
+        toast(`🔔 Tin nhắn mới từ ${data.message.senderName || 'khách hàng'}`, {
+          duration: 4000,
+          position: 'top-right'
+        });
+      };
+
+      const handleNewOrder = (data) => {
+        console.log('🔔 Header received new order event:', data);
+        
+        // Method 1: Add notification directly to state (immediate)
+        const newNotification = {
+          id: `order-${data.orderId}-${Date.now()}`,
+          title: getOrderTitle('Pending'),
+          message: `Đơn hàng #${data.orderId} - ${data.customerName} - ${formatPrice(data.totalPrice)}`,
+          isRead: false,
+          time: 'Vừa xong',
+          actionUrl: `/admin/orders/${data.orderId}`,
+          type: 'order',
+          data: data
+        };
+        
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
+        
+        // Method 2: Also refresh from API to get persistent notification (backup)
+        setTimeout(async () => {
+          console.log('🔄 Header refreshing notifications after new order...');
+          try {
+            const res = await api.get('/notifications');
+            if (res.data?.notifications) {
+              const apiNotifications = res.data.notifications.slice(0, 10).map(n => ({
+                id: n._id,
+                title: n.title,
+                message: n.message,
+                isRead: n.isRead,
+                time: getTimeAgo(n.createdAt),
+                actionUrl: n.actionUrl,
+                type: n.type,
+                data: n.data
+              }));
+              setNotifications(prev => {
+                // Merge socket notification with API notifications, avoid duplicates
+                const socketIds = prev.filter(n => n.id.includes('-' + Date.now())).map(n => n.id);
+                const apiOnly = apiNotifications.filter(n => !socketIds.includes(n.id));
+                return [...prev.filter(n => socketIds.includes(n.id)), ...apiOnly];
+              });
+              setUnreadCount(res.data?.unreadCount || 0);
+              console.log('✅ Header notifications refreshed from API');
+            }
+          } catch (error) {
+            console.error('❌ Error refreshing notifications:', error);
+          }
+        }, 2000); // Wait 2 seconds for backend to save notification
+        
+        // Show toast notification
+        toast(`🛍️ Đơn hàng mới: ${data.orderId}`, {
+          duration: 4000,
+          position: 'top-right'
+        });
+      };
+      
+      if (socket) {
+        
+        // Test socket connection with ping
+        socket.emit('ping', 'Header admin connecting...');
+        
+        socket.on('new-customer-message', handleNewMessage);
+        socket.on('newOrder', handleNewOrder);
+        socket.on('adminNotification', handleNewOrder);
+        
+        socket.on('connect', () => {
+          console.log('✅ Header socket connected, ID:', socket.id);
+        });
+        
+        socket.on('disconnect', () => {
+          console.log('❌ Header socket disconnected');
+        });
+      } else {
+        console.error('❌ Socket initialization failed in Header');
+      }
+      
+      return () => {
+        if (socket) {
+          socket.off('new-customer-message', handleNewMessage);
+          socket.off('newOrder', handleNewOrder);
+          socket.off('adminNotification', handleNewOrder);
+        }
+      };
+    }
     // eslint-disable-next-line
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   // Lắng nghe event để refresh notifications (khi đặt hàng thành công)
   useEffect(() => {
     const handleRefreshNotifications = () => {
-      console.log('🔔 Refreshing notifications...');
+      console.log('🔔 Header refreshing notifications due to external event...');
       fetchNotifications();
-      // eslint-disable-next-line
+    };
+
+    const handleOrderSuccess = () => {
+      console.log('🛍️ Header received order success event, refreshing...');
+      // Delay a bit to ensure order is saved to database
+      setTimeout(() => {
+        fetchNotifications();
+      }, 1000);
     };
 
     window.addEventListener('refreshNotifications', handleRefreshNotifications);
+    window.addEventListener('orderCreated', handleOrderSuccess);
+
     return () => {
       window.removeEventListener('refreshNotifications', handleRefreshNotifications);
+      window.removeEventListener('orderCreated', handleOrderSuccess);
     };
     // eslint-disable-next-line
-  }, [isAuthenticated]);
+  }, []);
 
   // Helper function to get time ago
   const getTimeAgo = (dateString) => {
@@ -192,15 +394,107 @@ const Header = () => {
 
   const markAllAsRead = async () => {
     try {
+      // Mark general notifications as read
       await api.put('/notifications/read-all');
+      
+      // Mark chat notifications as read (could implement API endpoint)
       const updated = notifications.map(n => ({ ...n, isRead: true }));
       setNotifications(updated);
-      setUnreadCount(0); // Reset unread count
+      setUnreadCount(0);
+      setTotalUnreadChats(0);
+      
       toast.success("Đã đánh dấu tất cả là đã đọc");
     } catch (err) {
       console.error('Error marking all as read:', err);
       toast.error("Lỗi khi đánh dấu đã đọc");
     }
+  };
+  
+  // Handle individual notification click
+  const handleNotificationClick = (notification) => {
+    console.log('🔔 Header notification clicked:', notification);
+    console.log('🔔 Notification type:', notification.type);
+    console.log('🔔 Notification data:', notification.data);
+    console.log('🔔 Notification actionUrl:', notification.actionUrl);
+    
+    // Mark as read
+    setNotifications(prev => prev.map(n => 
+      n.id === notification.id ? { ...n, isRead: true } : n
+    ));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+
+    // Navigate based on type and available data
+    if (notification.type === 'chat') {
+      console.log('🎯 Navigating to admin chat');
+      navigate('/admin/chat');
+      setIsNotificationOpen(false);
+    } else if (notification.type === 'order') {
+      // Try multiple ways to get order identifier
+      const orderIdentifier = notification.data?.orderNumber || 
+                            notification.data?.orderId || 
+                            notification.relatedId ||
+                            (notification.message && notification.message.match(/#([A-Z0-9-]+)/)?.[1]) ||
+                            (notification.message && notification.message.match(/PW\d+/)?.[0]);
+      
+      console.log('🎯 Order identifier found:', orderIdentifier);
+      
+      if (orderIdentifier) {
+        if (user?.role === 'admin') {
+          console.log('🎯 Admin navigating to:', `/admin/orders/${orderIdentifier}`);
+          navigate(`/admin/orders/${orderIdentifier}`);
+        } else {
+          console.log('🎯 User navigating to:', `/orders/${orderIdentifier}`);
+          navigate(`/orders/${orderIdentifier}`);
+        }
+        setIsNotificationOpen(false);
+      } else {
+        // Fallback to orders list
+        console.log('⚠️ No order identifier found, going to orders list');
+        if (user?.role === 'admin') {
+          navigate('/admin/orders');
+        } else {
+          navigate('/profile');
+        }
+        setIsNotificationOpen(false);
+      }
+    } else if (notification.actionUrl) {
+      console.log('🎯 Using actionUrl:', notification.actionUrl);
+      navigate(notification.actionUrl);
+      setIsNotificationOpen(false);
+    } else {
+      // Fallback: close notification panel
+      console.log('⚠️ No navigation rule found, closing panel');
+      setIsNotificationOpen(false);
+    }
+  };
+  
+  // Get notification icon based on type
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'chat':
+        return '💬';
+      case 'order':
+        return '📦';
+      case 'user':
+        return '👤';
+      case 'product':
+        return '📱';
+      default:
+        return '🔔';
+    }
+  };
+  
+  // Format time helper
+  const formatNotificationTime = (time) => {
+    if (!time) return '';
+    const now = new Date();
+    const notifTime = new Date(time);
+    const diff = now - notifTime;
+    
+    if (diff < 60000) return 'Vừa xong';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} phút trước`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} giờ trước`;
+    return notifTime.toLocaleDateString('vi-VN');
   };
 
   const isAdmin = user?.role === 'admin';
@@ -208,6 +502,87 @@ const Header = () => {
   
   // State cho submenu admin
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
+
+  // Real-time notification system for admin
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const loadInitialNotifications = async () => {
+      try {
+        // Load chat notifications
+        const chatData = await getAllConversations('all', 1, 50);
+        if (chatData.success) {
+          const unreadConversations = chatData.conversations.filter(conv => conv.unreadCount > 0);
+          const chatNotifs = unreadConversations.map(conv => ({
+            id: `chat-${conv._id}`,
+            title: '💬 Tin nhắn mới',
+            message: `${conv.userId?.name || conv.guestName || 'Khách'}: ${conv.lastMessage?.text || 'Đã gửi tin nhắn'}`,
+            time: getTimeAgo(conv.updatedAt),
+            isRead: false,
+            type: 'chat',
+            unreadCount: conv.unreadCount,
+            conversationId: conv._id
+          }));
+          
+          setChatNotifications(chatNotifs);
+          setTotalUnreadChats(chatData.unreadTotal || 0);
+          
+          // Merge với notifications hiện tại
+          setNotifications(prev => {
+            const nonChatNotifs = prev.filter(n => n.type !== 'chat');
+            return [...nonChatNotifs, ...chatNotifs];
+          });
+          
+          // Update unread count
+          const totalUnread = chatNotifs.length + notifications.filter(n => n.type !== 'chat' && !n.isRead).length;
+          setUnreadCount(totalUnread);
+        }
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+      }
+    };
+
+    loadInitialNotifications();
+
+    // Setup real-time updates
+    const socket = initSocket();
+    
+    const handleNewMessage = (data) => {
+      // Tạo notification mới
+      const newNotification = {
+        id: `chat-${data.conversationId}-${Date.now()}`,
+        title: '💬 Tin nhắn mới',
+        message: `${data.message.senderName || 'Khách'}: ${data.message.text}`,
+        time: new Date(),
+        isRead: false,
+        type: 'chat',
+        conversationId: data.conversationId
+      };
+      
+      setNotifications(prev => [newNotification, ...prev.filter(n => n.id !== newNotification.id)]);
+      setUnreadCount(prev => prev + 1);
+      
+      // Show toast notification
+      toast(`💬 ${data.message.senderName || 'Khách'} đã gửi tin nhắn mới`, {
+        duration: 4000,
+        icon: '🔔'
+      });
+    };
+    
+    if (socket) {
+      socket.on('new-customer-message', handleNewMessage);
+    }
+    
+    // Refresh notifications every 30 seconds
+    const interval = setInterval(loadInitialNotifications, 30000);
+    
+    return () => {
+      if (socket) {
+        socket.off('new-customer-message', handleNewMessage);
+      }
+      clearInterval(interval);
+    };
+  }, [isAdmin, user]);
 
   const navLinks = [
     { name: 'Trang chủ', path: '/', icon: FaHome },
@@ -418,13 +793,36 @@ const Header = () => {
                           ) : (
                             <ul className="divide-y divide-gray-50">
                               {notifications.map((item) => (
-                                <li key={item.id} className={`p-4 hover:bg-indigo-50/30 transition-colors cursor-pointer ${!item.isRead ? 'bg-indigo-50/10' : ''}`}>
+                                <li 
+                                  key={item.id} 
+                                  onClick={() => handleNotificationClick(item)}
+                                  className={`p-4 hover:bg-indigo-50/50 transition-colors cursor-pointer ${!item.isRead ? 'bg-indigo-50/10 border-l-2 border-indigo-400' : ''}`}
+                                >
                                   <div className="flex gap-3">
-                                    <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${!item.isRead ? 'bg-indigo-500 shadow-glow' : 'bg-transparent'}`}></div>
-                                    <div>
-                                      <p className={`text-sm ${!item.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-600'}`}>{item.title}</p>
+                                    <div className="flex-shrink-0 mt-1">
+                                      <span className="text-lg">{getNotificationIcon(item.type)}</span>
+                                      {!item.isRead && (
+                                        <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-lg absolute ml-4 -mt-1"></div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex justify-between items-start">
+                                        <p className={`text-sm truncate ${!item.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-600'}`}>
+                                          {item.title}
+                                        </p>
+                                        {item.type === 'chat' && item.unreadCount && (
+                                          <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                                            {item.unreadCount}
+                                          </span>
+                                        )}
+                                      </div>
                                       <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{item.message}</p>
-                                      <p className="text-[10px] text-gray-400 mt-2 font-medium">{item.time}</p>
+                                      <div className="flex justify-between items-center mt-2">
+                                        <p className="text-[10px] text-gray-400 font-medium">{item.time instanceof Date ? item.time.toLocaleString('vi-VN') : item.time}</p>
+                                        {item.type === 'chat' && (
+                                          <span className="text-[10px] text-indigo-600 font-medium">Nhấn để trả lời</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </li>
@@ -433,7 +831,7 @@ const Header = () => {
                           )}
                         </div>
                         <div className="p-2 border-t border-gray-100 bg-gray-50/50 text-center">
-                          <Link to="/notifications" className="text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors block py-2">
+                          <Link to={isAdmin ? "/admin/notifications" : "/notifications"} className="text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors block py-2">
                             Xem tất cả
                           </Link>
                         </div>
@@ -514,6 +912,43 @@ const Header = () => {
                                     <p className="text-[10px] text-gray-400 font-medium">Sản phẩm, đơn hàng, người dùng</p>
                                   </div>
                                 </Link>
+                                
+                                {/* Chat quản lý */}
+                                <Link to="/admin/chat" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-green-50 group transition-colors">
+                                  <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform shadow-sm relative">
+                                    <FaCommentDots className="text-sm" />
+                                    {totalUnreadChats > 0 && (
+                                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                                        {totalUnreadChats > 9 ? '9+' : totalUnreadChats}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-gray-800 text-sm">Chat khách hàng</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">
+                                      {totalUnreadChats > 0 ? `${totalUnreadChats} tin nhắn mới` : 'Hỗ trợ khách hàng'}
+                                    </p>
+                                  </div>
+                                </Link>
+
+                                {/* Quản lý thông báo */}
+                                <Link to="/admin/notifications" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 group transition-colors">
+                                  <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform shadow-sm relative">
+                                    <FaBell className="text-sm" />
+                                    {unreadCount > 0 && (
+                                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-gray-800 text-sm">Quản lý thông báo</p>
+                                    <p className="text-[10px] text-gray-400 font-medium">
+                                      {unreadCount > 0 ? `${unreadCount} thông báo mới` : 'Tất cả thông báo'}
+                                    </p>
+                                  </div>
+                                </Link>
+                                
                                 <div className="border-t border-gray-100 my-2"></div>
                               </>
                             )}

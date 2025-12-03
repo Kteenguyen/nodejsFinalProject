@@ -8,6 +8,7 @@ const cors = require('cors');
 const siteRoutes = require('./routes/route'); 
 const { connectDB } = require('./config/dbConnection');
 const paymentRoutes = require('./routes/paymentRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 // --- HTTP/HTTPS & SOCKET.IO ---
 const http = require('http');
@@ -136,7 +137,7 @@ io.on('connection', (socket) => {
 // Gắn io vào app để dùng trong Controller
 app.set('socketio', io);
 
-// --- HEALTH CHECK ENDPOINT (for Docker) ---
+// --- HEALTH CHECK ENDPOINT ---
 app.get('/api/health', (req, res) => {
     res.status(200).json({ 
         status: 'ok', 
@@ -146,6 +147,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // --- ROUTES ---
+app.use('/api/upload', uploadRoutes);
 app.use('/api', siteRoutes);
 
 // Error Handlers

@@ -92,7 +92,6 @@ exports.login = async (req, res) => {
         }
 
         // 👈 NÂNG CẤP: Kiểm tra trạng thái ban tài khoản TRƯỚC khi check mật khẩu
-        console.log(`🔍 DEBUG Login - User data: ${JSON.stringify({ email: user.email, isBanned: user.isBanned, type: typeof user.isBanned })}`);
         if (user.isBanned === true) {
             console.log(`🚫 Tài khoản bị ban đã cố gắng đăng nhập: ${user.email}`);
             return res.status(403).json({

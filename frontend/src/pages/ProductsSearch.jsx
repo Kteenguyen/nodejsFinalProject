@@ -4,32 +4,58 @@ import Filters from "../components/catalog/Filters";
 import SortBar from "../components/catalog/SortBar";
 import { ProductController } from '../controllers/productController';
 import { currency } from "../utils/format";
+import { getStockStatus, StockStatusBadge, STOCK_STATUS } from '../utils/stockStatus';
 
 function ProductCard({ p }) {
   const name = p.name || p.productName || "(Không tên)";
   const price = p.lowestPrice ?? p.minPrice ?? p.price ?? 0;
-  const img = (Array.isArray(p.images) && p.images[0]) || "/img/placeholder.png";
+  const img = (Array.isArray(p.images) && p.images[0]) || "/img/default.png";
   const detailId = p.productId || p._id || "";
+  
+  // Calculate stock status
+  const totalStock = (() => {
+    if (typeof p.totalStock === "number") return p.totalStock;
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      return p.variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+    }
+    if (p.stock != null) return Number(p.stock) || 0;
+    return 0;
+  })();
+  
+  const stockStatus = getStockStatus(totalStock);
+  const isOutOfStock = stockStatus === STOCK_STATUS.OUT_OF_STOCK || stockStatus === STOCK_STATUS.DISCONTINUED;
   
   return (
     <Link 
       to={`/products/${detailId}`} 
-      className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
+      className={`group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 ${isOutOfStock ? 'opacity-75' : ''}`}
     >
       <div className="relative overflow-hidden bg-gray-50">
         <img 
           src={img} 
           alt={name} 
-          className="w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-300" 
+          className={`w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-300 ${isOutOfStock ? 'grayscale' : ''}`} 
+          onError={(e) => {
+            console.log('❌ Search result image failed to load:', img);
+            e.target.src = '/img/default.png';
+          }}
         />
         <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity" />
+        {/* Stock Status Badge */}
+        {stockStatus !== STOCK_STATUS.IN_STOCK && (
+          <div className="absolute top-2 right-2">
+            <StockStatusBadge status={stockStatus} />
+          </div>
+        )}
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-gray-800 line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors">
           {name}
         </h3>
         <div className="flex items-center justify-between">
-          <span className="text-lg font-bold text-blue-600">{currency(price)}</span>
+          <span className={`text-lg font-bold ${isOutOfStock ? 'text-gray-500' : 'text-blue-600'}`}>
+            {currency(price)}
+          </span>
           <span className="text-sm text-gray-500 group-hover:text-blue-600 transition-colors">
             Xem chi tiết →
           </span>

@@ -1,5 +1,5 @@
 // frontend/src/controllers/productController.jsx
-import api from "../services/api"; // Giữ file này để lấy cấu hình axios gốc
+import api, { BACKEND_URL } from "../services/api"; // Giữ file này để lấy cấu hình axios gốc
 
 // ============================================
 // CÁC HÀM QUẢN LÝ SẢN PHẨM
@@ -259,11 +259,9 @@ function getImageUrl(src) {
         return src;
     }
 
-    // Tự động sử dụng protocol của trang hiện tại
-    const protocol = window.location.protocol; // http: hoặc https:
-    const BASE_URL = '';
-    const fullUrl = `${BASE_URL}${src.startsWith("/") ? "" : "/"}${src}`;
-    console.log('🔄 Converted relative path to full URL:', { src, protocol, BASE_URL, fullUrl });
+    // Sử dụng BACKEND_URL từ api.js
+    const fullUrl = src.startsWith('/') ? `${BACKEND_URL}${src}` : `${BACKEND_URL}/${src}`;
+    console.log('🔄 Converted relative path to full URL:', { src, BACKEND_URL, fullUrl });
     return fullUrl;
 }
 

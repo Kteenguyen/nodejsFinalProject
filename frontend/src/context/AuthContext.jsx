@@ -40,11 +40,14 @@ export const AuthProvider = ({ children }) => {
                 if (response.isAuthenticated && response.user) {
                     console.log('✅ AuthContext: User restored:', response.user);
                     setUser(response.user);
+                    // Lưu userData vào sessionStorage khi restore session
+                    sessionStorage.setItem('userData', JSON.stringify(response.user));
                 } else {
                     console.log('❌ AuthContext: No authenticated user');
                     setUser(null);
                     // Token không hợp lệ, xóa đi
                     sessionStorage.removeItem('token');
+                    sessionStorage.removeItem('userData');
                 }
 
             } catch (error) {
@@ -68,6 +71,9 @@ export const AuthProvider = ({ children }) => {
      */
     const login = (userInfo) => {
         setUser(userInfo);
+        // Lưu userData vào sessionStorage để dùng cho comments
+        sessionStorage.setItem('userData', JSON.stringify(userInfo));
+        console.log('✅ User data saved to sessionStorage:', userInfo);
     };
 
     /**
@@ -81,7 +87,10 @@ export const AuthProvider = ({ children }) => {
             console.error("Lỗi khi gọi API logout:", error);
         } finally {
             setUser(null); // Xóa user khỏi state
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('userData'); // Xóa userData
             localStorage.removeItem('cart'); // Xóa giỏ hàng khi logout
+            console.log('✅ User logged out and userData removed');
         }
     };
 

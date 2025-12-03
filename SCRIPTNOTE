@@ -19,8 +19,6 @@
 │   ├── /utils          # Các hàm tiện ích cho backend
 │   └── server.js       # Entry point cho ứng dụng backend
 │
-└── docker-compose.yml   # Docker Compose file (nếu sử dụng Docker)
-|
 ├── /frontend          # Thư mục cho ứng dụng React
 │   ├── /public        # Thư mục công khai (index.html, favicon, ...)
 │   ├── /src           # Thư mục nguồn cho ứng dụng

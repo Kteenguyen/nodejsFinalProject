@@ -1,28 +1,66 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Package, Users, ShoppingCart, TrendingUp, X, CheckCircle, ExternalLink, ArrowRight } from 'lucide-react';
+import { Bell, Package, Users, ShoppingCart, TrendingUp, X, CheckCircle, ExternalLink, ArrowRight, MessageSquare } from 'lucide-react';
 import { OrderController } from '../controllers/OrderController';
 import { UserController } from '../controllers/userController';
 import { ProductController } from '../controllers/productController';
+import { getAllConversations } from '../controllers/ChatController';
 import { useNavigate } from 'react-router-dom';
 
 const AdminNotifications = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // all, orders, users, products
+    const [filter, setFilter] = useState('all'); // all, orders, users, products, chat
     const navigate = useNavigate();
 
     const fetchNotifications = useCallback(async () => {
         try {
-                setLoading(true);
-                const allNotifications = [];
+            setLoading(true);
+            let allNotifications = [];
 
-                // 1. Lấy thông báo từ đơn hàng
+            // 1. Lấy thông báo thật từ API notifications (persistent read status)
+            try {
+                const notificationRes = await fetch('/api/notifications', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (notificationRes.ok) {
+                    const notificationData = await notificationRes.json();
+                    console.log('🔔 AdminNotifications real API data:', notificationData);
+                    
+                    if (notificationData.notifications) {
+                        const realNotifications = notificationData.notifications.map(notif => ({
+                            id: notif._id,
+                            type: notif.type,
+                            title: notif.title,
+                            message: notif.message,
+                            time: new Date(notif.createdAt),
+                            isRead: notif.isRead, // This is from database - persistent!
+                            data: notif.data || notif
+                        }));
+                        allNotifications.push(...realNotifications);
+                        console.log('✅ Real notifications loaded:', realNotifications.length);
+                    }
+                }
+            } catch (notifError) {
+                console.error('Lỗi khi tải real notifications:', notifError);
+                
+                // Fallback: Lấy từ orders nếu API thất bại
                 try {
                     const orders = await OrderController.getAllOrdersForAdmin();
-                    console.log('📦 Orders loaded for notifications:', orders?.length || 0);
+                    console.log('📦 Fallback: Orders loaded for notifications:', orders?.length || 0);
                     
-                    const orderNotifications = (orders || []).map(order => ({
-                        id: `order-${order._id}`,
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    const recentOrders = (orders || [])
+                        .filter(order => new Date(order.createdAt) > yesterday)
+                        .slice(0, 10);
+                    
+                    const orderNotifications = recentOrders.map(order => ({
+                        id: `temp-order-${order._id}`,
                         type: 'order',
                         title: getOrderTitle(order.status),
                         message: `Đơn hàng #${(order.orderId || order._id || '').slice(-6)} - ${order.customerName || 'Khách hàng'} - ${formatPrice(order.totalPrice || 0)}`,
@@ -33,8 +71,9 @@ const AdminNotifications = () => {
                     }));
                     allNotifications.push(...orderNotifications);
                 } catch (orderError) {
-                    console.error('Lỗi khi tải đơn hàng:', orderError);
+                    console.error('Lỗi khi tải đơn hàng fallback:', orderError);
                 }
+            }
 
                 // 2. Lấy thông báo từ người dùng mới
                 try {
@@ -98,6 +137,41 @@ const AdminNotifications = () => {
                     console.error('Lỗi khi tải sản phẩm:', productError);
                 }
 
+                // 4. Lấy thông báo từ chat (tin nhắn chưa đọc)
+                try {
+                    console.log('📧 Fetching chat notifications...');
+                    const chatData = await getAllConversations('all', 1, 50);
+                    console.log('📧 Chat data received:', chatData);
+                    
+                    if (chatData.success && chatData.conversations) {
+                        const unreadConversations = chatData.conversations.filter(conv => conv.unreadCount > 0);
+                        console.log('📧 Unread conversations:', unreadConversations.length);
+                        
+                        const chatNotifications = unreadConversations.map(conv => ({
+                            id: `chat-${conv._id}`,
+                            type: 'chat',
+                            title: '💬 Tin nhắn chưa đọc',
+                            message: `${conv.userId?.name || conv.guestName || 'Khách hàng'}: ${conv.lastMessage?.text || 'Đã gửi tin nhắn'}`,
+                            time: new Date(conv.updatedAt),
+                            isRead: false,
+                            status: `${conv.unreadCount} tin nhắn`,
+                            data: {
+                                ...conv,
+                                conversationId: conv._id,
+                                customerName: conv.userId?.name || conv.guestName,
+                                customerEmail: conv.userId?.email || conv.guestEmail
+                            }
+                        }));
+                        
+                        console.log('📧 Chat notifications created:', chatNotifications);
+                        allNotifications.push(...chatNotifications);
+                    }
+                } catch (chatError) {
+                    console.error('❌ Lỗi khi tải chat notifications:', chatError);
+                    // No chat notifications available
+                    combinedNotifications = [...orderNotifications, ...userNotifications, ...productNotifications];
+                }
+
                 // Sắp xếp theo thời gian mới nhất
                 allNotifications.sort((a, b) => b.time - a.time);
 
@@ -111,6 +185,43 @@ const AdminNotifications = () => {
 
     useEffect(() => {
         fetchNotifications();
+        
+        // Setup socket for real-time notifications (NO AUTO REFRESH)
+        const setupSocket = async () => {
+            try {
+                const { initSocket } = await import('../../controllers/ChatController');
+                const socket = initSocket();
+                
+                if (socket) {
+                    console.log('🔌 AdminNotifications socket initialized');
+                    
+                    const handleAdminNotification = (data) => {
+                        console.log('🔔 AdminNotifications received real-time event:', data);
+                        // Only refresh when real socket event received
+                        fetchNotifications();
+                    };
+                    
+                    socket.on('newOrder', handleAdminNotification);
+                    socket.on('adminNotification', handleAdminNotification);
+                    
+                    // Cleanup function
+                    return () => {
+                        socket.off('newOrder', handleAdminNotification);
+                        socket.off('adminNotification', handleAdminNotification);
+                    };
+                }
+            } catch (error) {
+                console.error('Error setting up AdminNotifications socket:', error);
+            }
+        };
+        
+        const socketCleanup = setupSocket();
+        
+        return () => {
+            if (socketCleanup && typeof socketCleanup === 'function') {
+                socketCleanup();
+            }
+        };
     }, [fetchNotifications]);
 
     const getOrderTitle = (status) => {
@@ -147,6 +258,7 @@ const AdminNotifications = () => {
             case 'order': return <Package className="w-5 h-5" />;
             case 'user': return <Users className="w-5 h-5" />;
             case 'product': return <ShoppingCart className="w-5 h-5" />;
+            case 'chat': return <MessageSquare className="w-5 h-5" />;
             case 'system': return <TrendingUp className="w-5 h-5" />;
             default: return <Bell className="w-5 h-5" />;
         }
@@ -161,6 +273,10 @@ const AdminNotifications = () => {
             case 'Cancelled': return 'bg-red-100 text-red-700 border-red-200';
             case 'Hết hàng': return 'bg-red-100 text-red-700 border-red-200';
             default:
+                // Xử lý trạng thái chat "X tin nhắn"
+                if (status && status.includes('tin nhắn')) {
+                    return 'bg-blue-100 text-blue-700 border-blue-200';
+                }
                 // Xử lý trạng thái "Còn X"
                 if (status && status.startsWith('Còn')) {
                     const stock = parseInt(status.match(/\d+/)?.[0] || '0');
@@ -176,17 +292,47 @@ const AdminNotifications = () => {
         if (filter === 'order') return notif.type === 'order';
         if (filter === 'user') return notif.type === 'user';
         if (filter === 'product') return notif.type === 'product';
+        if (filter === 'chat') return notif.type === 'chat';
         return true;
     });
 
-    const markAsRead = (id) => {
+    const markAsRead = async (id) => {
+        // Update UI immediately
         setNotifications(prev => prev.map(notif =>
             notif.id === id ? { ...notif, isRead: true } : notif
         ));
+        
+        // Call API to persist the change (only for real notifications, not temp ones)
+        if (!id.startsWith('temp-')) {
+            try {
+                const api = (await import('../services/api')).default;
+                await api.put(`/notifications/${id}/read`);
+                console.log('✅ Notification marked as read in database:', id);
+            } catch (error) {
+                console.error('❌ Error marking notification as read:', error);
+                // Revert UI change if API call fails
+                setNotifications(prev => prev.map(notif =>
+                    notif.id === id ? { ...notif, isRead: false } : notif
+                ));
+            }
+        }
     };
 
-    const markAllAsRead = () => {
+    const markAllAsRead = async () => {
+        // Update UI immediately
+        const originalNotifications = [...notifications];
         setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })));
+        
+        // Call API to persist the changes
+        try {
+            const api = (await import('../services/api')).default;
+            await api.put('/notifications/read-all');
+            console.log('✅ All notifications marked as read in database');
+        } catch (error) {
+            console.error('❌ Error marking all notifications as read:', error);
+            // Revert UI changes if API call fails
+            setNotifications(originalNotifications);
+        }
     };
 
     const deleteNotification = (id) => {
@@ -198,7 +344,7 @@ const AdminNotifications = () => {
         markAsRead(notif.id);
 
         // Chuyển đến trang chi tiết dựa trên loại thông báo
-        const entityId = notif.data._id;
+        const entityId = notif.data._id || notif.data.conversationId;
         switch (notif.type) {
             case 'order':
                 navigate(`/admin/orders/${entityId}`);
@@ -208,6 +354,9 @@ const AdminNotifications = () => {
                 break;
             case 'product':
                 navigate(`/admin/products/edit/${entityId}`);
+                break;
+            case 'chat':
+                navigate(`/admin/chat`);
                 break;
             default:
                 navigate(`/admin/dashboard`);
@@ -238,6 +387,11 @@ const AdminNotifications = () => {
                         color: 'bg-orange-500 hover:bg-orange-600',
                     };
                 }
+            case 'chat':
+                return {
+                    label: 'Trả lời chat',
+                    color: 'bg-purple-500 hover:bg-purple-600',
+                };
             default:
                 return {
                     label: 'Xem chi tiết',
@@ -293,6 +447,7 @@ const AdminNotifications = () => {
                     { value: 'order', label: 'Đơn hàng', icon: Package },
                     { value: 'user', label: 'Người dùng', icon: Users },
                     { value: 'product', label: 'Sản phẩm', icon: ShoppingCart },
+                    { value: 'chat', label: 'Chat', icon: MessageSquare },
                 ].map(({ value, label, icon: Icon }) => {
                     const count = value === 'all'
                         ? unreadCount

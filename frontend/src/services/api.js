@@ -1,13 +1,25 @@
 // frontend/src/services/api.js
 import axios from 'axios';
 
-// Use relative paths - nginx will proxy to backend
+// Auto-detect environment: Production vs Local development
 const getBaseUrl = () => {
-    return '/api';
+    // Production: use relative path
+    // Local dev: trực tiếp tới localhost:3001
+    if (process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost') {
+        return '/api';
+    } else {
+        // Local development - backend luôn chạy HTTPS
+        return 'https://localhost:3001/api';
+    }
 };
 
 const getBackendUrl = () => {
-    return '';
+    if (process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost') {
+        return '';
+    } else {
+        // Backend luôn chạy HTTPS trên localhost:3001
+        return 'https://localhost:3001';
+    }
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -18,7 +30,13 @@ export const BACKEND_URL = getBackendUrl();
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '/img/placeholder.png';
   if (imagePath.startsWith('http')) return imagePath;
-  // Ảnh từ backend (bắt đầu bằng /images/) → thêm backend URL
+  
+  // Fix cho payment images: nếu path là /images/payment-... thì chuyển thành /images/payment-confirmations/payment-...
+  if (imagePath.startsWith('/images/payment-') && !imagePath.includes('payment-confirmations')) {
+    imagePath = imagePath.replace('/images/', '/images/payment-confirmations/');
+  }
+  
+  // Ảnh từ backend (bắt đầu bằng /images/) → thêm backend URL  
   if (imagePath.startsWith('/images')) return `${getBackendUrl()}${imagePath}`;
   return imagePath;
 };

@@ -104,6 +104,7 @@ function App() {
         {/* 1. Trang cá nhân (Bọc ProtectedRoute) */}
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         {/* 2. Xem chi tiết đơn hàng (Bọc ProtectedRoute) */}
+        <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
         <Route path="/order/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
         {/* 3. Checkout (Bọc ProtectedRoute) */}
         <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />

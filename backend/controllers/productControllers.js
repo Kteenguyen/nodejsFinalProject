@@ -226,29 +226,6 @@ exports.getProducts = async (req, res) => {
 };
 
 /** Chi tiết */
-// Debug endpoint để test image
-exports.debugImages = async (req, res) => {
-  try {
-    const Product = require('../models/productModel');
-    const product = await Product.findOne().select('productName productId images').lean();
-    
-    return res.json({
-      success: true,
-      debug: {
-        productName: product.productName,
-        productId: product.productId,
-        images: product.images,
-        imagesType: typeof product.images,
-        isArray: Array.isArray(product.images),
-        length: product.images?.length,
-        firstImage: product.images?.[0]
-      }
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-};
-
 exports.getProductDetails = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -607,7 +584,7 @@ exports.deleteProduct = async (req, res) => {
 exports.addComment = async (req, res) => {
   try {
     const { slug } = req.params;
-    const { comment, name } = req.body;
+    const { comment, name, userId, userAvatar } = req.body;
 
     if (!comment || !comment.trim()) {
       return res.status(400).json({ success: false, message: 'Field "comment" là bắt buộc.' });
@@ -616,7 +593,16 @@ exports.addComment = async (req, res) => {
     const product = await findBySlugOrId(slug);
     if (!product) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm.' });
 
-    product.comments.push({ name: (name || 'Guest').trim(), comment: comment.trim() });
+    // Create comment object with optional user info
+    const newComment = {
+      name: (name || 'Guest').trim(),
+      comment: comment.trim(),
+      userId: userId || null,
+      userAvatar: userAvatar || null,
+      createdAt: new Date()
+    };
+
+    product.comments.push(newComment);
     await product.save();
 
     // === REALTIME UPDATE ===

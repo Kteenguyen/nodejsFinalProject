@@ -40,7 +40,7 @@ const orderSchema = new mongoose.Schema({
     },
     status: { 
         type: String, 
-        enum: ['Pending', 'Confirmed', 'Shipping', 'Delivered', 'Cancelled'], 
+        enum: ['Pending', 'Pending Payment', 'Confirmed', 'Shipping', 'Delivered', 'Cancelled'], 
         default: 'Pending' 
     },
     statusHistory: [{
@@ -51,12 +51,26 @@ const orderSchema = new mongoose.Schema({
     cancelReason: { type: String },
     isPaid: { type: Boolean, default: false },
     paidAt: { type: Date },
+    paymentStatus: { 
+        type: String, 
+        enum: ['pending', 'paid', 'failed'], 
+        default: 'pending' 
+    },
     // Ảnh chứng từ chuyển khoản (cho payment method = banking)
     paymentProof: {
         imageUrl: { type: String },
         uploadedAt: { type: Date },
         verifiedBy: { type: String }, // Admin ID đã xác nhận
         verifiedAt: { type: Date }
+    },
+    // Ảnh xác nhận thanh toán (upload khi tạo đơn)
+    paymentConfirmation: {
+        filename: { type: String },
+        originalName: { type: String },
+        path: { type: String },
+        size: { type: Number },
+        mimetype: { type: String },
+        uploadedAt: { type: Date, default: Date.now }
     }
 }, {
     timestamps: true

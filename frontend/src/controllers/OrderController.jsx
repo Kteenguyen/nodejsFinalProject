@@ -30,7 +30,9 @@ const getOrderDetail = async (orderId) => {
         const response = await api.get(`${BASE_URL}/${orderId}`);
         return response.data.order || response.data;
     } catch (error) {
-        throw error;
+        console.error("Error fetching order detail:", error);
+        const message = error.response?.data?.message || error.message || "Không thể tải chi tiết đơn hàng";
+        throw new Error(message);
     }
 };
 
@@ -52,6 +54,23 @@ const createOrder = async (orderData) => {
         return response.data; // Trả về { success: true, order: {...} }
     } catch (error) {
         console.error('❌ Order creation failed:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+// 1b. Tạo đơn hàng với hình ảnh xác nhận thanh toán
+const createOrderWithPaymentImage = async (formData) => {
+    try {
+        console.log('🚀 Sending order with image request');
+        const response = await api.post('/orders/with-payment-image', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        console.log('📨 Received order with image response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('❌ Order with image creation failed:', error.response?.data || error.message);
         throw error;
     }
 };
@@ -87,13 +106,32 @@ const cancelOrder = async (orderId, { reason }) => {
     }
 };
 
+// 🆕 6. Upload chứng từ thanh toán (User)
+const uploadPaymentProof = async (orderId, imageFile) => {
+    try {
+        const formData = new FormData();
+        formData.append('paymentProof', imageFile);
+        
+        const response = await api.post(`${BASE_URL}/${orderId}/upload-payment-proof-cloudinary`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    } catch (error) {
+        throw new Error(error.response?.data?.message || "Lỗi upload chứng từ");
+    }
+};
+
 export const OrderController = {
     getMyOrders,
     getAllOrdersForAdmin,
     getOrderDetail,
     updateOrderStatus,
     createOrder,
+    createOrderWithPaymentImage,
     validateCoupon,
     checkOrderStatus,
-    cancelOrder
+    cancelOrder,
+    uploadPaymentProof
 };

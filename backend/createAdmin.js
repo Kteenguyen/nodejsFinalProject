@@ -25,7 +25,7 @@ async function createAdmin() {
       console.log(`   Email: ${existingAdmin.email}`);
       console.log(`   Role: ${existingAdmin.role}`);
       console.log('\n💡 Bạn có thể đăng nhập với:');
-      console.log('   Email: admin@test.com');
+      console.log('   Email: admin@phoneworld.com');
       console.log('   Password: admin123');
       await mongoose.connection.close();
       return;
@@ -58,7 +58,7 @@ async function createAdmin() {
     
     console.log('✅ Đã tạo tài khoản admin thành công!\n');
     console.log('📋 Thông tin đăng nhập:');
-    console.log('   Email: admin@test.com');
+    console.log('   Email: admin@phoneworld.com');
     console.log('   Password: admin123');
     console.log('   Username: admin');
     console.log('   Role: admin');

@@ -11,7 +11,7 @@ import AdminOrderDetail from "../pages/AdminOrderDetail";
 import DiscountManagement from "../pages/DiscountManagement";
 import CategoriesManagement from "../pages/CategoriesManagement";
 import OrderDetailPage from "../pages/OrderDetailPage";
-import AdminNotifications from "../pages/AdminNotifications";
+import AdminNotifications from "../pages/AdminNotifications_Simple";
 import NotificationDetailPage from "../pages/NotificationDetailPage";
 import LoyaltyRewardsManagement from "../pages/LoyaltyRewardsManagement";
 import AdminFlashSaleManagement from "../pages/AdminFlashSaleManagement";

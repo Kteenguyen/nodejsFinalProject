@@ -9,6 +9,8 @@ import {
     ShoppingCart, ShieldCheck, RefreshCw, 
     Gift, ChevronRight, Star as StarIcon, Send, CheckCircle, Package
 } from 'lucide-react';
+import { getStockStatus, StockStatusBadge, StockInfo } from '../utils/stockStatus';
+import useAuth from '../hooks/useAuth';
 
 const money = (n) => `${(Number(n) || 0).toLocaleString("vi-VN")} đ`;
 const isAbort = (e) => e?.name === "AbortError" || /abort/i.test(String(e?.message || ""));
@@ -28,6 +30,7 @@ function Star({ filled = false, onClick, size = 20 }) {
 export default function ProductDetail() {
   const params = useParams();
   const { addItem } = useCart();
+  const { isAdmin, user, isAuthenticated } = useAuth();
   const urlId = params.id || params.productId || params.slug || "";
 
   // --- STATE ---
@@ -43,6 +46,13 @@ export default function ProductDetail() {
   const [cText, setCText] = useState("");
   const [myRate, setMyRate] = useState(0);
   const [rateMsg, setRateMsg] = useState("");
+
+  // --- AUTO-FILL USER INFO ---
+  useEffect(() => {
+    if (user?.name && !cName) {
+      setCName(user.name);
+    }
+  }, [user, cName]);
 
   // --- 1. FETCH DATA ---
   useEffect(() => {
@@ -89,7 +99,7 @@ export default function ProductDetail() {
           const currentId = product?._id || product?.productId;
           if (data.productSlug === urlId || data.productId === urlId || data.mongoId === currentId) {
               refetch(); 
-              if (data.type === 'comment') toast.info("💬 Có bình luận mới!");
+              // Không hiển thị thông báo cho user tự comment
           }
       };
       
@@ -142,11 +152,29 @@ export default function ProductDetail() {
   async function onSubmitComment(e) {
     e.preventDefault();
     if (!cText.trim()) return;
+    
+    // Lấy thông tin user trực tiếp từ sessionStorage
+    const userDataStr = sessionStorage.getItem('userData');
+    const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
+    
+    // Prepare comment data với user từ sessionStorage
+    const commentData = { 
+      name: currentUser?.name || user?.name || cName || "Khách hàng", 
+      comment: cText.trim(),
+      userAvatar: currentUser?.avatar || user?.avatar || null,
+      userId: currentUser?._id || user?._id || null
+    };
+    
     try {
-      await ProductController.addComment(product?._id || urlId, { name: cName, comment: cText.trim() });
-      setCName(""); setCText("");
+      await ProductController.addComment(product?._id || urlId, commentData);
+      setCName(""); 
+      setCText("");
       await refetch();
-    } catch (e) { toast.error("Lỗi gửi bình luận"); }
+      toast.success("Đã thêm bình luận!");
+    } catch (e) { 
+      console.error("Comment error:", e);
+      toast.error("Lỗi gửi bình luận"); 
+    }
   }
 
   async function onRate() {
@@ -231,7 +259,15 @@ export default function ProductDetail() {
                     {/* LEFT: GALLERY */}
                     <div className="lg:col-span-5 p-6 border-r border-gray-100">
                         <div className="relative aspect-square w-full bg-white rounded-lg overflow-hidden mb-4 group border border-gray-100">
-                            <img src={images[activeIdx]} alt="Main" className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"/>
+                            <img 
+                                src={images[activeIdx]} 
+                                alt="Main" 
+                                className="w-full h-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                                onError={(e) => {
+                                    console.log('❌ Main image failed to load:', images[activeIdx]);
+                                    e.target.src = '/img/default.png';
+                                }}
+                            />
                             {/* Badge Mới */}
                             {product.isNewProduct && <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">MỚI</span>}
                             {/* Badge Giảm giá */}
@@ -240,7 +276,15 @@ export default function ProductDetail() {
                         <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
                             {images.map((src, i) => (
                                 <button key={i} onClick={() => setActiveIdx(i)} className={`flex-shrink-0 w-20 h-20 rounded-md border-2 overflow-hidden ${i === activeIdx ? "border-blue-600 ring-1 ring-blue-200" : "border-gray-200 hover:border-gray-400"}`}>
-                                    <img src={src} alt="" className="w-full h-full object-contain p-1"/>
+                                    <img 
+                                        src={src} 
+                                        alt="" 
+                                        className="w-full h-full object-contain p-1"
+                                        onError={(e) => {
+                                            console.log('❌ Thumbnail image failed to load:', src);
+                                            e.target.src = '/img/default.png';
+                                        }}
+                                    />
                                 </button>
                             ))}
                         </div>
@@ -331,27 +375,57 @@ export default function ProductDetail() {
                                     <button onClick={() => setQuantity(quantity + 1)} className="px-3 py-2 hover:bg-gray-100 text-gray-600">+</button>
                                 </div>
                             </div>
-                            <div className="pt-6 text-sm">
-                                {selectedVariant ? (
-                                    <span className="text-green-600 font-medium flex items-center gap-1">
-                                        <Package size={16}/> Còn {selectedVariant.stock} sản phẩm
-                                    </span>
-                                ) : (
-                                    <span className="text-orange-500">Vui lòng chọn phiên bản</span>
-                                )}
-                            </div>
+                            
+                            {/* Stock Status - Mới */}
+                            <StockInfo 
+                              product={product} 
+                              selectedVariant={selectedVariant?.variantId} 
+                              showAdminInfo={isAdmin}
+                            />
                         </div>
 
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                            <button onClick={handleAddToCart} className="flex-1 bg-gradient-to-r from-red-600 to-red-500 text-white py-4 rounded-xl font-bold text-lg hover:from-red-700 hover:to-red-600 transition-all shadow-lg shadow-red-200 flex flex-col items-center justify-center transform active:scale-95">
-                                <span>MUA NGAY</span>
-                                <span className="text-xs font-normal opacity-90 uppercase tracking-wide">Giao tận nơi hoặc nhận tại cửa hàng</span>
-                            </button>
-                            <button onClick={handleAddToCart} className="flex-1 sm:flex-none sm:w-1/3 border-2 border-blue-600 text-blue-600 py-4 rounded-xl font-bold text-lg hover:bg-blue-50 transition-all flex flex-col items-center justify-center">
-                                <span className="flex items-center gap-2"><ShoppingCart size={20}/> THÊM GIỎ</span>
-                                <span className="text-xs font-normal opacity-90">Thêm vào để mua sau</span>
-                            </button>
+                            {(() => {
+                                const stockInfo = getStockStatus(product, selectedVariant?.variantId);
+                                const canOrder = stockInfo?.canOrder && selectedVariant;
+                                
+                                return (
+                                    <>
+                                        <button 
+                                            onClick={canOrder ? handleAddToCart : undefined}
+                                            disabled={!canOrder}
+                                            className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all shadow-lg flex flex-col items-center justify-center transform active:scale-95 ${
+                                                canOrder 
+                                                    ? 'bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-700 hover:to-red-600 shadow-red-200' 
+                                                    : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <span>{canOrder ? 'MUA NGAY' : 'HẾT HÀNG'}</span>
+                                            <span className="text-xs font-normal opacity-90 uppercase tracking-wide">
+                                                {canOrder ? 'Giao tận nơi hoặc nhận tại cửa hàng' : 'Sản phẩm tạm thời không có sẵn'}
+                                            </span>
+                                        </button>
+                                        <button 
+                                            onClick={canOrder ? handleAddToCart : undefined}
+                                            disabled={!canOrder}
+                                            className={`flex-1 sm:flex-none sm:w-1/3 py-4 rounded-xl font-bold text-lg transition-all flex flex-col items-center justify-center ${
+                                                canOrder 
+                                                    ? 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50' 
+                                                    : 'border-2 border-gray-300 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <ShoppingCart size={20}/> 
+                                                {canOrder ? 'THÊM GIỎ' : 'HẾT HÀNG'}
+                                            </span>
+                                            <span className="text-xs font-normal opacity-90">
+                                                {canOrder ? 'Thêm vào để mua sau' : 'Không thể đặt hàng'}
+                                            </span>
+                                        </button>
+                                    </>
+                                );
+                            })()}
                         </div>
 
                         {/* Promotion */}
@@ -389,9 +463,55 @@ export default function ProductDetail() {
                             </div>
                             {rateMsg && <p className="text-center text-sm text-blue-600 mb-3 font-medium">{rateMsg}</p>}
                             <div className="flex gap-3">
-                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">U</div>
+                                {/* User Avatar for Comment Form */}
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden flex-shrink-0">
+                                    {(() => {
+                                        const userDataStr = sessionStorage.getItem('userData');
+                                        const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
+                                        const displayName = currentUser?.name || user?.name || 'Khách';
+                                        const avatarUrl = currentUser?.avatar || user?.avatar;
+                                        
+                                        return avatarUrl ? (
+                                            <img 
+                                                src={ProductController.getImageUrl(avatarUrl)} 
+                                                alt={displayName} 
+                                                className="w-full h-full object-cover" 
+                                                onError={(e) => { 
+                                                    e.target.style.display = 'none'; 
+                                                    e.target.parentElement.innerHTML = `<span class="w-full h-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">${displayName.charAt(0).toUpperCase()}</span>`; 
+                                                }}
+                                            />
+                                        ) : (
+                                            <span className="w-full h-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">
+                                                {displayName.charAt(0).toUpperCase()}
+                                            </span>
+                                        );
+                                    })()}
+                                </div>
                                 <div className="flex-1 space-y-3 relative">
-                                    <input value={cName} onChange={e=>setCName(e.target.value)} placeholder="Tên của bạn (bắt buộc)" className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-blue-500 bg-white"/>
+                                    <input 
+                                        value={(() => {
+                                            const userDataStr = sessionStorage.getItem('userData');
+                                            const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
+                                            return currentUser?.name || user?.name || cName;
+                                        })()} 
+                                        onChange={e => setCName(e.target.value)} 
+                                        placeholder={(() => {
+                                            const userDataStr = sessionStorage.getItem('userData');
+                                            const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
+                                            return currentUser?.name || user?.name ? `Đã đăng nhập: ${currentUser?.name || user?.name}` : "Tên của bạn (bắt buộc)";
+                                        })()} 
+                                        className={`w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-blue-500 bg-white ${(() => {
+                                            const userDataStr = sessionStorage.getItem('userData');
+                                            const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
+                                            return currentUser?.name || user?.name ? 'bg-gray-50 text-gray-600' : '';
+                                        })()}`}
+                                        disabled={(() => {
+                                            const userDataStr = sessionStorage.getItem('userData');
+                                            const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
+                                            return !!(currentUser?.name || user?.name);
+                                        })()}
+                                    />
                                     <textarea value={cText} onChange={e=>setCText(e.target.value)} placeholder="Mời bạn để lại bình luận..." rows={3} className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-blue-500 resize-none bg-white"/>
                                     <button onClick={(e) => { onRate(); onSubmitComment(e); }} className="absolute bottom-3 right-3 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md">
                                         <Send size={16}/>
@@ -403,7 +523,28 @@ export default function ProductDetail() {
                         <div className="space-y-6">
                             {(product.comments || []).slice().reverse().map((c, i) => (
                                 <div key={i} className="flex gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 flex-shrink-0">{(c.name || "K").charAt(0).toUpperCase()}</div>
+                                    {/* Comment Avatar */}
+                                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 flex-shrink-0 overflow-hidden relative">
+                                        {c.userAvatar ? (
+                                            <>
+                                                <img 
+                                                    src={ProductController.getImageUrl(c.userAvatar)} 
+                                                    alt={c.name || "User"} 
+                                                    className="w-full h-full object-cover absolute inset-0" 
+                                                    onError={(e) => { 
+                                                        e.target.style.display = 'none'; 
+                                                    }}
+                                                />
+                                                <span className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold flex items-center justify-center">
+                                                    {(c.name || "K").charAt(0).toUpperCase()}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold flex items-center justify-center">
+                                                {(c.name || "K").charAt(0).toUpperCase()}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex-1 bg-gray-50 p-3 rounded-2xl rounded-tl-none border border-gray-100">
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="font-bold text-gray-800 text-sm">{c.name || "Khách hàng"}</span>

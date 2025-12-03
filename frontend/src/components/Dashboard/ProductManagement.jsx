@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ProductController } from '../../controllers/productController';
 import { toast } from "react-toastify";
 import api, { getImageUrl } from '../../services/api';
+import { getStockStatus, StockStatusBadge, STOCK_STATUS } from '../../utils/stockStatus';
 
 const fmtVND = (n) =>
   (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN") + " đ";
@@ -49,7 +50,8 @@ export default function ProductManagement() {
             calculatedStock = Number(p.stock) || Number(p.quantity) || 0;
           }
 
-          const isOutOfStock = calculatedStock <= 0;
+          // Sử dụng stock status system mới
+          const stockStatus = getStockStatus(calculatedStock);
           
           // DEBUG: Log image data
           const rawImage = (Array.isArray(p.images) && p.images[0]) || p.image;
@@ -66,7 +68,8 @@ export default function ProductManagement() {
             image: getImageUrl(rawImage || "/img/no_image.png"),
 
             // Cập nhật giá trị cuối cùng vào đây
-            totalStock: p.totalStock || 0,
+            totalStock: calculatedStock,
+            stockStatus: stockStatus,
           };
         });
         setRows(mapped);
@@ -162,9 +165,8 @@ export default function ProductManagement() {
               </tr>
             ) : (
               rows.map((r) => {
-                const stockColor = r.totalStock > 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50";
                 return (
-                  <tr key={r.id} className="border-t hover:bg-gray-50">
+                  <tr key={r.id} className={`border-t hover:bg-gray-50 ${r.stockStatus === STOCK_STATUS.OUT_OF_STOCK ? 'bg-red-50/30' : r.stockStatus === STOCK_STATUS.LOW_STOCK ? 'bg-orange-50/30' : ''}`}>
                     <td className="px-4 py-3">
                       <img src={r.image} alt={r.name} className="w-12 h-12 object-cover rounded" />
                     </td>
@@ -173,9 +175,10 @@ export default function ProductManagement() {
                     <td className="px-4 py-3">{r.brand}</td>
                     <td className="px-4 py-3">{fmtVND(r.lowestPrice)}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${stockColor}`}>
-                        {r.totalStock > 0 ? r.totalStock : "Hết hàng"}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <StockStatusBadge status={r.stockStatus} />
+                        <span className="text-xs text-gray-500">{r.totalStock} sản phẩm</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 space-x-2">
                       <button
@@ -218,9 +221,8 @@ export default function ProductManagement() {
           <div className="bg-white rounded-lg shadow p-4 text-gray-500 text-center">Không có sản phẩm</div>
         ) : (
           rows.map((r) => {
-            const stockColor = r.totalStock > 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50";
             return (
-              <div key={r.id} className="bg-white rounded-lg shadow p-3">
+              <div key={r.id} className={`bg-white rounded-lg shadow p-3 ${r.stockStatus === STOCK_STATUS.OUT_OF_STOCK ? 'border-l-4 border-red-500' : r.stockStatus === STOCK_STATUS.LOW_STOCK ? 'border-l-4 border-orange-500' : ''}`}>
                 <div className="flex gap-3">
                   <img src={r.image} alt={r.name} className="w-16 h-16 object-cover rounded flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -228,9 +230,10 @@ export default function ProductManagement() {
                     <p className="text-xs text-gray-500 mt-0.5">{r.category} • {r.brand}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm font-semibold text-blue-600">{fmtVND(r.lowestPrice)}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${stockColor}`}>
-                        {r.totalStock > 0 ? `SL: ${r.totalStock}` : "Hết hàng"}
-                      </span>
+                      <StockStatusBadge status={r.stockStatus} size="small" />
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Tồn kho: {r.totalStock} sản phẩm
                     </div>
                   </div>
                 </div>

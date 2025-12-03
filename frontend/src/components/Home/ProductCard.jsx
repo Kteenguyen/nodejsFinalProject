@@ -7,6 +7,7 @@ import { useCart } from "../../context/CartContext";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { BACKEND_URL } from "../../services/api";
+import { getStockStatus, StockStatusBadge, STOCK_STATUS } from "../../utils/stockStatus";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -23,7 +24,46 @@ export default function ProductCard({ product, viewMode = "grid" }) {
   // Id dùng cho route /products/:id
   const detailId = p.productId || p._id || p.id || "";
 
-  // ========== 1. Tổng tồn kho (ưu tiên dùng totalStock từ backend) ==========
+  // ========== Helper function: Pick sellable variant ==========
+  const pickSellableVariant = (obj) => {
+    if (!obj) return null;
+
+    if (Array.isArray(obj.variants) && obj.variants.length > 0) {
+      // ưu tiên variant còn stock
+      const withStock = obj.variants.filter(
+        (v) => Number(v.stock ?? 0) > 0
+      );
+      const v = withStock[0] || obj.variants[0];
+
+      if (v) {
+        return {
+          variantId: v.variantId || v._id || "default",
+          price: Number(v.price ?? v.salePrice ?? 0),
+          originalPrice: Number(v.originalPrice ?? v.oldPrice ?? 0),
+          discount: Number(v.discount ?? 0),
+          stock: Number(v.stock ?? 0),
+          name: v.name || v.variantName || '',
+          description: v.description || v.variantDescription || '',
+          sku: v.sku || v.productId || '',
+          ...v
+        };
+      }
+    }
+
+    // Fallback nếu không có variants
+    return {
+      variantId: "default",
+      price: Number(obj.price ?? obj.lowestPrice ?? obj.minPrice ?? 0),
+      originalPrice: Number(obj.originalPrice ?? obj.oldPrice ?? 0),
+      discount: Number(obj.discount ?? 0),
+      stock: Number(obj.stock ?? 0),
+      name: obj.name || obj.productName || '',
+      description: obj.description || obj.productDescription || '',
+      sku: obj.sku || obj.productId || obj._id || ''
+    };
+  };
+
+  // ========== 1. Tổng tồn kho và trạng thái ==========
   const totalStock = (() => {
     if (typeof p.totalStock === "number") {
       return p.totalStock;
@@ -43,7 +83,62 @@ export default function ProductCard({ product, viewMode = "grid" }) {
     return 0;
   })();
 
-  const isOutOfStock = totalStock <= 0;
+  // Sử dụng stock status system mới
+  const stockStatus = getStockStatus(totalStock);
+  const isOutOfStock = stockStatus === STOCK_STATUS.OUT_OF_STOCK || stockStatus === STOCK_STATUS.DISCONTINUED;
+
+  // ========== 3. Tính toán giảm giá và chương trình khuyến mãi ==========
+  const discountInfo = (() => {
+    const selectedVariant = pickSellableVariant(p);
+    const currentPrice = selectedVariant ? selectedVariant.price : Number(p.lowestPrice ?? p.minPrice ?? p.price ?? 0);
+    
+    // Lấy thông tin giảm giá từ product hoặc variant
+    const originalPrice = Number(p.originalPrice || p.oldPrice || selectedVariant?.originalPrice || selectedVariant?.oldPrice || 0);
+    const discount = Number(p.discount || selectedVariant?.discount || 0);
+    
+    // Nếu không có originalPrice, tự tính dựa trên discount %
+    let calculatedOriginalPrice = originalPrice;
+    if (!originalPrice && discount > 0) {
+      calculatedOriginalPrice = Math.round(currentPrice / (1 - discount / 100));
+    }
+    
+    // Tính % giảm giá thực tế
+    const actualDiscountPercent = calculatedOriginalPrice > currentPrice 
+      ? Math.round(((calculatedOriginalPrice - currentPrice) / calculatedOriginalPrice) * 100)
+      : 0;
+    
+    // Tên chương trình khuyến mãi
+    const promotionName = p.promotionName || p.saleProgram || 
+      (actualDiscountPercent > 0 ? getPromotionName(actualDiscountPercent, p.category?.categoryName) : "");
+    
+    return {
+      currentPrice,
+      originalPrice: calculatedOriginalPrice,
+      discountPercent: actualDiscountPercent,
+      promotionName,
+      hasDiscount: actualDiscountPercent > 0
+    };
+  })();
+  
+  // Hàm tạo tên chương trình dựa trên % giảm và danh mục
+  function getPromotionName(discountPercent, category = "") {
+    const categoryName = category.toLowerCase();
+    
+    if (discountPercent >= 50) {
+      return "🔥 Flash Sale 50%";
+    } else if (discountPercent >= 30) {
+      if (categoryName.includes('laptop')) return "💻 Laptop Sale 30%";
+      if (categoryName.includes('phone') || categoryName.includes('smartphone')) return "📱 Smartphone Festival";
+      return "✨ Mega Sale 30%";
+    } else if (discountPercent >= 20) {
+      return "🎉 Weekend Sale 20%";
+    } else if (discountPercent >= 10) {
+      return "🏆 Súper Oferta";
+    } else if (discountPercent >= 5) {
+      return "🔥 Hot Deal";
+    }
+    return "";
+  }
 
   // ========== 2. Ảnh hiển thị ==========
   const imageUrl = (() => {
@@ -75,42 +170,8 @@ export default function ProductCard({ product, viewMode = "grid" }) {
     
     // Fallback to placeholder
     console.log(`⚠️ [${p.productName}] No image found, using placeholder`);
-    return "/img/placeholder.png";
+    return "/img/default.png";
   })();
-
-  // ========== 3. Chọn variant để bán ==========
-  const pickSellableVariant = (obj) => {
-    if (!obj) return null;
-
-    if (Array.isArray(obj.variants) && obj.variants.length > 0) {
-      // ưu tiên variant còn stock
-      const withStock = obj.variants.filter(
-        (v) => Number(v.stock ?? 0) > 0
-      );
-      const v = withStock[0] || obj.variants[0];
-
-      if (v) {
-        return {
-          variantId: v.variantId || v._id || "default",
-          name: v.name || v.variantName || "Mặc định",
-          price: Number(v.price) || 0,
-          stock: Number(v.stock ?? 0),
-        };
-      }
-    }
-
-    // Fallback cho sản phẩm không có biến thể
-    if (obj?.price != null) {
-      return {
-        variantId: "default",
-        name: "Mặc định",
-        price: Number(obj.price) || 0,
-        stock: Number(obj.stock ?? 0),
-      };
-    }
-
-    return null;
-  };
 
   // ========== 4. Thêm vào giỏ ==========
   const handleAddToCart = async (e) => {
@@ -118,8 +179,16 @@ export default function ProductCard({ product, viewMode = "grid" }) {
     e.stopPropagation();
 
     if (isOutOfStock) {
-      toast.info("Sản phẩm này tạm thời hết hàng.");
+      if (stockStatus === STOCK_STATUS.OUT_OF_STOCK) {
+        toast.info("Sản phẩm này tạm thời hết hàng.");
+      } else if (stockStatus === STOCK_STATUS.DISCONTINUED) {
+        toast.info("Sản phẩm này đã ngừng kinh doanh.");
+      }
       return;
+    }
+
+    if (stockStatus === STOCK_STATUS.LOW_STOCK) {
+      toast.warning(`Chỉ còn ${totalStock} sản phẩm trong kho!`);
     }
 
     try {
@@ -168,9 +237,6 @@ export default function ProductCard({ product, viewMode = "grid" }) {
     }
   };
 
-  // ========== 5. Giá hiển thị ==========
-  const minPrice = Number(p.lowestPrice ?? p.minPrice ?? p.price ?? 0);
-
   // Nếu không có id thì không render (tránh crash)
   if (!detailId) return null;
 
@@ -202,13 +268,46 @@ export default function ProductCard({ product, viewMode = "grid" }) {
               ${isOutOfStock ? "grayscale" : ""}
             `}
             loading="lazy"
+            onError={(e) => {
+              console.log('❌ ProductCard image failed to load:', imageUrl);
+              e.target.src = '/img/default.png';
+            }}
           />
 
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-black/10 flex items-center justify-center z-10">
-              <span className="bg-gray-800 text-white text-xs font-bold px-3 py-1 rounded shadow-md uppercase tracking-wider">
-                Hết hàng
-              </span>
+          {/* Stock Status Badge Overlay */}
+          {stockStatus !== STOCK_STATUS.IN_STOCK && (
+            <div className="absolute top-2 right-2 z-10">
+              <StockStatusBadge status={stockStatus} />
+            </div>
+          )}
+          
+          {/* Discount Badge Overlay */}
+          {discountInfo.hasDiscount && (
+            <div className="absolute top-2 left-2 z-10">
+              <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg">
+                -{discountInfo.discountPercent}%
+              </div>
+            </div>
+          )}
+          
+          {/* New Product Badge */}
+          {p.isNewProduct && (
+            <div className="absolute top-2 left-2 z-20" style={{ top: discountInfo.hasDiscount ? '2.5rem' : '0.5rem' }}>
+              <div className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg">
+                MỚI
+              </div>
+            </div>
+          )}
+          
+          {/* Best Seller Badge */}
+          {p.isBestSeller && (
+            <div className="absolute top-2 left-2 z-20" style={{ 
+              top: (discountInfo.hasDiscount && p.isNewProduct) ? '5rem' : 
+                   (discountInfo.hasDiscount || p.isNewProduct) ? '2.5rem' : '0.5rem' 
+            }}>
+              <div className="bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg">
+                BÁN CHẠY
+              </div>
             </div>
           )}
         </Link>
@@ -251,15 +350,51 @@ export default function ProductCard({ product, viewMode = "grid" }) {
               isList ? "mt-0" : "mt-4"
             }`}
           >
-            <div className="flex flex-col">
-              <span className="text-xs text-gray-400">Giá chỉ từ</span>
-              <span
-                className={`text-lg font-bold ${
-                  isOutOfStock ? "text-gray-500" : "text-red-600"
-                }`}
-              >
-                {minPrice.toLocaleString("vi-VN")} ₫
-              </span>
+            <div className="flex flex-col flex-1 pr-2">
+              {/* Tên chương trình khuyến mãi */}
+              {discountInfo.promotionName && (
+                <div className="mb-1 animate-pulse">
+                  <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-full font-semibold tracking-wide shadow-md">
+                    {discountInfo.promotionName}
+                  </span>
+                </div>
+              )}
+              
+              {/* Giá gốc và % giảm (nếu có) */}
+              {discountInfo.hasDiscount && (
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-sm text-gray-400 line-through">
+                    {discountInfo.originalPrice.toLocaleString("vi-VN")} ₫
+                  </span>
+                  <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold border border-red-200">
+                    -{discountInfo.discountPercent}%
+                  </span>
+                </div>
+              )}
+              
+              {/* Giá hiện tại */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {!discountInfo.hasDiscount && (
+                  <span className="text-xs text-gray-400">Giá chỉ từ</span>
+                )}
+                <span
+                  className={`text-lg font-bold ${
+                    isOutOfStock ? "text-gray-500" : 
+                    discountInfo.hasDiscount ? "text-red-600" : "text-blue-600"
+                  }`}
+                >
+                  {discountInfo.currentPrice.toLocaleString("vi-VN")} ₫
+                </span>
+              </div>
+              
+              {/* Tiết kiệm tiền (hiển thị riêng cho mobile) */}
+              {discountInfo.hasDiscount && (
+                <div className="mt-1">
+                  <span className="text-xs text-green-600 font-semibold bg-green-50 px-1.5 py-0.5 rounded">
+                    💰 Tiết kiệm {(discountInfo.originalPrice - discountInfo.currentPrice).toLocaleString("vi-VN")}₫
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Nút mua */}
@@ -272,17 +407,31 @@ export default function ProductCard({ product, viewMode = "grid" }) {
                 ${
                   isOutOfStock
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed shadow-none"
+                    : stockStatus === STOCK_STATUS.LOW_STOCK
+                    ? "bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white"
                     : "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white"
                 }
               `}
-              title={isOutOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"}
+              title={
+                isOutOfStock 
+                  ? stockStatus === STOCK_STATUS.DISCONTINUED ? "Ngừng kinh doanh" : "Hết hàng"
+                  : stockStatus === STOCK_STATUS.LOW_STOCK
+                  ? "Sắp hết hàng - Mua ngay!"
+                  : "Thêm vào giỏ hàng"
+              }
             >
               {isOutOfStock ? (
-                <span className="text-xs font-bold px-1">HẾT</span>
+                <span className="text-xs font-bold px-1">
+                  {stockStatus === STOCK_STATUS.DISCONTINUED ? "NGỪNG" : "HẾT"}
+                </span>
               ) : (
                 <>
                   <FaCartPlus className="h-5 w-5" />
-                  {isList && <span>Thêm giỏ hàng</span>}
+                  {isList && (
+                    <span>
+                      {stockStatus === STOCK_STATUS.LOW_STOCK ? "Mua ngay!" : "Thêm giỏ hàng"}
+                    </span>
+                  )}
                 </>
               )}
             </button>

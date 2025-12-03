@@ -24,11 +24,8 @@ export default function RequireAdmin({ children }) {
       .then((json) => {
         const user = json?.user ?? json; // tuỳ API
         setAllowed(isAdminUser(user));
-        // debug nhẹ nếu cần:
-        console.debug("RequireAdmin /me:", user);
       })
       .catch((e) => {
-        console.debug("RequireAdmin /me error:", e?.message);
         setAllowed(false);
       })
       .finally(() => setLoading(false));

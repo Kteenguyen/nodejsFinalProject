@@ -45,7 +45,18 @@ const userSchema = new mongoose.Schema({
     shippingAddresses: {
         type: [addressSchema], // Đổi thành một MẢNG các địa chỉ
         default: []
-    }
+    },
+    // === 3. THÊM VOUCHERS FIELD ===
+    vouchers: [{
+        code: String,
+        name: String,
+        percent: Number,
+        minOrderValue: { type: Number, default: 0 },
+        expiry: Date,
+        redeemedAt: { type: Date, default: Date.now },
+        isUsed: { type: Boolean, default: false },
+        usedAt: Date
+    }]
 }, {
     timestamps: true,
     toJSON: { virtuals: true },

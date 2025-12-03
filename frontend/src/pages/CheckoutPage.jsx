@@ -12,9 +12,11 @@ import { motion, AnimatePresence } from 'framer-motion'; // 👈 Import Motion
 import { OrderController } from '../controllers/OrderController';
 import { UserController } from '../controllers/userController';
 import { getImageUrl } from '../services/api';
+import api from '../services/api';
 
 import AddressForm from '../components/common/AddressForm'; // Gọi đúng đường dẫn AddressForm mới
 import PaymentMethods from '../components/checkout/PaymentMethods';
+import BankingPayment from '../components/checkout/BankingPayment';
 
 export default function CheckoutPage() {
     const { cartItems: allCartItems, clearCart, loadingCart, setCartItems } = useCart();
@@ -45,6 +47,14 @@ export default function CheckoutPage() {
     const [appliedCoupon, setAppliedCoupon] = useState(null);
     const [usePoints, setUsePoints] = useState(false);
     const [checkingCoupon, setCheckingCoupon] = useState(false);
+    
+    // State cho voucher suggestions
+    const [availableVouchers, setAvailableVouchers] = useState([]);
+    const [showVoucherSuggestions, setShowVoucherSuggestions] = useState(false);
+    const [loadingVouchers, setLoadingVouchers] = useState(false);
+    
+    // State cho upload hình ảnh xác nhận chuyển khoản
+    const [bankingImage, setBankingImage] = useState(null);
     
     // Ref để track đã đặt hàng thành công (tránh hiện thông báo giỏ hàng trống)
     const orderPlacedRef = useRef(false);
@@ -150,10 +160,38 @@ export default function CheckoutPage() {
         }
     };
 
+    // --- 4.5. FETCH AVAILABLE VOUCHERS ---
+    const fetchAvailableVouchers = async () => {
+        try {
+            setLoadingVouchers(true);
+            const response = await api.get('/discounts/available');
+            if (response.data.success) {
+                setAvailableVouchers(response.data.vouchers);
+            }
+        } catch (error) {
+            console.error('Error fetching vouchers:', error);
+        } finally {
+            setLoadingVouchers(false);
+        }
+    };
+
+    const handleApplyVoucher = (voucher) => {
+        setCouponCode(voucher.code);
+        setAppliedCoupon({ code: voucher.code, percent: voucher.percent });
+        setShowVoucherSuggestions(false);
+        toast.success(`Áp dụng voucher ${voucher.code} giảm ${voucher.percent}% thành công!`);
+    };
+
     // --- 5. ĐẶT HÀNG ---
     const handlePlaceOrder = async () => {
         if (!selectedAddress) {
             toast.error("Vui lòng thêm địa chỉ giao hàng!");
+            return;
+        }
+
+        // Kiểm tra bắt buộc upload hình ảnh khi chọn chuyển khoản
+        if (paymentMethod === 'banking' && !bankingImage) {
+            toast.error("Vui lòng upload hình ảnh xác nhận chuyển khoản!");
             return;
         }
 
@@ -185,31 +223,20 @@ export default function CheckoutPage() {
                 note
             };
 
-            // Gọi API tạo đơn
-            const res = await OrderController.createOrder(orderData);
-            
-            if (res.success || res.order) {
-                orderPlacedRef.current = true; // Đánh dấu đã đặt hàng thành công
+            // Nếu có hình ảnh xác nhận, thêm vào orderData
+            if (paymentMethod === 'banking' && bankingImage) {
+                // Tạo FormData để gửi file
+                const formData = new FormData();
+                formData.append('orderData', JSON.stringify(orderData));
+                formData.append('paymentConfirmation', bankingImage);
                 
-                // Nếu chỉ checkout một số sản phẩm, chỉ xóa những sản phẩm đã checkout
-                if (selectedItemsFromCart && selectedItemsFromCart.length < allCartItems.length) {
-                    // Lọc ra những sản phẩm chưa được checkout
-                    const selectedKeys = selectedItemsFromCart.map(item => item.variantId || item.sku || `${item._id || item.productMongoId || item.productId}-noVariant`);
-                    const remainingItems = allCartItems.filter(item => {
-                        const key = item.variantId || item.sku || `${item._id || item.productMongoId || item.productId}-noVariant`;
-                        return !selectedKeys.includes(key);
-                    });
-                    setCartItems(remainingItems);
-                } else {
-                    clearCart();
-                }
-                
-                const newOrderId = res.order?.orderId || res.order?._id;
-                
-                // Lưu flag vào sessionStorage để trang OrderSuccess hiển thị toast
-                sessionStorage.setItem('orderSuccess', 'true');
-                
-                navigate(`/order-success?code=00&orderId=${newOrderId}&method=${paymentMethod}`);
+                // Gọi API tạo đơn với file upload
+                const res = await OrderController.createOrderWithPaymentImage(formData);
+                handleOrderSuccess(res);
+            } else {
+                // Gọi API tạo đơn bình thường
+                const res = await OrderController.createOrder(orderData);
+                handleOrderSuccess(res);
             }
 
         } catch (error) {
@@ -217,6 +244,41 @@ export default function CheckoutPage() {
             toast.error(error.message || "Đặt hàng thất bại, vui lòng thử lại.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleOrderSuccess = (res) => {
+        if (res.success || res.order) {
+            orderPlacedRef.current = true; // Đánh dấu đã đặt hàng thành công
+            
+            // Emit event để Header admin refresh notifications
+            window.dispatchEvent(new CustomEvent('orderCreated', {
+                detail: { 
+                    orderId: res.order?.orderId || res.order?._id,
+                    paymentMethod 
+                }
+            }));
+            console.log('🛍️ Checkout: orderCreated event dispatched');
+            
+            // Nếu chỉ checkout một số sản phẩm, chỉ xóa những sản phẩm đã checkout
+            if (selectedItemsFromCart && selectedItemsFromCart.length < allCartItems.length) {
+                // Lọc ra những sản phẩm chưa được checkout
+                const selectedKeys = selectedItemsFromCart.map(item => item.variantId || item.sku || `${item._id || item.productMongoId || item.productId}-noVariant`);
+                const remainingItems = allCartItems.filter(item => {
+                    const key = item.variantId || item.sku || `${item._id || item.productMongoId || item.productId}-noVariant`;
+                    return !selectedKeys.includes(key);
+                });
+                setCartItems(remainingItems);
+            } else {
+                clearCart();
+            }
+            
+            const newOrderId = res.order?.orderId || res.order?._id;
+            
+            // Lưu flag vào sessionStorage để trang OrderSuccess hiển thị toast
+            sessionStorage.setItem('orderSuccess', 'true');
+            
+            navigate(`/order-success?code=00&orderId=${newOrderId}&method=${paymentMethod}`);
         }
     };
 
@@ -407,6 +469,16 @@ export default function CheckoutPage() {
                                 <CreditCard size={20} /> Phương thức thanh toán
                             </h2>
                             <PaymentMethods selected={paymentMethod} onSelect={setPaymentMethod} />
+                            
+                            {/* Hiển thị phần upload khi chọn chuyển khoản ngân hàng */}
+                            {paymentMethod === 'banking' && (
+                                <div className="mt-6 p-4 bg-gray-50 rounded-xl border">
+                                    <BankingPayment 
+                                        onImageUpload={setBankingImage}
+                                        uploadedImage={bankingImage}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* 4. GHI CHÚ */}
@@ -462,16 +534,92 @@ export default function CheckoutPage() {
                                     {appliedCoupon ? (
                                         <button onClick={() => {setAppliedCoupon(null); setCouponCode('');}} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><X size={20}/></button>
                                     ) : (
-                                        <button 
-                                            onClick={handleApplyCoupon}
-                                            disabled={checkingCoupon || !couponCode}
-                                            className="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition"
-                                        >
-                                            {checkingCoupon ? <Loader size={16} className="animate-spin"/> : "Áp dụng"}
-                                        </button>
+                                        <>
+                                            <button 
+                                                onClick={handleApplyCoupon}
+                                                disabled={checkingCoupon || !couponCode}
+                                                className="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition"
+                                            >
+                                                {checkingCoupon ? <Loader size={16} className="animate-spin"/> : "Áp dụng"}
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    setShowVoucherSuggestions(!showVoucherSuggestions);
+                                                    if (!showVoucherSuggestions && availableVouchers.length === 0) {
+                                                        fetchAvailableVouchers();
+                                                    }
+                                                }}
+                                                className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg border border-orange-200 transition"
+                                                title="Xem voucher khả dụng"
+                                            >
+                                                <Ticket size={20}/>
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                                 {appliedCoupon && <p className="text-xs text-green-600 mt-2 flex items-center gap-1"><Check size={12}/> Đã giảm {appliedCoupon.percent}%</p>}
+                                
+                                {/* Voucher Suggestions (giống Shopee) */}
+                                <AnimatePresence>
+                                    {showVoucherSuggestions && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="mt-3 border border-orange-200 rounded-lg overflow-hidden bg-orange-50"
+                                        >
+                                            <div className="p-3 bg-orange-100 flex items-center justify-between">
+                                                <span className="text-sm font-medium text-orange-800 flex items-center gap-2">
+                                                    🎫 Voucher dành cho bạn
+                                                </span>
+                                                <button 
+                                                    onClick={() => setShowVoucherSuggestions(false)}
+                                                    className="text-orange-600 hover:text-orange-800"
+                                                >
+                                                    <X size={16}/>
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="p-3 space-y-2">
+                                                {loadingVouchers ? (
+                                                    <div className="flex items-center justify-center py-4">
+                                                        <Loader size={16} className="animate-spin text-orange-600"/>
+                                                        <span className="ml-2 text-sm text-orange-600">Đang tải voucher...</span>
+                                                    </div>
+                                                ) : availableVouchers.length === 0 ? (
+                                                    <p className="text-sm text-gray-500 text-center py-4">Không có voucher khả dụng</p>
+                                                ) : (
+                                                    availableVouchers.map((voucher, index) => (
+                                                        <motion.div
+                                                            key={voucher.code}
+                                                            initial={{ opacity: 0, x: -20 }}
+                                                            animate={{ opacity: 1, x: 0 }}
+                                                            transition={{ delay: index * 0.1 }}
+                                                            className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200 hover:border-orange-300 transition cursor-pointer"
+                                                            onClick={() => handleApplyVoucher(voucher)}
+                                                        >
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
+                                                                        -{voucher.percent}%
+                                                                    </span>
+                                                                    <span className="font-bold text-orange-800 text-sm">{voucher.code}</span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-600">{voucher.name}</p>
+                                                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                                                    <span>Còn {voucher.remaining} lượt</span>
+                                                                    {voucher.minOrder > 0 && <span>Đơn tối thiểu {voucher.minOrder.toLocaleString()}đ</span>}
+                                                                    {voucher.expiry && <span>HSD: {new Date(voucher.expiry).toLocaleDateString('vi-VN')}</span>}
+                                                                </div>
+                                                            </div>
+                                                            <ChevronRight size={16} className="text-orange-500"/>
+                                                        </motion.div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
                             {/* Điểm thưởng */}

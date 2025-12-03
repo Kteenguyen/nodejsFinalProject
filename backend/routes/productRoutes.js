@@ -5,9 +5,6 @@ const productController = require('../controllers/productControllers');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { uploadPaymentProof } = require('../config/cloudinaryPayment');
 
-// Debug endpoint
-router.get('/debug-images', productController.debugImages);
-
 async function loadProduct(req, res, next) {
   try {
     // chấp nhận cả :productId, :idOrSlug, :slug

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { OrderController } from "../controllers/OrderController";
 import { ProductController } from "../controllers/productController";
-import api from "../services/api";
+import api, { getImageUrl } from "../services/api";
 
 const fmtVND = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 const fmtDate = (d) => new Date(d).toLocaleString('vi-VN');
@@ -29,6 +29,12 @@ export default function AdminOrderDetail() {
         if (order) {
           setOrder(order);
           setNewStatus(order.status);
+          
+          // Debug payment data
+          console.log('🔍 Order data:', order);
+          console.log('💳 Payment method:', order.paymentMethod);
+          console.log('📋 Payment proof:', order.paymentProof);
+          console.log('🖼️ Payment image URL:', order.paymentProof?.imageUrl);
         } else {
           setError("Không tìm thấy thông tin đơn hàng");
         }
@@ -208,34 +214,48 @@ export default function AdminOrderDetail() {
               </div>
 
               {/* Ảnh chứng từ chuyển khoản */}
-              {order.paymentMethod === 'banking' && order.paymentProof?.imageUrl && (
+              {order.paymentMethod === 'banking' && (
                 <div className="mt-4 pt-3 border-t">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-gray-700">Chứng từ chuyển khoản:</span>
-                    {order.paymentProof.verifiedAt && (
+                    {order.paymentProof?.verifiedAt && (
                       <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
                         ✓ Đã xác nhận
                       </span>
                     )}
                   </div>
-                  <a 
-                    href={order.paymentProof.imageUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="block max-w-md mx-auto"
-                  >
-                    <img 
-                      src={order.paymentProof.imageUrl} 
-                      alt="Chứng từ chuyển khoản" 
-                      className="w-full max-h-96 object-contain rounded-lg border hover:opacity-90 transition cursor-pointer bg-gray-50"
-                    />
-                  </a>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Upload lúc: {new Date(order.paymentProof.uploadedAt).toLocaleString('vi-VN')}
-                  </p>
-                  <p className="text-xs text-gray-400 text-center mt-1">
-                    (Click ảnh để xem full size)
-                  </p>
+                  
+                  {order.paymentProof?.imageUrl ? (
+                    <>
+                      <a 
+                        href={getImageUrl(order.paymentProof.imageUrl)} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="block max-w-md mx-auto"
+                      >
+                        <img 
+                          src={getImageUrl(order.paymentProof.imageUrl)} 
+                          alt="Chứng từ chuyển khoản" 
+                          className="w-full max-h-96 object-contain rounded-lg border hover:opacity-90 transition cursor-pointer bg-gray-50"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/img/placeholder.png';
+                          }}
+                        />
+                      </a>
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        Upload lúc: {new Date(order.paymentProof.uploadedAt).toLocaleString('vi-VN')}
+                      </p>
+                      <p className="text-xs text-gray-400 text-center mt-1">
+                        (Click ảnh để xem full size)
+                      </p>
+                    </>
+                  ) : (
+                    <div className="text-center py-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <p className="text-gray-500 text-sm">Chưa có hình ảnh chứng từ</p>
+                      <p className="text-gray-400 text-xs mt-1">Khách hàng chưa upload ảnh xác nhận</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

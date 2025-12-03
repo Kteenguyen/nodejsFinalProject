@@ -126,6 +126,121 @@ exports.incrementUsage = async (code, orderId) => {
     }
 };
 
+// KHÁCH HÀNG: Lấy danh sách voucher available
+exports.getAvailableVouchers = async (req, res) => {
+    try {
+        const now = new Date();
+        
+        const availableVouchers = await Discount.find({
+            // Còn lượt sử dụng
+            $expr: { $lt: ['$uses', '$maxUses'] },
+            // Trong thời gian hiệu lực
+            $or: [
+                { startDate: { $exists: false } },
+                { startDate: { $lte: now } }
+            ],
+            $and: [
+                {
+                    $or: [
+                        { endDate: { $exists: false } },
+                        { endDate: { $gte: now } }
+                    ]
+                }
+            ]
+        }).select('discountCode discountName percent maxUses uses startDate endDate minOrderValue')
+          .sort({ percent: -1 }) // Sắp xếp theo % giảm giá cao nhất
+          .limit(5); // Chỉ lấy 5 voucher tốt nhất
+
+        res.status(200).json({
+            success: true,
+            vouchers: availableVouchers.map(v => ({
+                code: v.discountCode,
+                name: v.discountName,
+                percent: v.percent,
+                remaining: v.maxUses - v.uses,
+                minOrder: v.minOrderValue || 0,
+                expiry: v.endDate
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// KHÁCH HÀNG: Đổi voucher (redeem)
+exports.redeemVoucher = async (req, res) => {
+    try {
+        const { code } = req.body;
+        const userId = req.user.id; // Từ middleware protect
+        
+        if (!code) {
+            return res.status(400).json({ success: false, message: 'Vui lòng nhập mã voucher' });
+        }
+
+        // Tìm voucher
+        const voucher = await Discount.findOne({ discountCode: code.toUpperCase() });
+        if (!voucher) {
+            return res.status(404).json({ success: false, message: 'Mã voucher không tồn tại' });
+        }
+
+        // Kiểm tra số lượt sử dụng
+        if (voucher.uses >= voucher.maxUses) {
+            return res.status(400).json({ success: false, message: 'Voucher đã hết lượt sử dụng' });
+        }
+
+        // Kiểm tra thời gian hiệu lực
+        const now = new Date();
+        if (voucher.startDate && new Date(voucher.startDate) > now) {
+            return res.status(400).json({ success: false, message: 'Voucher chưa có hiệu lực' });
+        }
+        if (voucher.endDate && new Date(voucher.endDate) < now) {
+            return res.status(400).json({ success: false, message: 'Voucher đã hết hạn' });
+        }
+
+        // Kiểm tra user đã đổi voucher này chưa (tránh đổi trùng)
+        const User = require('../models/userModel');
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
+        }
+
+        // Kiểm tra xem user đã có voucher này chưa
+        const hasVoucher = user.vouchers && user.vouchers.some(v => v.code === voucher.discountCode);
+        if (hasVoucher) {
+            return res.status(400).json({ success: false, message: 'Bạn đã có voucher này rồi!' });
+        }
+
+        // Thêm voucher vào user
+        if (!user.vouchers) user.vouchers = [];
+        user.vouchers.push({
+            code: voucher.discountCode,
+            name: voucher.discountName,
+            percent: voucher.percent,
+            minOrderValue: voucher.minOrderValue || 0,
+            expiry: voucher.endDate,
+            redeemedAt: new Date()
+        });
+
+        // Tăng số lần sử dụng voucher
+        voucher.uses += 1;
+
+        // Lưu cả user và voucher
+        await Promise.all([user.save(), voucher.save()]);
+
+        res.status(200).json({ 
+            success: true, 
+            message: `Đã đổi voucher ${code.toUpperCase()} thành công!`,
+            voucher: {
+                code: voucher.discountCode,
+                name: voucher.discountName,
+                percent: voucher.percent
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // (CHỨC NĂNG MỚI) Quản trị viên: Xem danh sách tất cả mã giảm giá
 exports.getAllCodes = async (req, res) => {
     try {

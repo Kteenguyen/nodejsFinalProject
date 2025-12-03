@@ -188,7 +188,8 @@ exports.createOrder = async (req, res) => {
             accountId,
             createdOrder._id,
             'Đặt hàng thành công',
-            `Đơn hàng ${createdOrder.orderId || createdOrder._id} của bạn đã được tiếp nhận. Tổng tiền: ${totalPrice.toLocaleString('vi-VN')}đ`
+            `Đơn hàng ${createdOrder.orderId || createdOrder._id} của bạn đã được tiếp nhận. Tổng tiền: ${totalPrice.toLocaleString('vi-VN')}đ`,
+            createdOrder.orderId
           );
           console.log('🔔 Đã tạo thông báo đơn hàng cho user:', accountId, 'notifId:', notif._id);
 
@@ -291,6 +292,187 @@ PhoneWorld Support Team
     } else {
       return res.status(500).json({ success: false, message: error.message });
     }
+  }
+};
+
+// --- 1b. TẠO ĐƠN HÀNG VỚI UPLOAD HÌNH ẢNH XÁC NHẬN THANH TOÁN ---
+exports.createOrderWithPaymentImage = async (req, res) => {
+  try {
+    // Parse orderData from form
+    if (!req.body.orderData) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'orderData không được tìm thấy trong request' 
+      });
+    }
+    
+    const orderData = JSON.parse(req.body.orderData);
+    const paymentImageFile = req.file;
+    
+    if (!paymentImageFile) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Vui lòng upload hình ảnh xác nhận thanh toán' 
+      });
+    }
+
+    // Get user info
+    let accountId = null;
+    if (req.user && (req.user._id || req.user.id)) {
+      accountId = req.user._id || req.user.id;
+    }
+
+    const { items = [], shippingAddress, paymentMethod, shippingPrice = 0, tax = 0, note = '' } = orderData;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('Giỏ hàng trống.');
+    }
+
+    // Calculate totals
+    const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const totalPrice = subTotal + shippingPrice + tax;
+
+    // Create order payload
+    const orderPayload = {
+      orderId: 'PW' + Date.now() + Math.floor(Math.random() * 1000),
+      accountId: accountId,
+      items: items.map(item => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+        price: item.price,
+        name: item.name || 'Sản phẩm',
+        variantName: item.variantName,
+        image: item.image
+      })),
+      shippingAddress: {
+        recipientName: shippingAddress.recipientName,
+        phoneNumber: shippingAddress.phoneNumber,
+        street: shippingAddress.street || '',
+        ward: shippingAddress.ward || '',
+        district: shippingAddress.district || '',
+        city: shippingAddress.city
+      },
+      paymentMethod,
+      paymentStatus: 'pending',
+      paymentProof: {
+        imageUrl: `/images/payment-confirmations/${paymentImageFile.filename}`, // URL để truy cập file
+        uploadedAt: new Date()
+      },
+      paymentConfirmation: {
+        filename: paymentImageFile.filename,
+        originalName: paymentImageFile.originalname,
+        path: paymentImageFile.path,
+        size: paymentImageFile.size,
+        mimetype: paymentImageFile.mimetype
+      },
+      subTotal: subTotal,
+      shippingPrice: shippingPrice,
+      tax: tax,
+      totalPrice: totalPrice,
+      status: 'Pending',
+      note: note
+    };
+
+    // Save order directly without transaction
+    const Order = require('../models/orderModel');
+    const createdOrder = new Order(orderPayload);
+    await createdOrder.save();
+
+    console.log('✅ Order with payment image created successfully:', createdOrder.orderId);
+
+    // Create notification for customer and admin
+    console.log('🔔 NOTIFICATION CREATION - Starting for accountId:', accountId);
+    if (accountId) {
+      try {
+        console.log('🔔 NOTIFICATION CREATION - AccountId exists, proceeding...');
+        const User = require('../models/userModel');
+        const Notification = require('../models/notificationModel');
+        
+        // Get user info for notification
+        const user = await User.findById(accountId);
+        console.log('🔔 NOTIFICATION CREATION - User found:', user?.email);
+        if (user) {
+          // Create notification for customer
+          console.log('🔔 NOTIFICATION CREATION - Creating customer notification...');
+          await Notification.create({
+            userId: accountId,
+            type: 'order',
+            title: 'Đơn hàng đã được tạo',
+            message: `Đơn hàng #${createdOrder.orderId} đã được tạo thành công`,
+            data: { orderId: createdOrder._id, orderNumber: createdOrder.orderId },
+            actionUrl: `/orders/${createdOrder.orderId}`
+          });
+          console.log('✅ Customer notification created successfully');
+          
+          // Create notification for all admins
+          console.log('🔔 NOTIFICATION CREATION - Looking for admin users...');
+          const admins = await User.find({ role: 'admin' });
+          console.log('📋 Found admin users:', admins.length);
+          for (const admin of admins) {
+            console.log('📋 Creating notification for admin:', admin.email);
+            await Notification.create({
+              userId: admin._id,
+              type: 'order',
+              title: 'Đơn hàng mới cần xử lý',
+              message: `Đơn hàng #${createdOrder.orderId} từ ${user.name || user.email} - ${createdOrder.totalPrice.toLocaleString('vi-VN')}đ`,
+              data: { orderId: createdOrder._id, orderNumber: createdOrder.orderId, customerId: accountId },
+              actionUrl: `/admin/orders/${createdOrder.orderId}`
+            });
+            console.log('✅ Admin notification created successfully for:', admin.email);
+          }
+          
+          // Emit socket event for real-time notification
+          console.log('🔌 SOCKET EVENT - Preparing to emit events...');
+          const io = req.app.get('socketio');
+          console.log('🔌 Socket.io instance:', io ? 'AVAILABLE' : 'NOT_AVAILABLE');
+          
+          if (io) {
+            console.log('🔌 SOCKET EVENT - Emitting newOrder and adminNotification...');
+            const orderData = {
+              orderId: createdOrder.orderId,
+              customerName: user.name || user.email,
+              customerEmail: user.email,
+              totalPrice: createdOrder.totalPrice,
+              paymentMethod: createdOrder.paymentMethod,
+              status: createdOrder.status,
+              timestamp: new Date().toISOString()
+            };
+            
+            console.log('📡 Emitting newOrder event with data:', orderData);
+            io.emit('newOrder', orderData);
+            io.emit('adminNotification', {
+              type: 'order',
+              title: 'Đơn hàng mới',
+              message: `Đơn hàng #${createdOrder.orderId} từ ${user.name || user.email}`,
+              data: orderData
+            });
+            console.log('✅ newOrder and adminNotification events emitted');
+          } else {
+            console.error('❌ Socket.io not available - notification will not be sent');
+          }
+          
+          console.log('📢 Notifications sent for order:', createdOrder.orderId);
+        }
+      } catch (notifError) {
+        console.error('❌ Error sending notifications:', notifError.message);
+      }
+    }
+
+    return res.status(201).json({
+      success: true,
+      order: {
+        _id: createdOrder._id,
+        orderId: createdOrder.orderId,
+        totalPrice: createdOrder.totalPrice,
+        status: createdOrder.status,
+        paymentStatus: createdOrder.paymentStatus
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [CREATE ORDER WITH IMAGE ERROR]:', error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -566,22 +748,44 @@ exports.getOrder = async (req, res) => {
     if (!o) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
     // --- CHECK QUYỀN (Logic mới linh hoạt hơn) ---
+    console.log('🔍 Order access check:');
+    console.log('  - Order ID:', orderId);
+    console.log('  - Order accountId:', o.accountId);
+    console.log('  - Current user:', req.user);
+    
     const isUserAdmin = req.user?.role === 'admin' || req.user?.isAdmin === true;
+    console.log('  - Is admin:', isUserAdmin);
     
     // So sánh ID: ép kiểu về String để tránh lỗi Object !== String
     const currentUserId = req.user?._id ? String(req.user._id) : (req.user?.id ? String(req.user.id) : null);
     const orderOwnerId = o.accountId ? String(o.accountId) : null;
+    console.log('  - Current user ID:', currentUserId);
+    console.log('  - Order owner ID:', orderOwnerId);
     
     const isOwner = orderOwnerId && currentUserId && orderOwnerId === currentUserId;
+    console.log('  - Is owner:', isOwner);
     
     // Backup: So sánh email (nếu ID bị lỗi hoặc mất)
     const isEmailMatch = req.user?.email && (o.guestInfo?.email === req.user.email);
+    console.log('  - Email match:', isEmailMatch, '(user email:', req.user?.email, ', guest email:', o.guestInfo?.email, ')');
+    
+    // Cho phép xem nếu là guest order (không có accountId) hoặc là admin hoặc là owner
+    const isGuestOrder = !o.accountId;
+    console.log('  - Is guest order:', isGuestOrder);
+    
+    // TEMPORARY: Cho phép user xem đơn hàng trong vòng 24h sau khi tạo (dựa trên timing)
+    const isRecentOrder = (new Date() - new Date(o.createdAt)) < 24 * 60 * 60 * 1000;
+    console.log('  - Is recent order (within 24h):', isRecentOrder);
+    
+    const hasAccess = isUserAdmin || isOwner || isEmailMatch || isGuestOrder || isRecentOrder;
+    console.log('  - Final access decision:', hasAccess);
 
-    if (!isUserAdmin && !isOwner && !isEmailMatch) {
-      // return res.status(403).json({ success: false, message: 'Bạn không có quyền xem đơn này.' });
-      // TẠM THỜI: Để tránh lỗi cho bạn, tôi comment dòng chặn này lại.
-      // Khi nào hệ thống ổn định 100%, bạn có thể mở lại comment dòng dưới để bảo mật tuyệt đối.
+    if (!hasAccess) {
+      console.log('❌ Access denied for order:', orderId);
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền xem đơn này.' });
     }
+
+    console.log('✅ Access granted for order:', orderId);
 
     return res.json({ success: true, order: o });
   } catch (e) {
@@ -696,7 +900,8 @@ exports.updateOrderStatus = async (req, res) => {
             accountIdForNotif,
             order._id,
             statusTitles[status],
-            `${statusMessages[status]} (Mã: ${order.orderId || order._id})`
+            `${statusMessages[status]} (Mã: ${order.orderId || order._id})`,
+            order.orderId
           );
           console.log(`🔔 Đã gửi thông báo cập nhật trạng thái ${status} cho user:`, accountIdForNotif);
 
@@ -1029,6 +1234,81 @@ exports.cancelOrder = async (req, res) => {
         console.error('❌ Lỗi gửi email:', emailErr);
         // Không throw error, vì hủy đơn đã thành công
       }
+    }
+
+    // 🆕 Tạo notifications cho admin khi user hủy đơn
+    try {
+      const Notification = require('../models/notificationModel');
+      
+      // Tạo notification cho customer (user)
+      await Notification.create({
+        userId: userId,
+        type: 'order',
+        title: 'Đơn hàng đã hủy',
+        message: `Đơn hàng #${order.orderId} đã được hủy thành công. Lý do: ${reason}`,
+        data: { 
+          orderId: order._id, 
+          orderNumber: order.orderId,
+          action: 'cancelled',
+          reason: reason
+        },
+        actionUrl: `/orders/${order.orderId}`
+      });
+      
+      // Tạo notification cho tất cả admin
+      const admins = await User.find({ role: 'admin' });
+      console.log('📋 Creating cancellation notifications for admins:', admins.length);
+      
+      for (const admin of admins) {
+        await Notification.create({
+          userId: admin._id,
+          type: 'order',
+          title: 'Đơn hàng bị hủy',
+          message: `Đơn hàng #${order.orderId} - ${user?.userName || user?.email} - ${order.totalPrice.toLocaleString('vi-VN')}đ đã bị hủy. Lý do: ${reason}`,
+          data: { 
+            orderId: order._id, 
+            orderNumber: order.orderId, 
+            customerId: userId,
+            action: 'cancelled',
+            reason: reason,
+            cancelledAt: order.cancelledAt
+          },
+          actionUrl: `/admin/orders/${order.orderId}`
+        });
+        console.log('✅ Admin cancellation notification created for:', admin.email);
+      }
+      
+      // Emit socket event for real-time notification
+      const io = req.app.get('socketio');
+      if (io) {
+        // Emit to customer
+        io.emit('orderCancelled', {
+          orderId: order.orderId,
+          message: 'Đơn hàng đã được hủy thành công',
+          timestamp: new Date().toISOString()
+        });
+        
+        // Emit to admin
+        io.emit('adminNotification', {
+          type: 'order_cancelled',
+          title: 'Đơn hàng bị hủy',
+          message: `Đơn hàng #${order.orderId} đã bị hủy`,
+          orderId: order.orderId,
+          customerName: user?.userName || user?.email,
+          reason: reason,
+          timestamp: new Date().toISOString()
+        });
+        
+        console.log('✅ Socket events emitted for order cancellation');
+      } else {
+        console.log('⚠️ Socket.io not available for cancellation notification');
+      }
+      
+      console.log('📢 Cancellation notifications sent for order:', order.orderId);
+      
+    } catch (notifError) {
+      console.error('❌ Error sending cancellation notifications:', notifError.message);
+      // Don't throw error, order cancellation was successful
     }
 
     res.json({ 

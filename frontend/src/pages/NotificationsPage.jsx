@@ -112,10 +112,10 @@ const NotificationsPage = () => {
     if (notification.actionUrl) {
       navigate(notification.actionUrl);
     } else if (notification.orderId) {
-      navigate(`/order/${notification.orderId}`);
+      navigate(`/orders/${notification.orderId}`);
     } else if (notification.type === 'order' && notification._id.startsWith('order-')) {
       const orderId = notification._id.replace('order-', '');
-      navigate(`/order/${orderId}`);
+      navigate(`/orders/${orderId}`);
     } else if (notification.type === 'promotion') {
       navigate('/products');
     }

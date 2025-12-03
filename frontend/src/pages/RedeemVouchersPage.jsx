@@ -20,9 +20,6 @@ const RedeemVouchersPage = () => {
                 LoyaltyController.getRedeemedVouchers()
             ]);
 
-            console.log('Points Data:', pointsData); // Debug
-            console.log('Loyalty Points:', pointsData.loyaltyPoints); // Debug
-            
             setLoyaltyPoints(pointsData.loyaltyPoints || 0);
             setAvailableVouchers(availableData.vouchers || []);
             setRedeemedVouchers(redeemedData.vouchers || []);

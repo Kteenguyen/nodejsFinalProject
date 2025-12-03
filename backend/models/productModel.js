@@ -17,6 +17,8 @@ const commentSchema = new mongoose.Schema(
   {
     name: { type: String, default: 'Guest', trim: true },
     comment: { type: String, required: true, trim: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    userAvatar: { type: String, default: null },
     createdAt: { type: Date, default: Date.now }
   },
   { _id: false }

@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, ShoppingCart, Settings,
     ChevronLeft, LogOut, ClipboardList, Store, Ticket, List, 
-    ChevronRight, Gift, Zap, BarChart3, MessageSquare // Import icon Flash Sale, Statistics & Chat
+    ChevronRight, Gift, Zap, BarChart3, MessageSquare, Bell // Import Bell icon for notifications
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 const overviewItems = [
     { label: "Tổng quan", icon: LayoutDashboard, path: "/admin/dashboard" },
     { label: "Thống kê", icon: BarChart3, path: "/admin/statistics" },
+    { label: "Thông báo", icon: Bell, path: "/admin/notifications" },
 ];
 
 const managementItems = [

@@ -8,6 +8,14 @@ const { protect, admin } = require('../middleware/authMiddleware'); // Giả s�
 // GET /api/discounts/validate?code=DISCOUNTCODE
 router.get('/validate', discountCtrl.validateCode);
 
+// Route cho khách hàng xem voucher available
+// GET /api/discounts/available
+router.get('/available', discountCtrl.getAvailableVouchers);
+
+// Route cho khách hàng đổi voucher
+// POST /api/discounts/redeem
+router.post('/redeem', protect, discountCtrl.redeemVoucher);
+
 
 // === ADMIN ROUTES ===
 // Các route dưới đây yêu cầu đăng nhập và quyền admin
