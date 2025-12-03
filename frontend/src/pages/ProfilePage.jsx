@@ -124,7 +124,7 @@ const ProfilePage = () => {
             fetchMyVouchers();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [fetchAvailableVouchers, fetchMyVouchers, activeTab]);
+    }, [ activeTab, fetchAvailableVouchers, fetchMyVouchers]);
 
     // Fetch user's redeemed vouchers
     const fetchMyVouchers = async () => {
