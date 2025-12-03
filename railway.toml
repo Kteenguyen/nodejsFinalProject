@@ -1,4 +1,0 @@
-[build]
-installCommand = "npm install --omit=dev && cd backend && npm install --omit=dev"
-[deploy]
-startCommand = "npm start"
