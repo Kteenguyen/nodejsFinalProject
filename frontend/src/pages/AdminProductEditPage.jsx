@@ -203,6 +203,7 @@ export default function AdminProductEditPage() {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, navigate]);
 
   // Hàm đã sửa lỗi: Cập nhật trường chung của sản phẩm
