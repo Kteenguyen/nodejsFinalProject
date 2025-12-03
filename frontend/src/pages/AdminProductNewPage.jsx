@@ -1,9 +1,10 @@
 // src/pages/AdminProductNewPage.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api, { getImageUrl } from '../services/api';
 import Calendar from '../components/common/Calendar';
+import { Image as ImageIcon } from 'lucide-react';
 
 const generateProductId = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -33,6 +34,8 @@ const emptyVariant = () => ({
   discount: 0, // % Giảm giá
   price: 0,    // Giá bán (Tự tính)
   stock: 0,
+  images: ["", ""], // Min 2 ảnh cho biến thể
+  imagePreviews: ["", ""], // Preview khi upload file
 });
 
 export default function AdminProductNewPage() {
@@ -40,14 +43,19 @@ export default function AdminProductNewPage() {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isNewCategory, setIsNewCategory] = useState(false);
+  const [primaryCategorySearch, setPrimaryCategorySearch] = useState("");
+  const [showPrimaryCategoryDropdown, setShowPrimaryCategoryDropdown] = useState(false);
+  const variantImageRefs = useRef({});
 
   const [product, setProduct] = useState({
     productName: "",
     productId: generateProductId(),
     brand: "",
     category: { categoryId: "", name: "" },
+    categories: [], // Danh sách danh mục
     description: "",
     images: ["", "", ""],
+    imagePreviews: ["", "", ""], // Preview khi upload file
     variants: [emptyVariant()],
     createdAt: new Date().toISOString().split('T')[0], // Ngày tạo mặc định là hôm nay
   });
@@ -61,11 +69,35 @@ export default function AdminProductNewPage() {
 
   const updateField = (field, value) => setProduct((prev) => ({ ...prev, [field]: value }));
 
+  // Fuzzy search function for categories
+  const fuzzySearch = (searchTerm, items) => {
+    if (!searchTerm.trim()) return items;
+    const search = searchTerm.toLowerCase();
+    return items.filter((item) => {
+      const name = (item.name || item.categoryName || "").toLowerCase();
+      // Simple fuzzy: check if search chars appear in order
+      let searchIdx = 0;
+      for (let i = 0; i < name.length && searchIdx < search.length; i++) {
+        if (name[i] === search[searchIdx]) searchIdx++;
+      }
+      return searchIdx === search.length;
+    });
+  };
+
   const updateCategoryName = (value) => {
     setProduct((prev) => ({
       ...prev,
       category: { ...(prev.category || {}), name: value },
     }));
+  };
+
+  const handlePrimaryCategorySelect = (category) => {
+    setProduct((prev) => ({
+      ...prev,
+      category: { categoryId: category.categoryId, name: category.name || category.categoryName }
+    }));
+    setPrimaryCategorySearch("");
+    setShowPrimaryCategoryDropdown(false);
   };
 
   const handleCategorySelect = (e) => {
@@ -81,11 +113,31 @@ export default function AdminProductNewPage() {
     }
   };
 
+  const addCategory = (categoryId) => {
+    const selected = categories.find((c) => c.categoryId === categoryId);
+    if (selected) {
+      setProduct((prev) => ({
+        ...prev,
+        categories: [...(prev.categories || []), { categoryId: selected.categoryId, categoryName: selected.name || selected.categoryName }]
+      }));
+    }
+  };
+
+  const removeCategory = (categoryId) => {
+    setProduct((prev) => ({
+      ...prev,
+      categories: (prev.categories || []).filter((cat) => cat.categoryId !== categoryId)
+    }));
+  };
+
   const handleImageChange = (index, value) => {
     const newImages = [...product.images];
     newImages[index] = value;
-    setProduct((prev) => ({ ...prev, images: newImages }));
+    const newPreviews = [...product.imagePreviews];
+    newPreviews[index] = value;
+    setProduct((prev) => ({ ...prev, images: newImages, imagePreviews: newPreviews }));
   };
+<<<<<<< HEAD
   const addImageField = () => setProduct((prev) => ({ ...prev, images: [...prev.images, ""] }));
   const removeImageField = (index) => setProduct((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
   
@@ -127,6 +179,24 @@ export default function AdminProductNewPage() {
       toast.error('Upload ảnh thất bại: ' + (error.response?.data?.message || error.message));
     }
   };
+=======
+  
+  const handleImageFileChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const newPreviews = [...product.imagePreviews];
+        newPreviews[index] = event.target.result;
+        setProduct((prev) => ({ ...prev, imagePreviews: newPreviews }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const addImageField = () => setProduct((prev) => ({ ...prev, images: [...prev.images, ""], imagePreviews: [...prev.imagePreviews, ""] }));
+  const removeImageField = (index) => setProduct((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index), imagePreviews: prev.imagePreviews.filter((_, i) => i !== index) }));
+>>>>>>> 399d2d510306d37538150cafe06201f702e32639
 
   // === LOGIC TÍNH GIÁ TỰ ĐỘNG (giống trang Edit) ===
   const updateVariantField = (index, field, value) => {
@@ -155,8 +225,39 @@ export default function AdminProductNewPage() {
     });
   };
 
-  const addVariant = () => setProduct((prev) => ({ ...prev, variants: [...prev.variants, emptyVariant()] }));
-  const removeVariant = (index) => setProduct((prev) => ({ ...prev, variants: prev.variants.filter((_, i) => i !== index) }));
+  const addVariant = () => {
+    setProduct((prev) => ({ ...prev, variants: [...prev.variants, emptyVariant()] }));
+  };
+  
+  const removeVariant = (index) => {
+    setProduct((prev) => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index),
+    }));
+  };
+  
+  const handleVariantImageChange = (variantIdx, imageIdx, value) => {
+    const newVariants = [...product.variants];
+    if (!newVariants[variantIdx].images) newVariants[variantIdx].images = ["", ""];
+    newVariants[variantIdx].images[imageIdx] = value;
+    if (!newVariants[variantIdx].imagePreviews) newVariants[variantIdx].imagePreviews = ["", ""];
+    newVariants[variantIdx].imagePreviews[imageIdx] = value;
+    setProduct((prev) => ({ ...prev, variants: newVariants }));
+  };
+  
+  const handleVariantImageFileChange = (variantIdx, imageIdx, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const newVariants = [...product.variants];
+        if (!newVariants[variantIdx].imagePreviews) newVariants[variantIdx].imagePreviews = ["", ""];
+        newVariants[variantIdx].imagePreviews[imageIdx] = event.target.result;
+        setProduct((prev) => ({ ...prev, variants: newVariants }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -214,13 +315,6 @@ export default function AdminProductNewPage() {
           <div><label className="block text-sm font-medium mb-1">Mã ID *</label><div className="flex gap-2"><input className="flex-1 border rounded px-3 py-2 bg-gray-100" value={product.productId} readOnly disabled /><button type="button" onClick={() => updateField("productId", generateProductId())} className="px-3 py-2 text-sm bg-blue-500 text-white rounded">Tạo lại</button></div></div>
           <div><label className="block text-sm font-medium mb-1">Thương hiệu</label><input className="w-full border rounded px-3 py-2" value={product.brand} onChange={(e) => updateField("brand", e.target.value)} /></div>
           <div>
-            <label className="block text-sm font-medium mb-1">Danh mục</label>
-            <select className="w-full border rounded px-3 py-2 bg-white" onChange={handleCategorySelect} value={product.category?.categoryId || ""}>
-              <option value="">-- Chọn --</option>
-              {categories.map((c) => (<option key={c.categoryId} value={c.categoryId}>{c.name || c.categoryName}</option>))}
-            </select>
-          </div>
-          <div>
             <Calendar
               label="Ngày tạo (Sản phẩm mới)"
               value={product.createdAt}
@@ -230,9 +324,137 @@ export default function AdminProductNewPage() {
             <p className="text-xs text-gray-500 mt-1">Sản phẩm tạo trong 30 ngày gần đây sẽ hiển thị ở "Sản phẩm mới"</p>
           </div>
         </div>
+
+        {/* DANH MỤC */}
+        <div className="border rounded p-4 bg-white">
+          <h3 className="font-bold text-gray-800 mb-4">Danh mục sản phẩm</h3>
+          
+          {/* Danh mục chính đã chọn */}
+          {product.category?.categoryId && (
+            <div className="mb-4 pb-4 border-b">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Danh mục chính:</p>
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                {product.category.categoryName || product.category.categoryId}
+                <button 
+                  type="button" 
+                  onClick={() => setProduct(p => ({ ...p, category: { categoryId: "", name: "" }, categories: [] }))}
+                  className="ml-1 text-blue-700 hover:text-blue-900 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Danh mục phụ đã chọn */}
+          {Array.isArray(product.categories) && product.categories.length > 0 && (
+            <div className="mb-4 pb-4 border-b">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Danh mục khác:</p>
+              <div className="flex flex-wrap gap-2">
+                {product.categories.map((cat) => (
+                  <div key={cat.categoryId} className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                    {cat.categoryName}
+                    <button 
+                      type="button" 
+                      onClick={() => removeCategory(cat.categoryId)}
+                      className="ml-1 text-green-700 hover:text-green-900 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Chọn danh mục chính */}
+          <div className="mb-4 relative">
+            <label className="block text-sm font-medium mb-2">Chọn danh mục chính *</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Nhập để tìm danh mục..."
+                value={primaryCategorySearch}
+                onChange={(e) => {
+                  setPrimaryCategorySearch(e.target.value);
+                  setShowPrimaryCategoryDropdown(true);
+                }}
+                onFocus={() => setShowPrimaryCategoryDropdown(true)}
+                onBlur={() => setTimeout(() => setShowPrimaryCategoryDropdown(false), 200)}
+                className="w-full border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {product.category?.categoryId && (
+                <div className="mt-2 inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                  {product.category.name}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProduct(p => ({ ...p, category: { categoryId: "", name: "" }, categories: [] }));
+                      setPrimaryCategorySearch("");
+                    }}
+                    className="ml-1 text-blue-700 hover:text-blue-900 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Dropdown danh mục */}
+            {showPrimaryCategoryDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded shadow-lg z-10 max-h-56 overflow-y-auto">
+                {fuzzySearch(primaryCategorySearch, categories).length > 0 ? (
+                  fuzzySearch(primaryCategorySearch, categories).map((c) => (
+                    <button
+                      key={c.categoryId}
+                      type="button"
+                      onClick={() => handlePrimaryCategorySelect(c)}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition border-b last:border-b-0"
+                    >
+                      {c.name || c.categoryName}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy danh mục</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Danh sách danh mục */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Danh sách danh mục</label>
+            <div className="border rounded p-3 bg-gray-50 max-h-56 overflow-y-auto space-y-2">
+              {Array.isArray(categories) && fuzzySearch(primaryCategorySearch, categories).map((c) => {
+                const isSelected = Array.isArray(product.categories) && product.categories.some(cat => cat.categoryId === c.categoryId);
+                const isPrimary = product.category?.categoryId === c.categoryId;
+                return (
+                  <label key={c.categoryId} className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded transition">
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected}
+                      disabled={isPrimary}
+                      onChange={(e) => {
+                        if (e.target.checked) addCategory(c.categoryId);
+                        else removeCategory(c.categoryId);
+                      }}
+                      className="rounded"
+                    />
+                    <span className={`text-sm ${isPrimary ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                      {c.name || c.categoryName}
+                      {isPrimary && <span className="text-xs text-gray-500 ml-1">(chính)</span>}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        
         <div><label className="block text-sm font-medium mb-1">Mô tả</label><textarea className="w-full border rounded px-3 py-2 h-24" value={product.description} onChange={(e) => updateField("description", e.target.value)} /></div>
         
         <div className="border p-4 rounded bg-gray-50">
+<<<<<<< HEAD
           <div className="flex justify-between items-center mb-3">
             <label className="block text-sm font-bold text-gray-700">Hình ảnh</label>
             <button type="button" onClick={addImageField} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">+ Thêm ảnh</button>
@@ -316,6 +538,45 @@ export default function AdminProductNewPage() {
                   >
                     ✕
                   </button>
+=======
+          <div className="flex justify-between mb-4"><label className="font-bold text-sm">Hình ảnh sản phẩm (Tối thiểu 2 ảnh)</label><button type="button" onClick={addImageField} className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">+ Thêm ảnh</button></div>
+          <div className="space-y-4">
+            {product.images.map((url, i) => (
+              <div key={i} className="border rounded p-3 bg-white">
+                <div className="flex gap-3">
+                  <div className="flex-1 space-y-2">
+                    {/* File Upload */}
+                    <div className="flex items-center justify-center w-full border-2 border-dashed border-gray-300 rounded p-3 bg-gray-50 hover:bg-gray-100 cursor-pointer transition">
+                      <input 
+                        ref={el => variantImageRefs.current[`product_${i}`] = el}
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleImageFileChange(i, e)}
+                        className="hidden" 
+                      />
+                      <div className="text-center" onClick={() => variantImageRefs.current[`product_${i}`]?.click()}>
+                        <ImageIcon size={20} className="text-gray-400 mx-auto mb-1" />
+                        <p className="text-xs text-gray-600">Click để chọn ảnh</p>
+                      </div>
+                    </div>
+                    {/* URL Input */}
+                    <input 
+                      className="w-full border rounded px-2 py-1 text-sm" 
+                      value={url} 
+                      onChange={e=>handleImageChange(i,e.target.value)} 
+                      placeholder="Hoặc dán URL ảnh..."
+                    />
+                  </div>
+                  {/* Preview */}
+                  <div className="w-20 h-20 rounded border border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {product.imagePreviews[i] ? (
+                      <img src={product.imagePreviews[i]} alt="" className="w-full h-full object-cover" onError={() => {}} />
+                    ) : (
+                      <ImageIcon size={24} className="text-gray-400" />
+                    )}
+                  </div>
+                  <button type="button" onClick={()=>removeImageField(i)} className="text-red-500 font-bold hover:text-red-700">✕</button>
+>>>>>>> 399d2d510306d37538150cafe06201f702e32639
                 </div>
               </div>
             ))}

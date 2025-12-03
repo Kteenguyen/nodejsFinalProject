@@ -20,10 +20,15 @@ const port = Number(process.env.PORT) || 3001;
 
 // --- CORS ---
 const corsOptions = {
-    origin: ["https://localhost:3000", "http://localhost:3000"],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+    origin: [
+        "https://localhost:3000", 
+        "http://localhost:3000",
+        "http://localhost:3080",
+        process.env.FRONTEND_URL || ""
+    ].filter(Boolean),
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 };
 app.use(cors(corsOptions));
 

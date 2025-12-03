@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Search, Plus, Edit, Trash2, X, Image as ImageIcon,
     Home, ChevronRight, CheckCircle, XCircle, Package, Layers
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion'; // Animation giống Users.jsx
+import { motion, AnimatePresence } from 'framer-motion';
 import { CategoryController } from '../controllers/categoryController';
 
 // Component Breadcrumb nhỏ gọn
@@ -26,18 +26,104 @@ const CategoriesManagement = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [parentSearchTerm, setParentSearchTerm] = useState('');
+    const [selectedParentId, setSelectedParentId] = useState(null);
+    const [parentSuggestions, setParentSuggestions] = useState([]); // Gợi ý danh mục cha
+    const [showParentSuggestions, setShowParentSuggestions] = useState(false);
+    const parentSearchTimeoutRef = useRef(null);
+    const parentSearchContainerRef = useRef(null);
 
     // State Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [formData, setFormData] = useState({
-        categoryId: '', name: '', slug: '', description: '', status: 'active', image: '', displayOrder: 0
+        categoryId: '', name: '', slug: '', description: '', status: 'active', image: '', displayOrder: 0, parentId: null
     });
+    const [imagePreview, setImagePreview] = useState(''); // Preview ảnh upload
+    const imageInputRef = useRef(null);
 
     // --- EFFECT ---
     useEffect(() => {
         fetchCategories();
     }, []);
+
+    useEffect(() => {
+        // Set first parent as default if not selected
+        if (categories.length > 0 && !selectedParentId) {
+            const parentCategories = categories.filter(cat => !cat.parentId);
+            if (parentCategories.length > 0) {
+                setSelectedParentId(parentCategories[0].categoryId);
+            }
+        }
+    }, [categories, selectedParentId]);
+
+    // Handle parent category search with fuzzy match
+    const handleParentSearchChange = (e) => {
+        const value = e.target.value;
+        setParentSearchTerm(value);
+
+        if (parentSearchTimeoutRef.current) clearTimeout(parentSearchTimeoutRef.current);
+
+        if (!value.trim()) {
+            setParentSuggestions([]);
+            setShowParentSuggestions(false);
+            return;
+        }
+
+        // Debounce 200ms - fuzzy matching
+        parentSearchTimeoutRef.current = setTimeout(() => {
+            const allParents = (categories || []).filter(cat => cat && !cat.parentId);
+            
+            // Fuzzy search: match characters in order
+            const fuzzyMatch = (str, pattern) => {
+                const patternLower = pattern.toLowerCase();
+                const strLower = str.toLowerCase();
+                let patternIdx = 0;
+                
+                for (let i = 0; i < strLower.length && patternIdx < patternLower.length; i++) {
+                    if (strLower[i] === patternLower[patternIdx]) {
+                        patternIdx++;
+                    }
+                }
+                return patternIdx === patternLower.length;
+            };
+
+            // Score for sorting (more consecutive = higher score)
+            const scoreMatch = (str, pattern) => {
+                const strLower = str.toLowerCase();
+                const patternLower = pattern.toLowerCase();
+                
+                // Exact match at start
+                if (strLower.startsWith(patternLower)) return 1000;
+                
+                // Word boundary match
+                if (strLower.includes(` ${patternLower}`)) return 500;
+                
+                // Substring match
+                if (strLower.includes(patternLower)) return 100;
+                
+                // Fuzzy match
+                return 1;
+            };
+
+            const matches = allParents
+                .filter(cat => fuzzyMatch(cat.name, value))
+                .sort((a, b) => scoreMatch(b.name, value) - scoreMatch(a.name, value))
+                .slice(0, 8); // Giới hạn 8 gợi ý
+
+            setParentSuggestions(matches);
+            setShowParentSuggestions(matches.length > 0);
+        }, 200);
+    };
+
+    // Handle click on parent suggestion
+    const handleParentSuggestionClick = (parent) => {
+        setSelectedParentId(parent.categoryId);
+        setParentSearchTerm('');
+        setParentSuggestions([]);
+        setShowParentSuggestions(false);
+        setSearchTerm('');
+    };
 
     const fetchCategories = async () => {
         setLoading(true);
@@ -68,12 +154,30 @@ const CategoriesManagement = () => {
         }));
     };
 
+    // Handle file upload
+    const handleImageFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setImagePreview(event.target.result);
+                setFormData(prev => ({
+                    ...prev,
+                    image: '' // Clear URL when file is selected
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleOpenModal = (category = null) => {
         if (category) {
             setEditingCategory(category);
             setFormData(category);
+            setImagePreview(category.image || '');
         } else {
             setEditingCategory(null);
+            setImagePreview('');
             // Tự động tạo categoryId ngẫu nhiên khi mở modal tạo mới
             const newCategoryId = generateCategoryId();
             setFormData({ 
@@ -83,7 +187,8 @@ const CategoriesManagement = () => {
                 description: '', 
                 status: 'active', 
                 image: '', 
-                displayOrder: 0 
+                displayOrder: 0,
+                parentId: null // Optional parent
             });
         }
         setIsModalOpen(true);
@@ -91,12 +196,44 @@ const CategoriesManagement = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (editingCategory) {
-            await CategoryController.update(editingCategory._id, formData);
+        
+        // Chuẩn bị FormData nếu có file upload
+        const submitData = new FormData();
+        
+        // Nếu có file upload, thêm file vào FormData
+        if (imageInputRef.current?.files[0]) {
+            submitData.append('image', imageInputRef.current.files[0]);
         } else {
-            await CategoryController.create(formData);
+            // Nếu không có file, gửi URL text
+            submitData.append('image', formData.image);
         }
+        
+        // Thêm các fields khác
+        Object.keys(formData).forEach(key => {
+            if (key !== 'image') {
+                submitData.append(key, formData[key]);
+            }
+        });
+        
+        // Gửi FormData nếu có file, ngược lại gửi JSON
+        if (imageInputRef.current?.files[0]) {
+            if (editingCategory) {
+                await CategoryController.update(editingCategory._id, submitData, true); // true = isFormData
+            } else {
+                await CategoryController.create(submitData, true); // true = isFormData
+            }
+        } else {
+            // Gửi JSON bình thường nếu chỉ có URL
+            if (editingCategory) {
+                await CategoryController.update(editingCategory._id, formData);
+            } else {
+                await CategoryController.create(formData);
+            }
+        }
+        
         setIsModalOpen(false);
+        setImagePreview('');
+        if (imageInputRef.current) imageInputRef.current.value = '';
         fetchCategories();
     };
 
@@ -107,16 +244,26 @@ const CategoriesManagement = () => {
         }
     };
 
+    // Separate parent và child categories
+    const allParentCategories = (categories || []).filter(cat => cat && !cat.parentId);
+    
+    // Filter parent categories by search term
+    const filteredParentCategories = allParentCategories.filter(cat =>
+        cat.name.toLowerCase().includes(parentSearchTerm.toLowerCase())
+    );
+    
+    const childCategories = (categories || []).filter(cat => cat && cat.parentId === selectedParentId);
+
     // Filter
-    const filteredCategories = categories.filter(cat =>
-        cat.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredCategories = childCategories.filter(cat =>
+        cat && cat.name && cat.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Tính toán thống kê nhanh (Giống Users.jsx)
     const stats = [
-        { label: 'Tổng danh mục', value: categories.length, icon: Layers, color: 'bg-blue-100 text-blue-600' },
-        { label: 'Đang hiển thị', value: categories.filter(c => c.status === 'active').length, icon: CheckCircle, color: 'bg-green-100 text-green-600' },
-        { label: 'Đang ẩn', value: categories.filter(c => c.status === 'inactive').length, icon: XCircle, color: 'bg-red-100 text-red-600' },
+        { label: 'Tổng danh mục', value: (categories || []).length, icon: Layers, color: 'bg-blue-100 text-blue-600' },
+        { label: 'Danh mục cha', value: allParentCategories.length, icon: CheckCircle, color: 'bg-green-100 text-green-600' },
+        { label: 'Danh mục con', value: (categories || []).filter(c => c && c.parentId).length, icon: XCircle, color: 'bg-red-100 text-red-600' },
     ];
 
     return (
@@ -160,13 +307,105 @@ const CategoriesManagement = () => {
                 ))}
             </div>
 
+            {/* 3. PARENT CATEGORY TABS WITH FUZZY SEARCH */}
+            {allParentCategories.length > 0 && (
+                <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                    <div className="mb-4">
+                        <p className="text-sm font-semibold text-gray-700 mb-3">📂 Danh mục cha</p>
+                        <div className="relative max-w-xs" ref={parentSearchContainerRef}>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Tìm danh mục cha..."
+                                value={parentSearchTerm}
+                                onChange={handleParentSearchChange}
+                                onFocus={() => { if (parentSearchTerm) setShowParentSuggestions(true) }}
+                                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            />
+                            
+                            {/* Suggestions Dropdown - Giống Header */}
+                            <AnimatePresence>
+                                {showParentSuggestions && parentSuggestions.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -5 }}
+                                        className="absolute top-full left-0 right-0 mt-2 bg-white shadow-lg rounded-lg border border-gray-100 overflow-hidden z-50"
+                                    >
+                                        <div className="max-h-60 overflow-y-auto">
+                                            {parentSuggestions.map((parent) => (
+                                                <motion.div
+                                                    key={parent.categoryId}
+                                                    whileHover={{ backgroundColor: '#f3f4f6' }}
+                                                    onClick={() => handleParentSuggestionClick(parent)}
+                                                    className="flex items-center gap-3 p-3 cursor-pointer border-b border-gray-50 last:border-0 transition-colors hover:bg-gray-50"
+                                                >
+                                                    <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                                                        {parent.image ? (
+                                                            <img src={parent.image} alt="" className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-gray-300" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-gray-800 truncate">{parent.name}</p>
+                                                        <p className="text-xs text-gray-500 mt-0.5">{parent.description || 'Danh mục cha'}</p>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </div>
+
+                    {/* Grid tabs for quick select */}
+                    {filteredParentCategories.length > 0 && !parentSearchTerm && (
+                        <div>
+                            <p className="text-xs text-gray-500 mb-2">Hoặc chọn nhanh:</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                {filteredParentCategories.map((parent) => (
+                                    <motion.button
+                                        key={parent.categoryId}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                            setSelectedParentId(parent.categoryId);
+                                            setSearchTerm('');
+                                        }}
+                                        className={`p-3 rounded-lg font-medium transition flex flex-col items-center gap-2 ${
+                                            selectedParentId === parent.categoryId
+                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                                            {parent.image ? (
+                                                <img src={parent.image} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full bg-gray-300" />
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-center line-clamp-2">{parent.name}</span>
+                                    </motion.button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* 3. TOOLBAR */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+                <p className="text-sm font-semibold text-gray-700 mb-3">
+                    🔍 Danh mục con của <span className="text-blue-600">{allParentCategories.find(p => p.categoryId === selectedParentId)?.name || 'Chọn danh mục'}</span>
+                </p>
                 <div className="relative max-w-md w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
                         type="text"
-                        placeholder="Tìm kiếm danh mục..."
+                        placeholder="Tìm kiếm danh mục con..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
@@ -322,14 +561,72 @@ const CategoriesManagement = () => {
                                     <input type="text" required value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
                                         className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-gray-50 text-gray-500 focus:ring-2 focus:ring-blue-500 outline-none transition" />
                                 </div>
+
+                                {/* Chọn Danh mục cha (Optional) */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Link hình ảnh</label>
-                                    <div className="flex gap-3">
-                                        <input type="text" value={formData.image} onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                                            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="https://..." />
-                                        <div className="w-11 h-11 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                            {formData.image ? <img src={formData.image} alt="" className="w-full h-full object-cover" /> : <ImageIcon size={20} className="text-gray-400" />}
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Danh mục cha (tùy chọn)
+                                        {formData.parentId && <span className="text-blue-600 text-xs ml-1">← Đây là danh mục con</span>}
+                                    </label>
+                                    <select 
+                                        value={formData.parentId || ''} 
+                                        onChange={(e) => setFormData({ ...formData, parentId: e.target.value || null })}
+                                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                                    >
+                                        <option value="">--- Không có (Danh mục cha) ---</option>
+                                        {allParentCategories
+                                            .filter(cat => cat.categoryId !== formData.categoryId) // Không chọn chính nó
+                                            .map(cat => (
+                                                <option key={cat.categoryId} value={cat.categoryId}>
+                                                    {cat.name}
+                                                </option>
+                                            ))
+                                        }
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {formData.parentId 
+                                            ? `Đây sẽ là danh mục con của ${allParentCategories.find(c => c.categoryId === formData.parentId)?.name || 'N/A'}`
+                                            : 'Để trống nếu đây là danh mục cha'
+                                        }
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh <span className="text-blue-500 text-xs">(Upload hoặc Link URL)</span></label>
+                                    <div className="space-y-3">
+                                        {/* File Upload */}
+                                        <div className="flex items-center justify-center w-full border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer transition">
+                                            <input 
+                                                ref={imageInputRef}
+                                                type="file" 
+                                                accept="image/*" 
+                                                onChange={handleImageFileChange}
+                                                className="hidden" 
+                                            />
+                                            <div className="text-center" onClick={() => imageInputRef.current?.click()}>
+                                                <ImageIcon size={32} className="text-gray-400 mx-auto mb-1" />
+                                                <p className="text-sm text-gray-600">Click để chọn ảnh</p>
+                                                <p className="text-xs text-gray-400 mt-1">PNG, JPG (Tối đa 5MB)</p>
+                                            </div>
                                         </div>
+                                        
+                                        {/* URL Input */}
+                                        <input 
+                                            type="text" 
+                                            value={formData.image} 
+                                            onChange={(e) => {
+                                                setFormData({ ...formData, image: e.target.value });
+                                                setImagePreview(e.target.value);
+                                            }}
+                                            className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm" 
+                                            placeholder="Hoặc dán URL hình ảnh..." 
+                                        />
+                                        
+                                        {/* Preview */}
+                                        {imagePreview && (
+                                            <div className="w-full h-40 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                                                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" onError={() => setImagePreview('')} />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div>

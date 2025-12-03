@@ -1,6 +1,7 @@
 // frontend/src/services/api.js
 import axios from 'axios';
 
+<<<<<<< HEAD
 // Auto-detect environment: Production vs Local development
 const getBaseUrl = () => {
     // Production: use relative path
@@ -20,6 +21,16 @@ const getBackendUrl = () => {
         // Backend luôn chạy HTTPS trên localhost:3001
         return 'https://localhost:3001';
     }
+=======
+// Use backend URL from env or default to localhost:3001
+const getBaseUrl = () => {
+    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    return `${backendUrl}/api`;
+};
+
+const getBackendUrl = () => {
+    return process.env.REACT_APP_API_URL || 'http://localhost:3001';
+>>>>>>> 399d2d510306d37538150cafe06201f702e32639
 };
 
 export const API_BASE_URL = getBaseUrl();

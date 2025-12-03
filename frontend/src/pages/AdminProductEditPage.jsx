@@ -35,12 +35,15 @@ export default function AdminProductEditPage() {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isNewCategory, setIsNewCategory] = useState(false);
+  const [primaryCategorySearch, setPrimaryCategorySearch] = useState("");
+  const [showPrimaryCategoryDropdown, setShowPrimaryCategoryDropdown] = useState(false);
   
   const [product, setProduct] = useState({
     productName: "",
     productId: "",
     brand: "",
     category: { categoryId: "", name: "" },
+    categories: [], // Danh sách danh mục
     description: "",
     images: [], 
     variants: [emptyVariant()],
@@ -79,6 +82,7 @@ export default function AdminProductEditPage() {
                 discount: v.discount ?? 0, 
                 price: v.price ?? 0,
                 stock: v.stock ?? 0,
+                images: Array.isArray(v.images) ? v.images : ["", ""],
               }))
             : [emptyVariant()],
           createdAt: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : "",
@@ -116,6 +120,47 @@ export default function AdminProductEditPage() {
       variants[index] = variant;
       return { ...prev, variants };
     });
+  };
+
+  // Fuzzy search function for categories
+  const fuzzySearch = (searchTerm, items) => {
+    if (!searchTerm.trim()) return items;
+    const search = searchTerm.toLowerCase();
+    return items.filter((item) => {
+      const name = (item.name || item.categoryName || "").toLowerCase();
+      // Simple fuzzy: check if search chars appear in order
+      let searchIdx = 0;
+      for (let i = 0; i < name.length && searchIdx < search.length; i++) {
+        if (name[i] === search[searchIdx]) searchIdx++;
+      }
+      return searchIdx === search.length;
+    });
+  };
+
+  const handlePrimaryCategorySelect = (category) => {
+    setProduct((prev) => ({
+      ...prev,
+      category: { categoryId: category.categoryId, name: category.name || category.categoryName }
+    }));
+    setPrimaryCategorySearch("");
+    setShowPrimaryCategoryDropdown(false);
+  };
+
+  const addCategory = (categoryId) => {
+    const selected = categories.find((c) => c.categoryId === categoryId);
+    if (selected) {
+      setProduct((prev) => ({
+        ...prev,
+        categories: [...(prev.categories || []), { categoryId: selected.categoryId, categoryName: selected.name || selected.categoryName }]
+      }));
+    }
+  };
+
+  const removeCategory = (categoryId) => {
+    setProduct((prev) => ({
+      ...prev,
+      categories: (prev.categories || []).filter((cat) => cat.categoryId !== categoryId)
+    }));
   };
 
   const handleCategorySelect = (e) => { 
@@ -218,7 +263,39 @@ export default function AdminProductEditPage() {
           <div><label className="block text-sm font-medium mb-1">Tên sản phẩm</label><input className="w-full border rounded px-3 py-2" value={product.productName} onChange={e => updateField("productName", e.target.value)} required /></div>
           <div><label className="block text-sm font-medium mb-1">Mã (Read-only)</label><input className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-500" value={product.productId} disabled /></div>
           <div><label className="block text-sm font-medium mb-1">Thương hiệu</label><input className="w-full border rounded px-3 py-2" value={product.brand} onChange={e => updateField("brand", e.target.value)} /></div>
-          <div><label className="block text-sm font-medium mb-1">Danh mục</label><select className="w-full border rounded px-3 py-2 bg-white" onChange={handleCategorySelect} value={product.category?.categoryId || ""}><option value="">-- Chọn --</option>{categories.map((c) => (<option key={c.categoryId} value={c.categoryId}>{c.name || c.categoryName}</option>))}</select></div>
+          <div><label className="block text-sm font-medium mb-1">Danh mục chính *</label><select className="w-full border rounded px-3 py-2 bg-white" onChange={handleCategorySelect} value={product.category?.categoryId || ""}><option value="">-- Chọn --</option>{categories.map((c) => (<option key={c.categoryId} value={c.categoryId}>{c.name || c.categoryName}</option>))}</select></div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Danh mục khác</label>
+            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto border rounded p-2 bg-gray-50">
+              {categories.map((c) => {
+                const isSelected = Array.isArray(product.categories) && product.categories.some(cat => cat.categoryId === c.categoryId);
+                return (
+                  <label key={c.categoryId} className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-2 rounded">
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) addCategory(c.categoryId);
+                        else removeCategory(c.categoryId);
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm">{c.name || c.categoryName}</span>
+                  </label>
+                );
+              })}
+            </div>
+            {product.categories.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {product.categories.map((cat) => (
+                  <span key={cat.categoryId} className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">
+                    {cat.categoryName}
+                    <button type="button" onClick={() => removeCategory(cat.categoryId)} className="text-red-600 hover:text-red-800">✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
           <div>
             <Calendar
               label="Ngày tạo (Sản phẩm mới)"
@@ -231,6 +308,132 @@ export default function AdminProductEditPage() {
         </div>
 
         <div><label className="block text-sm font-medium mb-1">Mô tả</label><textarea className="w-full border rounded px-3 py-2 h-24" value={product.description} onChange={e => updateField("description", e.target.value)} /></div>
+
+        {/* DANH MỤC */}
+        <div className="border rounded p-4 bg-white">
+          <h3 className="font-bold text-gray-800 mb-4">Danh mục sản phẩm</h3>
+          
+          {/* Danh mục chính đã chọn */}
+          {product.category?.categoryId && (
+            <div className="mb-4 pb-4 border-b">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Danh mục chính:</p>
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                {product.category.categoryName || product.category.categoryId}
+                <button 
+                  type="button" 
+                  onClick={() => setProduct(p => ({ ...p, category: { categoryId: "", name: "" }, categories: [] }))}
+                  className="ml-1 text-blue-700 hover:text-blue-900 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Danh mục phụ đã chọn */}
+          {Array.isArray(product.categories) && product.categories.length > 0 && (
+            <div className="mb-4 pb-4 border-b">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Danh mục khác:</p>
+              <div className="flex flex-wrap gap-2">
+                {product.categories.map((cat) => (
+                  <div key={cat.categoryId} className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium">
+                    {cat.categoryName}
+                    <button 
+                      type="button" 
+                      onClick={() => removeCategory(cat.categoryId)}
+                      className="ml-1 text-green-700 hover:text-green-900 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Chọn danh mục chính */}
+          <div className="mb-4 relative">
+            <label className="block text-sm font-medium mb-2">Chọn danh mục chính *</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Nhập để tìm danh mục..."
+                value={primaryCategorySearch}
+                onChange={(e) => {
+                  setPrimaryCategorySearch(e.target.value);
+                  setShowPrimaryCategoryDropdown(true);
+                }}
+                onFocus={() => setShowPrimaryCategoryDropdown(true)}
+                onBlur={() => setTimeout(() => setShowPrimaryCategoryDropdown(false), 200)}
+                className="w-full border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {product.category?.categoryId && (
+                <div className="mt-2 inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                  {product.category.name}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProduct(p => ({ ...p, category: { categoryId: "", name: "" }, categories: [] }));
+                      setPrimaryCategorySearch("");
+                    }}
+                    className="ml-1 text-blue-700 hover:text-blue-900 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Dropdown danh mục */}
+            {showPrimaryCategoryDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded shadow-lg z-10 max-h-56 overflow-y-auto">
+                {fuzzySearch(primaryCategorySearch, categories).length > 0 ? (
+                  fuzzySearch(primaryCategorySearch, categories).map((c) => (
+                    <button
+                      key={c.categoryId}
+                      type="button"
+                      onClick={() => handlePrimaryCategorySelect(c)}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition border-b last:border-b-0"
+                    >
+                      {c.name || c.categoryName}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-gray-500 text-sm">Không tìm thấy danh mục</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Danh sách danh mục */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Danh sách danh mục</label>
+            <div className="border rounded p-3 bg-gray-50 max-h-56 overflow-y-auto space-y-2">
+              {Array.isArray(categories) && fuzzySearch(primaryCategorySearch, categories).map((c) => {
+                const isSelected = Array.isArray(product.categories) && product.categories.some(cat => cat.categoryId === c.categoryId);
+                const isPrimary = product.category?.categoryId === c.categoryId;
+                return (
+                  <label key={c.categoryId} className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded transition">
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected}
+                      disabled={isPrimary}
+                      onChange={(e) => {
+                        if (e.target.checked) addCategory(c.categoryId);
+                        else removeCategory(c.categoryId);
+                      }}
+                      className="rounded"
+                    />
+                    <span className={`text-sm ${isPrimary ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                      {c.name || c.categoryName}
+                      {isPrimary && <span className="text-xs text-gray-500 ml-1">(chính)</span>}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         <div className="border p-4 rounded bg-gray-50">
           <div className="flex justify-between items-center mb-3">
