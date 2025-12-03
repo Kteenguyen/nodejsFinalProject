@@ -708,25 +708,56 @@ exports.confirmPayment = async (req, res) => {
     
     const query = mongoose.isValidObjectId(orderId) ? { _id: orderId } : { orderId: orderId };
     
-    const order = await Order.findOneAndUpdate(
-      query,
-      { 
-        isPaid: true,
-        paidAt: new Date(),
-        status: 'Confirmed',
-        'paymentProof.verifiedBy': adminId,
-        'paymentProof.verifiedAt': new Date()
-      },
-      { new: true }
-    );
-    
-    if (!order) {
+    // Tìm đơn hàng trước để kiểm tra phương thức thanh toán
+    const existingOrder = await Order.findOne(query);
+    if (!existingOrder) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+    
+    // Cập nhật thanh toán
+    const updateData = {
+      isPaid: true,
+      paidAt: new Date(),
+      status: 'Confirmed'
+    };
+    
+    // Chỉ cập nhật paymentProof nếu là banking
+    if (existingOrder.paymentMethod === 'banking') {
+      updateData['paymentProof.verifiedBy'] = adminId;
+      updateData['paymentProof.verifiedAt'] = new Date();
+    }
+    
+    const order = await Order.findOneAndUpdate(query, updateData, { new: true });
+    
+    // Message tùy theo phương thức thanh toán
+    const message = existingOrder.paymentMethod === 'cod' 
+      ? 'Đã xác nhận nhận tiền COD thành công'
+      : 'Đã xác nhận thanh toán chuyển khoản thành công';
+
+    // Tạo thông báo cho user
+    const Notification = require('../models/notificationModel');
+    const notificationTitle = existingOrder.paymentMethod === 'cod'
+      ? 'Đã xác nhận nhận tiền COD'
+      : 'Đã xác nhận thanh toán';
+    const notificationMessage = existingOrder.paymentMethod === 'cod'
+      ? `Đơn hàng ${existingOrder.orderId} - Admin đã xác nhận nhận được tiền mặt. Đơn hàng sẽ được xử lý.`
+      : `Đơn hàng ${existingOrder.orderId} - Thanh toán chuyển khoản đã được xác nhận. Đơn hàng sẽ được xử lý.`;
+    
+    try {
+      await Notification.createOrderNotification(
+        existingOrder.accountId,
+        existingOrder._id,
+        notificationTitle,
+        notificationMessage,
+        existingOrder.orderId
+      );
+    } catch (notifError) {
+      console.error('Error creating payment confirmation notification:', notifError);
     }
 
     res.status(200).json({ 
       success: true, 
-      message: 'Đã xác nhận thanh toán thành công',
+      message,
       order 
     });
   } catch (error) {

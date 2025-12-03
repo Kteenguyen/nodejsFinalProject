@@ -271,30 +271,73 @@ export default function AdminOrderDetail() {
               <span>⚙️</span> Xử lý đơn hàng
             </h3>
 
-            {/* Xác nhận thanh toán (nếu chưa thanh toán và có ảnh chứng từ) */}
-            {!order.isPaid && order.paymentProof?.imageUrl && (
+            {/* Xác nhận thanh toán */}
+            {!order.isPaid && (
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <button
-                  onClick={async () => {
-                    if (window.confirm('Xác nhận đã nhận được thanh toán?')) {
-                      try {
-                        await api.post(`/orders/${id}/confirm-payment`);
-                        toast.success('Đã xác nhận thanh toán!');
-                        // Reload order
-                        const updatedOrder = await OrderController.getOrderDetail(id);
-                        if (updatedOrder) {
-                          setOrder(updatedOrder);
+                {order.paymentMethod === 'banking' && order.paymentProof?.imageUrl ? (
+                  // Thanh toán banking với chứng từ
+                  <div>
+                    <p className="text-sm text-yellow-700 mb-2">
+                      ✅ Khách hàng đã upload chứng từ chuyển khoản
+                    </p>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('Xác nhận đã nhận được thanh toán qua chuyển khoản?')) {
+                          try {
+                            await api.post(`/orders/${id}/confirm-payment`);
+                            toast.success('Đã xác nhận thanh toán!');
+                            // Reload order
+                            const updatedOrder = await OrderController.getOrderDetail(id);
+                            if (updatedOrder) {
+                              setOrder(updatedOrder);
+                            }
+                          } catch (err) {
+                            console.error('Confirm payment error:', err);
+                            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
+                          }
                         }
-                      } catch (err) {
-                        console.error('Confirm payment error:', err);
-                        toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
-                      }
-                    }
-                  }}
-                  className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium flex items-center justify-center gap-2"
-                >
-                  <span>✓</span> Xác nhận đã thanh toán
-                </button>
+                      }}
+                      className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      <span>✓</span> Xác nhận đã nhận chuyển khoản
+                    </button>
+                  </div>
+                ) : order.paymentMethod === 'cod' ? (
+                  // Thanh toán COD
+                  <div>
+                    <p className="text-sm text-yellow-700 mb-2">
+                      💰 Thanh toán khi nhận hàng (COD)
+                    </p>
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('Xác nhận đã nhận được tiền mặt từ khách hàng?')) {
+                          try {
+                            await api.post(`/orders/${id}/confirm-payment`);
+                            toast.success('Đã xác nhận nhận tiền COD!');
+                            // Reload order
+                            const updatedOrder = await OrderController.getOrderDetail(id);
+                            if (updatedOrder) {
+                              setOrder(updatedOrder);
+                            }
+                          } catch (err) {
+                            console.error('Confirm payment error:', err);
+                            toast.error('Lỗi: ' + (err.response?.data?.message || err.message));
+                          }
+                        }
+                      }}
+                      className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                    >
+                      <span>💰</span> Xác nhận đã nhận tiền COD
+                    </button>
+                  </div>
+                ) : order.paymentMethod === 'banking' && !order.paymentProof?.imageUrl ? (
+                  // Banking nhưng chưa có chứng từ
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">
+                      ⏳ Chờ khách hàng upload chứng từ chuyển khoản
+                    </p>
+                  </div>
+                ) : null}
               </div>
             )}
 
