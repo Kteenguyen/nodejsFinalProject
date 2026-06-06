@@ -3,34 +3,74 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const router = express.Router();
 
-// Tạo thư mục uploads nếu chưa có
-const uploadDir = path.join(__dirname, '../public/images');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+// Cấu hình Cloudinary config từ env
+const hasCloudinary = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+
+if (hasCloudinary) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+    });
 }
 
-// Cấu hình multer để lưu file
-const storage = multer.diskStorage({
+// Xác định thư mục upload tạm (nếu chạy trên Vercel thì dùng /tmp)
+const isVercel = !!process.env.VERCEL;
+const uploadDir = isVercel ? '/tmp' : path.join(__dirname, '../public/images');
+if (!isVercel && !fs.existsSync(uploadDir)) {
+    try {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    } catch (err) {
+        console.warn('Failed to create upload directory:', err.message);
+    }
+}
+
+// Cấu hình disk storage cho local
+const diskStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-        // Tạo tên file unique: timestamp + original name
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname);
         const name = path.basename(file.originalname, ext)
             .toLowerCase()
             .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "") // Bỏ dấu tiếng Việt
-            .replace(/[^a-z0-9]/g, '-') // Thay ký tự đặc biệt bằng dấu gạch ngang
-            .replace(/-+/g, '-') // Gộp nhiều dấu gạch ngang
-            .replace(/^-|-$/g, ''); // Bỏ dấu gạch ngang ở đầu/cuối
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
         
         cb(null, `${name}-${uniqueSuffix}${ext}`);
     }
 });
+
+// Cấu hình Cloudinary Storage cho product images
+const cloudinaryStorage = hasCloudinary ? new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'phone_world_products',
+        allowed_formats: ['jpg', 'png', 'jpeg'],
+        public_id: (req, file) => {
+            const ext = path.extname(file.originalname);
+            const name = path.basename(file.originalname, ext)
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            return `${name}-${Date.now()}`;
+        }
+    }
+}) : null;
+
+// Chọn storage phù hợp
+const storage = hasCloudinary ? cloudinaryStorage : diskStorage;
 
 // Filter để chỉ chấp nhận file ảnh
 const fileFilter = (req, file, cb) => {
@@ -61,7 +101,7 @@ router.post('/image', upload.single('image'), (req, res) => {
         }
 
         // Trả về đường dẫn ảnh
-        const imagePath = `/images/${req.file.filename}`;
+        const imagePath = hasCloudinary ? req.file.path : `/images/${req.file.filename}`;
         
         res.json({
             success: true,
@@ -93,14 +133,14 @@ router.post('/images', upload.array('images', 10), (req, res) => {
         }
 
         // Trả về mảng đường dẫn ảnh
-        const imagePaths = req.files.map(file => `/images/${file.filename}`);
+        const imagePaths = req.files.map(file => hasCloudinary ? file.path : `/images/${file.filename}`);
         
         res.json({
             success: true,
             message: `Upload ${req.files.length} ảnh thành công!`,
             imagePaths: imagePaths,
             files: req.files.map(file => ({
-                path: `/images/${file.filename}`,
+                path: hasCloudinary ? file.path : `/images/${file.filename}`,
                 filename: file.filename,
                 originalname: file.originalname,
                 size: file.size

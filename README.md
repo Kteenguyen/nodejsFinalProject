@@ -34,9 +34,9 @@ Hệ thống Thương mại Điện tử chuyên doanh Điện thoại & Thiết
 *   **Các thư viện hỗ trợ:** Lucide React (Icons), Flatpickr (Chọn ngày tháng), React Toastify (Thông báo)
 
 ### Bảo mật & Triển khai (DevOps)
-*   **Container hóa:** Docker, Docker Compose
-*   **Proxy & Web Server:** Nginx (Proxy ngược từ HTTP sang HTTPS)
-*   **Giao thức bảo mật:** HTTPS với chứng chỉ SSL self-signed
+*   **Triển khai đám mây:** Vercel Cloud (Serverless Architecture)
+*   **Proxy & Web Server:** Cấu hình định tuyến vercel.json (API Routing & SPA fallback)
+*   **Giao thức bảo mật:** HTTPS (Mặc định được Vercel tự động cấp chứng chỉ SSL)
 *   **Kiểm thử tự động:** Script chạy tự động đánh giá các tính năng cốt lõi (`testAllFeatures.js`)
 
 ---
@@ -60,8 +60,8 @@ Quy trình triển khai dự án trải qua 4 giai đoạn chính từ khâu chu
 
 ### Giai đoạn 4: Dọn dẹp & Triển khai (Cleanup & Deployment)
 *   **Dọn dẹp mã nguồn:** Xóa bỏ 16 file script test và seed dữ liệu cũ không dùng tới để tối ưu dung lượng source code.
-*   **Đóng gói container:** Cấu hình Dockerfile và Docker Compose để chạy ứng dụng độc lập trên mọi môi trường.
-*   **Cấu hình Nginx Proxy:** Thiết lập Nginx làm cổng trung gian điều phối request từ HTTP sang HTTPS bảo mật.
+*   **Đóng gói Vercel Serverless:** Thiết lập `vercel.json` định tuyến cho React SPA và tích hợp Serverless Entrypoint `api/index.js` nhằm tối ưu hóa chi phí vận hành và tốc độ tải trang.
+*   **Đồng bộ Cloudinary:** Tự động kết nối cơ chế upload ảnh lên Cloud Storage (Cloudinary) thay cho lưu local disk cũ.
 
 ---
 
@@ -74,7 +74,35 @@ Quy trình triển khai dự án trải qua 4 giai đoạn chính từ khâu chu
 
 ---
 
-## 5. Kết Quả Đầu Ras Của Dự Án (Project Deliverables)
+## 5. Kết Quả Đầu Ra Của Dự Án (Project Deliverables)
 *   **Mã nguồn hoàn chỉnh:** Cấu trúc dự án phân tách rõ ràng giữa frontend và backend, sẵn sàng mở rộng.
-*   **Môi trường chạy Docker Compose:** Hệ thống chạy ổn định chỉ với một câu lệnh khởi chạy, đóng gói đầy đủ backend, frontend, và DB.
+*   **Môi trường Vercel Config:** Hệ thống sẵn sàng deploy lên Vercel với file `vercel.json` cấu hình định tuyến thông minh.
 *   **Tài liệu hướng dẫn & Kiểm thử:** Hệ thống tài liệu chi tiết hỗ trợ vận hành và script test tự động hóa toàn bộ luồng nghiệp vụ.
+
+---
+
+## 6. Hướng Dẫn Triển Khai Vercel (Vercel Deployment Guide)
+
+### Bước 1: Chuẩn bị MongoDB Atlas
+1. Đăng ký tài khoản [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+2. Tạo một Cluster mới và lấy connection string (URL kết nối, ví dụ: `mongodb+srv://<username>:<password>@cluster.mongodb.net/shop`).
+
+### Bước 2: Cài đặt và Triển khai lên Vercel
+1. Đẩy dự án của bạn lên một repository trên GitHub/GitLab.
+2. Đăng nhập vào [Vercel Dashboard](https://vercel.com).
+3. Chọn **Add New** -> **Project** -> Import repository dự án của bạn.
+4. Cấu hình các thiết lập như sau:
+   - **Framework Preset**: Chọn `Create React App` hoặc `Other`.
+   - **Root Directory**: Giữ nguyên thư mục gốc (không thay đổi).
+   - **Build Command**: `cd frontend && npm install && npm run build`
+   - **Output Directory**: `frontend/build`
+5. Trong mục **Environment Variables**, cấu hình các biến môi trường cần thiết:
+   - `MONGODB_URI`: Connection string tới MongoDB Atlas đã tạo ở Bước 1.
+   - `JWT_SECRET`: Khóa bí mật dùng mã hóa JWT token (ví dụ: `my_super_secret_key`).
+   - `CLOUDINARY_CLOUD_NAME`: Tên tài khoản Cloudinary của bạn.
+   - `CLOUDINARY_API_KEY`: API key của Cloudinary.
+   - `CLOUDINARY_API_SECRET`: API secret của Cloudinary.
+   - `EMAIL_USER`: Gmail dùng gửi OTP (nếu có sử dụng tính năng OTP).
+   - `EMAIL_PASS`: Mật khẩu ứng dụng Gmail (App Password).
+6. Nhấn nút **Deploy** và đợi quá trình build hoàn tất.
+
