@@ -1,7 +1,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const MONGODB_URI = 'mongodb://localhost:27017/shop';
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shop';
 
 async function seedData() {
   try {
