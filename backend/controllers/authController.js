@@ -397,7 +397,8 @@ exports.forgotPassword = async (req, res) => {
             // Backend trả về lỗi 400 kèm thông báo cụ thể
             // Frontend sẽ bắt lỗi này và hiện Toast
             return res.status(400).json({
-                message: `Tài khoản này được đăng ký bằng ${providers}. Vui lòng đăng nhập bằng ${providers}!`
+                message: `Tài khoản này được đăng ký bằng ${providers}. Vui lòng đăng nhập bằng ${providers}!`,
+                isSocial: true
             });
         }
 
