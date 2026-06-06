@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
@@ -98,284 +97,276 @@ async function seedData() {
       await usersCollection.insertMany(users);
       console.log(`✅ Created ${users.length} users\n`);
     } else {
-      console.log(`⏭️  Users already exist (${userCount}), skipping\n`);
+      console.log(`⏭️  Users already exist (${userCount}), keeping existing\n`);
     }
 
     // ===== 2. SEED CATEGORIES =====
-    console.log('📂 Seeding categories...');
+    console.log('📂 Seeding categories (fresh reset)...');
     const categoriesCollection = mongoose.connection.collection('categories');
+    await categoriesCollection.deleteMany({}); // Delete existing categories to refresh images
     
-    const categoryCount = await categoriesCollection.countDocuments();
-    if (categoryCount === 0) {
-      const categories = [
-        {
-          categoryName: 'Điện thoại',
-          categorySlug: 'dien-thoai',
-          level: 1,
-          parent: null,
-          image: 'https://res.cloudinary.com/phoneworld/image/upload/v1/category-phone.jpg',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          categoryName: 'Laptop',
-          categorySlug: 'laptop',
-          level: 1,
-          parent: null,
-          image: 'https://res.cloudinary.com/phoneworld/image/upload/v1/category-laptop.jpg',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          categoryName: 'Tablet',
-          categorySlug: 'tablet',
-          level: 1,
-          parent: null,
-          image: 'https://res.cloudinary.com/phoneworld/image/upload/v1/category-tablet.jpg',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          categoryName: 'Phụ kiện',
-          categorySlug: 'phu-kien',
-          level: 1,
-          parent: null,
-          image: 'https://res.cloudinary.com/phoneworld/image/upload/v1/category-accessory.jpg',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
+    const categories = [
+      {
+        categoryId: 'dien-thoai',
+        name: 'Điện thoại',
+        slug: 'dien-thoai',
+        level: 1,
+        parentId: null,
+        image: 'https://cdn.tgdd.vn/Category/42/icon-dien-thoai-200x200.png',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        categoryId: 'laptop',
+        name: 'Laptop',
+        slug: 'laptop',
+        level: 1,
+        parentId: null,
+        image: 'https://cdn.tgdd.vn/Category/44/icon-laptop-200x200.png',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        categoryId: 'tablet',
+        name: 'Tablet',
+        slug: 'tablet',
+        level: 1,
+        parentId: null,
+        image: 'https://cdn.tgdd.vn/Category/522/icon-tablet-200x200.png',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        categoryId: 'phu-kien',
+        name: 'Phụ kiện',
+        slug: 'phu-kien',
+        level: 1,
+        parentId: null,
+        image: 'https://cdn.tgdd.vn/Category/54/icon-phu-kien-200x200.png',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
 
-      await categoriesCollection.insertMany(categories);
-      console.log(`✅ Created ${categories.length} categories\n`);
-    } else {
-      console.log(`⏭️  Categories already exist (${categoryCount}), skipping\n`);
-    }
+    await categoriesCollection.insertMany(categories);
+    console.log(`✅ Created ${categories.length} categories\n`);
 
     // ===== 3. SEED PRODUCTS =====
-    console.log('📦 Seeding products...');
+    console.log('📦 Seeding products (fresh reset)...');
     const productsCollection = mongoose.connection.collection('products');
+    await productsCollection.deleteMany({}); // Delete existing products to refresh images
     
-    const productCount = await productsCollection.countDocuments();
-    if (productCount === 0) {
-      const products = [
-        {
-          productId: 'prod001',
-          productName: 'iPhone 15 Pro Max',
-          brand: 'Apple',
-          categoryId: 'dien-thoai',
-          description: 'Latest iPhone 15 Pro Max with A17 Pro chip',
-          originalPrice: 45000000,
-          salePrice: 42000000,
-          quantity: 50,
-          images: [
-            'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg?auto=compress&cs=tinysrgb&w=600'
-          ],
-          variants: [
-            {
-              variantId: 'var001',
-              variantName: 'Phiên bản 1',
-              color: 'Black',
-              capacity: '256GB',
-              stock: 25,
-              price: 42000000
-            },
-            {
-              variantId: 'var002',
-              variantName: 'Phiên bản 2',
-              color: 'Gold',
-              capacity: '512GB',
-              stock: 25,
-              price: 48000000
-            }
-          ],
-          ratings: 4.8,
-          reviews: [],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          productId: 'prod002',
-          productName: 'Samsung Galaxy S24 Ultra',
-          brand: 'Samsung',
-          categoryId: 'dien-thoai',
-          description: 'Samsung Galaxy S24 Ultra with Snapdragon 8 Gen 3',
-          originalPrice: 40000000,
-          salePrice: 37000000,
-          quantity: 40,
-          images: [
-            'https://images.pexels.com/photos/788946/pexels-photo-788946.jpeg?auto=compress&cs=tinysrgb&w=600'
-          ],
-          variants: [
-            {
-              variantId: 'var003',
-              variantName: 'Phiên bản 1',
-              color: 'Titanium Gray',
-              capacity: '256GB',
-              stock: 20,
-              price: 37000000
-            },
-            {
-              variantId: 'var004',
-              variantName: 'Phiên bản 2',
-              color: 'Titanium Black',
-              capacity: '512GB',
-              stock: 20,
-              price: 42000000
-            }
-          ],
-          ratings: 4.7,
-          reviews: [],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          productId: 'prod003',
-          productName: 'MacBook Pro 16"',
-          brand: 'Apple',
-          categoryId: 'laptop',
-          description: 'MacBook Pro 16-inch with M3 Max chip',
-          originalPrice: 60000000,
-          salePrice: 55000000,
-          quantity: 20,
-          images: [
-            'https://images.pexels.com/photos/18105/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=600'
-          ],
-          variants: [
-            {
-              variantId: 'var005',
-              variantName: 'Phiên bản 1',
-              color: 'Silver',
-              capacity: '512GB',
-              stock: 10,
-              price: 55000000
-            },
-            {
-              variantId: 'var006',
-              variantName: 'Phiên bản 2',
-              color: 'Space Black',
-              capacity: '1TB',
-              stock: 10,
-              price: 65000000
-            }
-          ],
-          ratings: 4.9,
-          reviews: [],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          productId: 'prod004',
-          productName: 'iPad Pro 12.9"',
-          brand: 'Apple',
-          categoryId: 'tablet',
-          description: 'iPad Pro 12.9-inch with M2 chip',
-          originalPrice: 25000000,
-          salePrice: 23000000,
-          quantity: 30,
-          images: [
-            'https://images.pexels.com/photos/3808519/pexels-photo-3808519.jpeg?auto=compress&cs=tinysrgb&w=600'
-          ],
-          variants: [
-            {
-              variantId: 'var007',
-              variantName: 'Phiên bản 1',
-              color: 'Silver',
-              capacity: '128GB',
-              stock: 15,
-              price: 23000000
-            },
-            {
-              variantId: 'var008',
-              variantName: 'Phiên bản 2',
-              color: 'Space Gray',
-              capacity: '256GB',
-              stock: 15,
-              price: 27000000
-            }
-          ],
-          ratings: 4.8,
-          reviews: [],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          productId: 'prod005',
-          productName: 'AirPods Pro 2',
-          brand: 'Apple',
-          categoryId: 'phu-kien',
-          description: 'Apple AirPods Pro 2 with Active Noise Cancellation',
-          originalPrice: 6000000,
-          salePrice: 5500000,
-          quantity: 100,
-          images: [
-            'https://images.pexels.com/photos/3587478/pexels-photo-3587478.jpeg?auto=compress&cs=tinysrgb&w=600'
-          ],
-          variants: [
-            {
-              variantId: 'var009',
-              variantName: 'Phiên bản 1',
-              color: 'White',
-              capacity: 'Standard',
-              stock: 100,
-              price: 5500000
-            }
-          ],
-          ratings: 4.7,
-          reviews: [],
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
+    const products = [
+      {
+        productId: 'prod001',
+        productName: 'iPhone 15 Pro Max',
+        brand: 'Apple',
+        categoryId: 'dien-thoai',
+        description: 'iPhone 15 Pro Max hàng chính hãng, thiết kế khung titan bền bỉ, màn hình Dynamic Island sắc nét, chip A17 Pro mạnh mẽ nhất.',
+        originalPrice: 34990000,
+        salePrice: 29990000,
+        quantity: 50,
+        images: [
+          'https://cdn.tgdd.vn/Products/Images/42/305658/iphone-15-pro-max-titan-tu-nhien-1-600x600.jpg'
+        ],
+        variants: [
+          {
+            variantId: 'var001',
+            variantName: 'Phiên bản 1',
+            color: 'Titan Tự Nhiên',
+            capacity: '256GB',
+            stock: 25,
+            price: 29990000
+          },
+          {
+            variantId: 'var002',
+            variantName: 'Phiên bản 2',
+            color: 'Titan Xanh',
+            capacity: '512GB',
+            stock: 25,
+            price: 36990000
+          }
+        ],
+        ratings: 4.8,
+        reviews: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        productId: 'prod002',
+        productName: 'Samsung Galaxy S24 Ultra',
+        brand: 'Samsung',
+        categoryId: 'dien-thoai',
+        description: 'Samsung Galaxy S24 Ultra tích hợp quyền năng Galaxy AI vượt trội, camera 200MP zoom siêu phân giải, bút S-Pen tiện ích.',
+        originalPrice: 33990000,
+        salePrice: 28990000,
+        quantity: 40,
+        images: [
+          'https://cdn.tgdd.vn/Products/Images/42/307174/samsung-galaxy-s24-ultra-xam-600x600.jpg'
+        ],
+        variants: [
+          {
+            variantId: 'var003',
+            variantName: 'Phiên bản 1',
+            color: 'Titan Xám',
+            capacity: '256GB',
+            stock: 20,
+            price: 28990000
+          },
+          {
+            variantId: 'var004',
+            variantName: 'Phiên bản 2',
+            color: 'Titan Đen',
+            capacity: '512GB',
+            stock: 20,
+            price: 34490000
+          }
+        ],
+        ratings: 4.7,
+        reviews: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        productId: 'prod003',
+        productName: 'MacBook Pro 16"',
+        brand: 'Apple',
+        categoryId: 'laptop',
+        description: 'MacBook Pro 16 inch trang bị chip M3 Max tối thượng cho công việc đồ họa chuyên nghiệp, màn hình Liquid Retina XDR siêu đẹp.',
+        originalPrice: 79990000,
+        salePrice: 74990000,
+        quantity: 20,
+        images: [
+          'https://cdn.tgdd.vn/Products/Images/44/316192/apple-macbook-pro-14-inch-m3-max-silver-600x600.jpg'
+        ],
+        variants: [
+          {
+            variantId: 'var005',
+            variantName: 'Phiên bản 1',
+            color: 'Bạc (Silver)',
+            capacity: '16GB RAM / 512GB SSD',
+            stock: 10,
+            price: 74990000
+          },
+          {
+            variantId: 'var006',
+            variantName: 'Phiên bản 2',
+            color: 'Đen Không Gian',
+            capacity: '32GB RAM / 1TB SSD',
+            stock: 10,
+            price: 92990000
+          }
+        ],
+        ratings: 4.9,
+        reviews: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        productId: 'prod004',
+        productName: 'iPad Pro 12.9" M2',
+        brand: 'Apple',
+        categoryId: 'tablet',
+        description: 'iPad Pro 12.9 inch M2 hiệu năng đỉnh cao tương đương máy tính, màn hình Liquid Retina XDR mini-LED sống động.',
+        originalPrice: 31990000,
+        salePrice: 28490000,
+        quantity: 30,
+        images: [
+          'https://cdn.tgdd.vn/Products/Images/522/294103/ipad-pro-m2-129-wifi-xam-600x600.jpg'
+        ],
+        variants: [
+          {
+            variantId: 'var007',
+            variantName: 'Phiên bản 1',
+            color: 'Xám Không Gian',
+            capacity: '128GB Wifi',
+            stock: 15,
+            price: 28490000
+          },
+          {
+            variantId: 'var008',
+            variantName: 'Phiên bản 2',
+            color: 'Bạc',
+            capacity: '256GB Wifi',
+            stock: 15,
+            price: 31990000
+          }
+        ],
+        ratings: 4.8,
+        reviews: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        productId: 'prod005',
+        productName: 'AirPods Pro 2 USB-C',
+        brand: 'Apple',
+        categoryId: 'phu-kien',
+        description: 'Tai nghe Apple AirPods Pro 2 trang bị cổng sạc USB-C mới, chống ồn chủ động ANC đỉnh cao, âm thanh vòm sống động.',
+        originalPrice: 6190000,
+        salePrice: 5690000,
+        quantity: 100,
+        images: [
+          'https://cdn.tgdd.vn/Products/Images/54/291623/airpods-pro-2-usb-c-600x600.jpg'
+        ],
+        variants: [
+          {
+            variantId: 'var009',
+            variantName: 'Phiên bản 1',
+            color: 'Trắng',
+            capacity: 'Tiêu chuẩn',
+            stock: 100,
+            price: 5690000
+          }
+        ],
+        ratings: 4.7,
+        reviews: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
 
-      await productsCollection.insertMany(products);
-      console.log(`✅ Created ${products.length} products\n`);
-    } else {
-      console.log(`⏭️  Products already exist (${productCount}), skipping\n`);
-    }
+    await productsCollection.insertMany(products);
+    console.log(`✅ Created ${products.length} products\n`);
 
     // ===== 4. SEED DISCOUNTS =====
-    console.log('🎁 Seeding discounts...');
+    console.log('🎁 Seeding discounts (fresh reset)...');
     const discountsCollection = mongoose.connection.collection('discounts');
+    await discountsCollection.deleteMany({}); // Reset discounts
     
-    const discountCount = await discountsCollection.countDocuments();
-    if (discountCount === 0) {
-      const discounts = [
-        {
-          code: 'WELCOME10',
-          discountType: 'percent',
-          discountValue: 10,
-          minOrderAmount: 1000000,
-          maxDiscount: 500000,
-          usageLimit: 100,
-          usedCount: 0,
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          description: 'Welcome discount 10%',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          code: 'SUMMER20',
-          discountType: 'percent',
-          discountValue: 20,
-          minOrderAmount: 5000000,
-          maxDiscount: 2000000,
-          usageLimit: 50,
-          usedCount: 0,
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-          description: 'Summer sale 20%',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      ];
+    const discounts = [
+      {
+        discountID: 'disc001',
+        discountCode: 'WELCOME10',
+        discountName: 'Chào mừng 10%',
+        percent: 10,
+        maxUses: 10,
+        uses: 0,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        discountID: 'disc002',
+        discountCode: 'SUMMER20',
+        discountName: 'Hè rực rỡ 20%',
+        percent: 20,
+        maxUses: 10,
+        uses: 0,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
 
-      await discountsCollection.insertMany(discounts);
-      console.log(`✅ Created ${discounts.length} discounts\n`);
-    } else {
-      console.log(`⏭️  Discounts already exist (${discountCount}), skipping\n`);
-    }
+    await discountsCollection.insertMany(discounts);
+    console.log(`✅ Created ${discounts.length} discounts\n`);
 
     console.log('✅ ✅ ✅ SEEDING COMPLETED SUCCESSFULLY! ✅ ✅ ✅\n');
     console.log('📋 Test Credentials:');
