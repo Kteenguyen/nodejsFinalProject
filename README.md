@@ -74,7 +74,7 @@ Quy trình triển khai dự án trải qua 4 giai đoạn chính từ khâu chu
 
 ---
 
-## 5. Kết Quả Đầu Ra Của Dự Án (Project Deliverables)
+## 5. Kết Quả Đầu Ras Của Dự Án (Project Deliverables)
 *   **Mã nguồn hoàn chỉnh:** Cấu trúc dự án phân tách rõ ràng giữa frontend và backend, sẵn sàng mở rộng.
 *   **Môi trường chạy Docker Compose:** Hệ thống chạy ổn định chỉ với một câu lệnh khởi chạy, đóng gói đầy đủ backend, frontend, và DB.
 *   **Tài liệu hướng dẫn & Kiểm thử:** Hệ thống tài liệu chi tiết hỗ trợ vận hành và script test tự động hóa toàn bộ luồng nghiệp vụ.
