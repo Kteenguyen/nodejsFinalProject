@@ -3,11 +3,14 @@
     "frontend": {
       "root": "frontend",
       "routePrefix": "/",
-      "framework": "create-react-app"
+      "buildCommand": "npm install && npm run build",
+      "outputDirectory": "build"
     },
     "backend": {
       "root": "backend",
-      "routePrefix": "/api"
+      "routePrefix": "/api",
+      "buildCommand": "npm install",
+      "runCommand": "node server.js"
     }
   }
 }
