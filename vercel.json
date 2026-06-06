@@ -3,7 +3,7 @@
     "frontend": {
       "root": "frontend",
       "routePrefix": "/",
-      "buildCommand": "npm install && npm run build"
+      "framework": "vite"
     },
     "backend": {
       "root": "backend",
