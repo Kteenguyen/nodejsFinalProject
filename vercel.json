@@ -3,8 +3,7 @@
     "frontend": {
       "root": "frontend",
       "routePrefix": "/",
-      "buildCommand": "npm install && npm run build",
-      "outputDirectory": "build"
+      "buildCommand": "npm install && npm run build"
     },
     "backend": {
       "root": "backend",
