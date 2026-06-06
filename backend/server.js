@@ -155,6 +155,10 @@ app.get('/api/health', (req, res) => {
 app.use('/api/upload', uploadRoutes);
 app.use('/api', siteRoutes);
 
+// Fallback routing for Vercel Multi-Services (in case Vercel strips /api prefix)
+app.use('/upload', uploadRoutes);
+app.use('/', siteRoutes);
+
 // --- SERVE STATIC FRONTEND (Production) ---
 if (process.env.NODE_ENV === 'production') {
     // Serve static files from React build
