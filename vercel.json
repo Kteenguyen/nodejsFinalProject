@@ -9,8 +9,7 @@
     "backend": {
       "root": "backend",
       "routePrefix": "/api",
-      "buildCommand": "npm install",
-      "runCommand": "node server.js"
+      "entrypoint": "server.js"
     }
   }
 }
