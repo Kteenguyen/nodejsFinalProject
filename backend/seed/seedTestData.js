@@ -112,7 +112,7 @@ async function seedData() {
         slug: 'dien-thoai',
         level: 1,
         parentId: null,
-        image: 'https://cdn.tgdd.vn/Category/42/icon-dien-thoai-200x200.png',
+        image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200&h=200&fit=crop',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -123,7 +123,7 @@ async function seedData() {
         slug: 'laptop',
         level: 1,
         parentId: null,
-        image: 'https://cdn.tgdd.vn/Category/44/icon-laptop-200x200.png',
+        image: 'https://images.unsplash.com/photo-1496181130204-7552cc14ac1a?w=200&h=200&fit=crop',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -134,7 +134,7 @@ async function seedData() {
         slug: 'tablet',
         level: 1,
         parentId: null,
-        image: 'https://cdn.tgdd.vn/Category/522/icon-tablet-200x200.png',
+        image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=200&h=200&fit=crop',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -145,7 +145,7 @@ async function seedData() {
         slug: 'phu-kien',
         level: 1,
         parentId: null,
-        image: 'https://cdn.tgdd.vn/Category/54/icon-phu-kien-200x200.png',
+        image: 'https://images.unsplash.com/photo-1588449668338-d13417f16af6?w=200&h=200&fit=crop',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -171,7 +171,7 @@ async function seedData() {
         salePrice: 29990000,
         quantity: 50,
         images: [
-          'https://cdn.tgdd.vn/Products/Images/42/305658/iphone-15-pro-max-titan-tu-nhien-1-600x600.jpg'
+          'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&h=600&fit=crop'
         ],
         variants: [
           {
@@ -207,7 +207,7 @@ async function seedData() {
         salePrice: 28990000,
         quantity: 40,
         images: [
-          'https://cdn.tgdd.vn/Products/Images/42/307174/samsung-galaxy-s24-ultra-xam-600x600.jpg'
+          'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=600&h=600&fit=crop'
         ],
         variants: [
           {
@@ -243,7 +243,7 @@ async function seedData() {
         salePrice: 74990000,
         quantity: 20,
         images: [
-          'https://cdn.tgdd.vn/Products/Images/44/316192/apple-macbook-pro-14-inch-m3-max-silver-600x600.jpg'
+          'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=600&fit=crop'
         ],
         variants: [
           {
@@ -279,7 +279,7 @@ async function seedData() {
         salePrice: 28490000,
         quantity: 30,
         images: [
-          'https://cdn.tgdd.vn/Products/Images/522/294103/ipad-pro-m2-129-wifi-xam-600x600.jpg'
+          'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=600&h=600&fit=crop'
         ],
         variants: [
           {
@@ -315,7 +315,7 @@ async function seedData() {
         salePrice: 5690000,
         quantity: 100,
         images: [
-          'https://cdn.tgdd.vn/Products/Images/54/291623/airpods-pro-2-usb-c-600x600.jpg'
+          'https://images.unsplash.com/photo-1588449668338-d13417f16af6?w=600&h=600&fit=crop'
         ],
         variants: [
           {
