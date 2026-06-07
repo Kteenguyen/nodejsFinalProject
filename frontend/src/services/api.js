@@ -29,7 +29,15 @@ export const BACKEND_URL = getBackendUrl();
 // Helper: Chuyển đổi đường dẫn ảnh tương đối thành URL đầy đủ
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '/img/placeholder.png';
-  if (imagePath.startsWith('http')) return imagePath;
+  if (imagePath.startsWith('http')) {
+    if (imagePath.includes('cloudinary.com') || imagePath.includes('image-proxy')) {
+      return imagePath;
+    }
+    if (imagePath.includes('tgdd.vn') || imagePath.includes('cellphones.com.vn')) {
+      return `${getBackendUrl()}/api/image-proxy?url=${encodeURIComponent(imagePath)}`;
+    }
+    return imagePath;
+  }
   
   // Fix cho payment images: nếu path là /images/payment-... thì chuyển thành /images/payment-confirmations/payment-...
   if (imagePath.startsWith('/images/payment-') && !imagePath.includes('payment-confirmations')) {

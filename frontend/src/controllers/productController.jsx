@@ -255,6 +255,12 @@ function getImageUrl(src) {
     }
 
     if (src.startsWith('http')) {
+        if (src.includes('cloudinary.com') || src.includes('image-proxy')) {
+            return src;
+        }
+        if (src.includes('tgdd.vn') || src.includes('cellphones.com.vn')) {
+            return `${BACKEND_URL}/api/image-proxy?url=${encodeURIComponent(src)}`;
+        }
         console.log('✅ Image is already a full URL:', src);
         return src;
     }

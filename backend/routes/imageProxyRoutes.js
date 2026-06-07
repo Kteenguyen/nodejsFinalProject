@@ -22,10 +22,15 @@ router.get('/', (req, res) => {
     // Xác định protocol
     const protocol = decodedUrl.startsWith('https') ? https : http;
 
-    // Fetch ảnh
-    protocol.get(decodedUrl, (imageResponse) => {
+    // Fetch ảnh với headers giả lập trình duyệt để tránh bị chặn
+    const options = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    };
+    protocol.get(decodedUrl, options, (imageResponse) => {
       // Copy headers từ remote response
-      res.setHeader('Content-Type', imageResponse.headers['content-type']);
+      res.setHeader('Content-Type', imageResponse.headers['content-type'] || 'image/jpeg');
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache 24h
 
       // Stream ảnh về client
