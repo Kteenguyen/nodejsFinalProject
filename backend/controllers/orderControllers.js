@@ -82,9 +82,12 @@ exports.createOrder = async (req, res) => {
           const product = await Product.findById(item.productId).session(session);
           if (!product) throw new Error(`Sản phẩm ID ${item.productId} không tồn tại`);
           
-          // Chỉ kiểm tra số lượng, KHÔNG trừ stock ngay (sẽ trừ khi chuyển sang Shipping)
-          if (product.countInStock < item.quantity) {
-             throw new Error(`Sản phẩm ${product.name} không đủ hàng (còn ${product.countInStock})`);
+          // Kiểm tra số lượng dựa trên variant
+          const variant = product.variants.find(v => v.variantId === item.variantId);
+          const availableStock = variant ? variant.stock : 0;
+          
+          if (availableStock < item.quantity) {
+             throw new Error(`Sản phẩm ${product.productName || product.name} (${variant ? variant.name : 'Mặc định'}) không đủ hàng (còn ${availableStock})`);
           }
 
           orderItems.push({
@@ -838,35 +841,42 @@ exports.updateOrderStatus = async (req, res) => {
 
     const oldStatus = order.status;
 
-    // Nếu chuyển sang Shipping -> Trừ stock
+    // Nếu chuyển sang Shipping -> Trừ stock của variant
     if (status === 'Shipping' && oldStatus !== 'Shipping') {
       console.log('📦 Chuyển sang Shipping -> Trừ stock');
       for (const item of order.items) {
         const product = await Product.findById(item.productId);
         if (product) {
-          if (product.countInStock < item.quantity) {
-            return res.status(400).json({ 
-              success: false, 
-              message: `Sản phẩm ${product.name} không đủ hàng (còn ${product.countInStock}, cần ${item.quantity})` 
-            });
+          const variant = product.variants.find(v => v.variantId === item.variantId);
+          if (variant) {
+            if (variant.stock < item.quantity) {
+              return res.status(400).json({ 
+                success: false, 
+                message: `Sản phẩm ${product.productName || product.name} (${variant.name}) không đủ hàng (còn ${variant.stock}, cần ${item.quantity})` 
+              });
+            }
+            variant.stock -= item.quantity;
+            product.markModified('variants');
+            await product.save();
+            console.log(`✅ Đã trừ ${item.quantity} của ${product.productName || product.name} (${variant.name})`);
           }
-          product.countInStock -= item.quantity;
-          product.sold = (product.sold || 0) + item.quantity;
-          await product.save();
-          console.log(`✅ Đã trừ ${item.quantity} của ${product.name}`);
         }
       }
     }
 
-    // Nếu chuyển từ Shipping về Pending/Confirmed -> Hoàn lại stock
-    if ((status === 'Pending' || status === 'Confirmed') && oldStatus === 'Shipping') {
-      console.log('↩️ Quay lại Pending/Confirmed từ Shipping -> Hoàn stock');
+    // Nếu chuyển từ Shipping về Pending/Confirmed/Cancelled -> Hoàn lại stock của variant
+    if ((status === 'Pending' || status === 'Confirmed' || status === 'Cancelled') && oldStatus === 'Shipping') {
+      console.log('↩️ Quay lại Pending/Confirmed/Cancelled từ Shipping -> Hoàn stock');
       for (const item of order.items) {
         const product = await Product.findById(item.productId);
         if (product) {
-          product.countInStock += item.quantity;
-          product.sold = Math.max((product.sold || 0) - item.quantity, 0);
-          await product.save();
+          const variant = product.variants.find(v => v.variantId === item.variantId);
+          if (variant) {
+            variant.stock += item.quantity;
+            product.markModified('variants');
+            await product.save();
+            console.log(`✅ Đã hoàn ${item.quantity} cho ${product.productName || product.name} (${variant.name})`);
+          }
         }
       }
     }
@@ -1235,9 +1245,13 @@ exports.cancelOrder = async (req, res) => {
       for (const item of order.items) {
         const product = await Product.findById(item.productId);
         if (product) {
-          product.countInStock += item.quantity;
-          product.sold = Math.max((product.sold || 0) - item.quantity, 0);
-          await product.save();
+          const variant = product.variants.find(v => v.variantId === item.variantId);
+          if (variant) {
+            variant.stock += item.quantity;
+            product.markModified('variants');
+            await product.save();
+            console.log(`✅ Hoàn lại ${item.quantity} cho ${product.productName || product.name} (${variant.name}) khi user hủy đơn`);
+          }
         }
       }
     }
