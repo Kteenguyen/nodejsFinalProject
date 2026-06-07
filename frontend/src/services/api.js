@@ -33,10 +33,7 @@ export const getImageUrl = (imagePath) => {
     if (imagePath.includes('cloudinary.com') || imagePath.includes('image-proxy')) {
       return imagePath;
     }
-    if (imagePath.includes('tgdd.vn') || imagePath.includes('cellphones.com.vn')) {
-      return `${getBackendUrl()}/api/image-proxy?url=${encodeURIComponent(imagePath)}`;
-    }
-    return imagePath;
+    return `${getBackendUrl()}/api/image-proxy?url=${encodeURIComponent(imagePath)}`;
   }
   
   // Fix cho payment images: nếu path là /images/payment-... thì chuyển thành /images/payment-confirmations/payment-...
