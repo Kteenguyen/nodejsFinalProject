@@ -9,10 +9,10 @@ export const AuthController = {
                 throw new Error(response.data?.message || "Đăng nhập thất bại");
             }
 
-            // Lưu token vào sessionStorage (mỗi tab riêng biệt)
+            // Lưu token vào localStorage để giữ đăng nhập
             if (response.data.token) {
-                sessionStorage.setItem('token', response.data.token);
-                console.log('✅ Token saved to sessionStorage');
+                localStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to localStorage');
             }
 
             return response.data;
@@ -37,8 +37,8 @@ export const AuthController = {
 
             // Lưu token sau khi đăng ký thành công
             if (response.data.token) {
-                sessionStorage.setItem('token', response.data.token);
-                console.log('✅ Token saved to sessionStorage after registration');
+                localStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to localStorage after registration');
             }
 
             return response.data;
@@ -53,8 +53,8 @@ export const AuthController = {
 
             // Lưu token sau khi đăng nhập Google thành công
             if (response.data.token) {
-                sessionStorage.setItem('token', response.data.token);
-                console.log('✅ Token saved to sessionStorage after Google login');
+                localStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to localStorage after Google login');
             }
 
             return response.data;
@@ -77,8 +77,8 @@ export const AuthController = {
 
             // Lưu token sau khi đăng nhập Facebook thành công
             if (response.data.token) {
-                sessionStorage.setItem('token', response.data.token);
-                console.log('✅ Token saved to sessionStorage after Facebook login');
+                localStorage.setItem('token', response.data.token);
+                console.log('✅ Token saved to localStorage after Facebook login');
             }
 
             return response.data;
@@ -98,13 +98,13 @@ export const AuthController = {
     logout: async () => {
         try {
             await api.post("/auth/logout");
-            // Xóa token khỏi sessionStorage
-            sessionStorage.removeItem('token');
-            console.log('✅ Token removed from sessionStorage');
+            // Xóa token khỏi localStorage
+            localStorage.removeItem('token');
+            console.log('✅ Token removed from localStorage');
             return { success: true };
         } catch (error) {
             // Vẫn xóa token dù API lỗi
-            sessionStorage.removeItem('token');
+            localStorage.removeItem('token');
             throw new Error("Đăng xuất thất bại");
         }
     },

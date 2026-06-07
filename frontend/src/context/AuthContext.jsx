@@ -13,72 +13,82 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     /**
-     * ❗ NÂNG CẤP 2: useEffect chạy 1 LẦN KHI APP LOAD
-     * Nhiệm vụ: Kiểm tra token trong sessionStorage và gọi API để lấy user info
-     * 🔄 Sử dụng sessionStorage để mỗi tab có session riêng biệt
+     * useEffect chạy 1 LẦN KHI APP LOAD
+     * Nhiệm vụ: Kiểm tra token trong localStorage và gọi API để lấy user info
      */
-    useEffect(() => {
-        const checkUserStatus = async () => {
-            try {
-                console.log('🔍 AuthContext: Checking session...');
-                
-                // Kiểm tra token trong sessionStorage (mỗi tab riêng biệt)
-                const token = sessionStorage.getItem('token');
-                if (!token) {
-                    console.log('❌ AuthContext: No token in sessionStorage');
-                    setUser(null);
-                    setIsLoading(false);
-                    return;
-                }
-                
-                console.log('✅ AuthContext: Token found, checking session...');
-                // Có token thì gọi API để lấy user info
-                const response = await AuthController.checkSession();
-                console.log('📡 AuthContext: checkSession response:', response);
-
-                // Backend trả về { isAuthenticated: true, user: {...} }
-                if (response.isAuthenticated && response.user) {
-                    console.log('✅ AuthContext: User restored:', response.user);
-                    setUser(response.user);
-                    // Lưu userData vào sessionStorage khi restore session
-                    sessionStorage.setItem('userData', JSON.stringify(response.user));
-                } else {
-                    console.log('❌ AuthContext: No authenticated user');
-                    setUser(null);
-                    // Token không hợp lệ, xóa đi
-                    sessionStorage.removeItem('token');
-                    sessionStorage.removeItem('userData');
-                }
-
-            } catch (error) {
-                // Token hết hạn hoặc không hợp lệ
-                console.error('⚠️ AuthContext: Error checking session:', error);
+    const checkUserStatus = async () => {
+        try {
+            console.log('🔍 AuthContext: Checking session...');
+            
+            // Kiểm tra token trong localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.log('❌ AuthContext: No token in localStorage');
                 setUser(null);
-                sessionStorage.removeItem('token');
-            } finally {
-                // Báo là đã load xong, cho phép app render
                 setIsLoading(false);
+                return;
+            }
+            
+            console.log('✅ AuthContext: Token found, checking session...');
+            // Có token thì gọi API để lấy user info
+            const response = await AuthController.checkSession();
+            console.log('📡 AuthContext: checkSession response:', response);
+
+            // Backend trả về { isAuthenticated: true, user: {...} }
+            if (response.isAuthenticated && response.user) {
+                console.log('✅ AuthContext: User restored:', response.user);
+                setUser(response.user);
+                // Lưu userData vào localStorage khi restore session
+                localStorage.setItem('userData', JSON.stringify(response.user));
+            } else {
+                console.log('❌ AuthContext: No authenticated user');
+                setUser(null);
+                // Token không hợp lệ, xóa đi
+                localStorage.removeItem('token');
+                localStorage.removeItem('userData');
+            }
+
+        } catch (error) {
+            // Token hết hạn hoặc không hợp lệ
+            console.error('⚠️ AuthContext: Error checking session:', error);
+            setUser(null);
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+        } finally {
+            // Báo là đã load xong, cho phép app render
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        checkUserStatus();
+
+        // Đồng bộ hóa đăng nhập/đăng xuất giữa các tab trình duyệt
+        const handleStorageChange = (e) => {
+            if (e.key === 'token') {
+                if (!e.newValue) {
+                    setUser(null);
+                } else {
+                    checkUserStatus();
+                }
             }
         };
-
-        checkUserStatus();
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
     }, []); // Mảng rỗng = chỉ chạy 1 lần khi F5
 
     /**
-     * ❗ NÂNG CẤP 3: Hàm login (Đơn giản hóa)
-     * Giờ chỉ cần set state (sessionStorage được quản lý bởi AuthController)
-     * 🔄 Mỗi tab có session riêng biệt
+     * Hàm login
      */
     const login = (userInfo) => {
         setUser(userInfo);
-        // Lưu userData vào sessionStorage để dùng cho comments
-        sessionStorage.setItem('userData', JSON.stringify(userInfo));
-        console.log('✅ User data saved to sessionStorage:', userInfo);
+        // Lưu userData vào localStorage để dùng cho các tab khác
+        localStorage.setItem('userData', JSON.stringify(userInfo));
+        console.log('✅ User data saved to localStorage:', userInfo);
     };
 
     /**
-     * ❗ NÂNG CẤP 4: Hàm logout (Phải gọi API)
-     * Phải gọi API /auth/logout để server xóa HttpOnly cookie
+     * Hàm logout (Phải gọi API)
      */
     const logout = async () => {
         try {
@@ -87,8 +97,8 @@ export const AuthProvider = ({ children }) => {
             console.error("Lỗi khi gọi API logout:", error);
         } finally {
             setUser(null); // Xóa user khỏi state
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('userData'); // Xóa userData
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData'); // Xóa userData
             localStorage.removeItem('cart'); // Xóa giỏ hàng khi logout
             console.log('✅ User logged out and userData removed');
         }

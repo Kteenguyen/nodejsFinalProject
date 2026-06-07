@@ -71,9 +71,9 @@ const api = axios.create({
 // Interceptor cho request: Tự động thêm token vào header (nếu có)
 api.interceptors.request.use(
     (config) => {
-        // Lấy token từ sessionStorage (mỗi tab riêng biệt)
-        const token = sessionStorage.getItem('token');
-        console.log('🔑 API Request - Token in sessionStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+        // Lấy token từ localStorage để duy trì đăng nhập trên mọi tab
+        const token = localStorage.getItem('token');
+        console.log('🔑 API Request - Token in localStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
             console.log('✅ API Request - Authorization header set');
