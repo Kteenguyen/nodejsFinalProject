@@ -198,10 +198,8 @@ app.use((err, req, res, next) => {
 });
 
 // --- CHẠY SERVER ---
-if (!process.env.VERCEL) {
-    server.listen(port, () => {
-        console.log(`🚀 ${serverProtocol.toUpperCase()} Server + Socket.io running on ${serverProtocol}://localhost:${port}`);
-    });
-}
+server.listen(port, () => {
+    console.log(`🚀 ${serverProtocol.toUpperCase()} Server + Socket.io running on port ${port}`);
+});
 
 module.exports = app;
