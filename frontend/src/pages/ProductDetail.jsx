@@ -446,25 +446,27 @@ export default function ProductDetail() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                 <div className="lg:col-span-2 space-y-6">
                     {/* Description */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Mô tả sản phẩm</h2>
-                        <div className="prose max-w-none text-gray-600 leading-relaxed whitespace-pre-line text-sm">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100/80 p-6 md:p-8">
+                        <h2 className="text-lg md:text-xl font-extrabold text-gray-900 mb-6 pb-3 border-b border-gray-100 flex items-center gap-2">
+                          <Package className="text-indigo-600" size={20} /> Mô tả sản phẩm
+                        </h2>
+                        <div className="prose max-w-none text-gray-600 leading-relaxed whitespace-pre-line text-sm md:text-base">
                             {product.description || product.productDescription || "Nội dung đang cập nhật..."}
                         </div>
                     </div>
 
                     {/* Review Block */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6" id="reviews">
-                        <h2 className="text-xl font-bold text-gray-800 mb-6">Đánh giá & Bình luận</h2>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100/80 p-6 md:p-8" id="reviews">
+                        <h2 className="text-lg md:text-xl font-extrabold text-gray-900 mb-6 pb-3 border-b border-gray-100">Đánh giá & Bình luận</h2>
                         
-                        <div className="bg-gray-50 p-5 rounded-xl mb-8">
+                        <div className="bg-indigo-50/30 border border-indigo-100/40 p-5 rounded-2xl mb-8">
                             <div className="flex gap-2 mb-4 justify-center">
                                 {[1,2,3,4,5].map(n => <Star key={n} filled={n <= myRate} onClick={() => setMyRate(n)} size={32}/>)}
                             </div>
-                            {rateMsg && <p className="text-center text-sm text-blue-600 mb-3 font-medium">{rateMsg}</p>}
+                            {rateMsg && <p className="text-center text-sm text-indigo-600 mb-3 font-semibold">{rateMsg}</p>}
                             <div className="flex gap-3">
                                 {/* User Avatar for Comment Form */}
-                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold overflow-hidden flex-shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold overflow-hidden flex-shrink-0">
                                     {(() => {
                                         const userDataStr = sessionStorage.getItem('userData');
                                         const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
@@ -478,11 +480,11 @@ export default function ProductDetail() {
                                                 className="w-full h-full object-cover" 
                                                 onError={(e) => { 
                                                     e.target.style.display = 'none'; 
-                                                    e.target.parentElement.innerHTML = `<span class="w-full h-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">${displayName.charAt(0).toUpperCase()}</span>`; 
+                                                    e.target.parentElement.innerHTML = `<span class="w-full h-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center">${displayName.charAt(0).toUpperCase()}</span>`; 
                                                 }}
                                             />
                                         ) : (
-                                            <span className="w-full h-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">
+                                            <span className="w-full h-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center">
                                                 {displayName.charAt(0).toUpperCase()}
                                             </span>
                                         );
@@ -501,10 +503,10 @@ export default function ProductDetail() {
                                             const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
                                             return currentUser?.name || user?.name ? `Đã đăng nhập: ${currentUser?.name || user?.name}` : "Tên của bạn (bắt buộc)";
                                         })()} 
-                                        className={`w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-blue-500 bg-white ${(() => {
+                                        className={`w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white transition-all ${(() => {
                                             const userDataStr = sessionStorage.getItem('userData');
                                             const currentUser = userDataStr ? JSON.parse(userDataStr) : null;
-                                            return currentUser?.name || user?.name ? 'bg-gray-50 text-gray-600' : '';
+                                            return currentUser?.name || user?.name ? 'bg-gray-50 text-gray-500' : '';
                                         })()}`}
                                         disabled={(() => {
                                             const userDataStr = sessionStorage.getItem('userData');
@@ -512,15 +514,15 @@ export default function ProductDetail() {
                                             return !!(currentUser?.name || user?.name);
                                         })()}
                                     />
-                                    <textarea value={cText} onChange={e=>setCText(e.target.value)} placeholder="Mời bạn để lại bình luận..." rows={3} className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-blue-500 resize-none bg-white"/>
-                                    <button onClick={(e) => { onRate(); onSubmitComment(e); }} className="absolute bottom-3 right-3 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-md">
+                                    <textarea value={cText} onChange={e=>setCText(e.target.value)} placeholder="Mời bạn để lại bình luận..." rows={3} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none bg-white transition-all"/>
+                                    <button onClick={(e) => { onRate(); onSubmitComment(e); }} className="absolute bottom-3 right-3 p-2.5 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors shadow-md transform active:scale-95">
                                         <Send size={16}/>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             {(product.comments || []).slice().reverse().map((c, i) => (
                                 <div key={i} className="flex gap-3">
                                     {/* Comment Avatar */}
@@ -535,22 +537,22 @@ export default function ProductDetail() {
                                                         e.target.style.display = 'none'; 
                                                     }}
                                                 />
-                                                <span className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold flex items-center justify-center">
+                                                <span className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center">
                                                     {(c.name || "K").charAt(0).toUpperCase()}
                                                 </span>
                                             </>
                                         ) : (
-                                            <span className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold flex items-center justify-center">
+                                            <span className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center">
                                                 {(c.name || "K").charAt(0).toUpperCase()}
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex-1 bg-gray-50 p-3 rounded-2xl rounded-tl-none border border-gray-100">
+                                    <div className="flex-1 bg-gray-50/50 p-4 rounded-2xl rounded-tl-none border border-gray-100">
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="font-bold text-gray-800 text-sm">{c.name || "Khách hàng"}</span>
                                             <span className="text-xs text-gray-400">{c.createdAt ? new Date(c.createdAt).toLocaleDateString('vi-VN') : "Vừa xong"}</span>
                                         </div>
-                                        <p className="text-gray-700 text-sm">{c.comment}</p>
+                                        <p className="text-gray-700 text-sm leading-relaxed">{c.comment}</p>
                                     </div>
                                 </div>
                             ))}
@@ -561,12 +563,32 @@ export default function ProductDetail() {
 
                 {/* Sidebar Right (Specs) */}
                 <div className="hidden lg:block">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 sticky top-24">
-                        <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase">Thông số kỹ thuật</h3>
-                        <ul className="space-y-3 text-sm text-gray-600">
-                            <li className="flex justify-between pb-2 border-b border-gray-50"><span>Thương hiệu</span> <span className="font-medium text-gray-800">{product.brand}</span></li>
-                            <li className="flex justify-between pb-2 border-b border-gray-50"><span>Bảo hành</span> <span className="font-medium text-gray-800">12 - 24 tháng</span></li>
-                            <li className="flex justify-between pb-2 border-b border-gray-50"><span>Tình trạng</span> <span className="font-medium text-green-600">Mới 100%</span></li>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
+                        <h3 className="font-bold text-gray-900 mb-5 text-sm uppercase tracking-wider">Thông số kỹ thuật</h3>
+                        <ul className="space-y-4 text-sm">
+                            <li className="flex justify-between pb-3 border-b border-gray-100">
+                                <span className="text-gray-500">Thương hiệu</span> 
+                                <span className="font-semibold text-gray-800 uppercase">{product.brand || "Khác"}</span>
+                            </li>
+                            {Array.isArray(product.specifications) && product.specifications.length > 0 ? (
+                                product.specifications.map((spec, idx) => (
+                                    <li key={idx} className="flex justify-between pb-3 border-b border-gray-100 gap-4">
+                                        <span className="text-gray-500 capitalize">{spec.label}</span>
+                                        <span className="font-semibold text-gray-850 text-right">{spec.value}</span>
+                                    </li>
+                                ))
+                            ) : (
+                                <>
+                                    <li className="flex justify-between pb-3 border-b border-gray-100">
+                                        <span className="text-gray-500">Bảo hành</span> 
+                                        <span className="font-semibold text-gray-800">12 tháng</span>
+                                    </li>
+                                    <li className="flex justify-between pb-3 border-b border-gray-100">
+                                        <span className="text-gray-500">Tình trạng</span> 
+                                        <span className="font-semibold text-emerald-600">Mới 100%</span>
+                                    </li>
+                                </>
+                            )}
                         </ul>
                     </div>
                 </div>

@@ -8,8 +8,9 @@ const getBaseUrl = () => {
     if (process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost') {
         return '/api';
     } else {
-        // Local development - backend luôn chạy HTTPS
-        return 'https://localhost:3001/api';
+        // Local development - Auto-detect protocol (http/https) dựa trên frontend
+        const proto = window.location.protocol;
+        return `${proto}//localhost:3001/api`;
     }
 };
 
@@ -17,8 +18,9 @@ const getBackendUrl = () => {
     if (process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost') {
         return '';
     } else {
-        // Backend luôn chạy HTTPS trên localhost:3001
-        return 'https://localhost:3001';
+        // Auto-detect protocol (http/https) dựa trên frontend
+        const proto = window.location.protocol;
+        return `${proto}//localhost:3001`;
     }
 };
 

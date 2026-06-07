@@ -129,62 +129,71 @@ const FlashSaleSection = () => {
     const currentList = getCurrentList();
 
     return (
-        <div className="bg-gradient-to-r from-red-600 via-red-500 to-orange-500 rounded-lg shadow-xl overflow-hidden mb-8">
+        <div className="bg-slate-950 border border-red-500/10 rounded-3xl shadow-2xl overflow-hidden mb-10 relative">
+            {/* Glowing accent lights */}
+            <div className="absolute -top-40 -left-40 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
+
             {/* Header với tabs kiểu Shopee */}
-            <div className="bg-gradient-to-r from-red-700 to-red-600 px-4 md:px-6 py-3 md:py-4">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+            <div className="bg-slate-900/80 backdrop-blur-md px-6 py-5 border-b border-white/5 relative z-10">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                     {/* Logo + Title */}
-                    <div className="flex items-center gap-2 md:gap-3">
-                        <span className="text-2xl md:text-4xl animate-pulse">⚡</span>
-                        <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white tracking-wider">FLASH SALE</h2>
+                    <div className="flex items-center gap-3">
+                        <span className="text-3xl animate-bounce">⚡</span>
+                        <div>
+                            <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-orange-500 to-amber-400 tracking-wider uppercase">
+                                FLASH SALE
+                            </h2>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">🔥 Săn deal chớp nhoáng</p>
+                        </div>
                     </div>
 
                     {/* Tabs: Đang diễn ra | Sắp tới | Ngày mai */}
-                    <div className="flex bg-red-800/50 rounded-lg p-1 overflow-x-auto w-full md:w-auto">
+                    <div className="flex bg-white/5 backdrop-blur-md rounded-2xl p-1 border border-white/10 w-full lg:w-auto">
                         <button
                             onClick={() => handleTabChange('active')}
-                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
+                            className={`flex-1 lg:flex-none px-4 py-2.5 rounded-xl font-extrabold text-xs md:text-sm transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-1.5 ${
                                 activeTab === 'active'
-                                    ? 'bg-white text-red-600 shadow-md'
-                                    : 'text-white hover:bg-white/10'
-                            } ${data.active.length === 0 ? 'opacity-50' : ''}`}
+                                    ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            } ${data.active.length === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
                             disabled={data.active.length === 0}
                         >
                             🔴 Đang diễn ra
                             {data.active.length > 0 && (
-                                <span className="ml-1 bg-yellow-400 text-red-700 text-xs px-1.5 rounded-full">
+                                <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">
                                     {data.active.length}
                                 </span>
                             )}
                         </button>
                         <button
                             onClick={() => handleTabChange('upcoming')}
-                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
+                            className={`flex-1 lg:flex-none px-4 py-2.5 rounded-xl font-extrabold text-xs md:text-sm transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-1.5 ${
                                 activeTab === 'upcoming'
-                                    ? 'bg-white text-red-600 shadow-md'
-                                    : 'text-white hover:bg-white/10'
-                            } ${data.upcomingToday.length === 0 ? 'opacity-50' : ''}`}
+                                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            } ${data.upcomingToday.length === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
                             disabled={data.upcomingToday.length === 0}
                         >
-                            ⏰ Sắp tới
+                            ⏰ Sắp diễn ra
                             {data.upcomingToday.length > 0 && (
-                                <span className="ml-1 bg-yellow-400 text-red-700 text-xs px-1.5 rounded-full">
+                                <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">
                                     {data.upcomingToday.length}
                                 </span>
                             )}
                         </button>
                         <button
                             onClick={() => handleTabChange('tomorrow')}
-                            className={`px-3 md:px-4 py-1.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition-all whitespace-nowrap ${
+                            className={`flex-1 lg:flex-none px-4 py-2.5 rounded-xl font-extrabold text-xs md:text-sm transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-1.5 ${
                                 activeTab === 'tomorrow'
-                                    ? 'bg-white text-red-600 shadow-md'
-                                    : 'text-white hover:bg-white/10'
-                            } ${data.tomorrow.length === 0 ? 'opacity-50' : ''}`}
+                                    ? 'bg-gradient-to-r from-blue-500 to-indigo-650 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            } ${data.tomorrow.length === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
                             disabled={data.tomorrow.length === 0}
                         >
                             📅 Ngày mai
                             {data.tomorrow.length > 0 && (
-                                <span className="ml-1 bg-yellow-400 text-red-700 text-xs px-1.5 rounded-full">
+                                <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold">
                                     {data.tomorrow.length}
                                 </span>
                             )}
@@ -192,10 +201,10 @@ const FlashSaleSection = () => {
                     </div>
 
                     {/* Countdown + View All */}
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                    <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
                         {countdown && selectedSlot && (
                             <div className="flex items-center gap-2">
-                                <span className="text-white/80 text-xs md:text-sm">{countdown.label}:</span>
+                                <span className="text-gray-400 text-xs md:text-sm font-semibold">{countdown.label}:</span>
                                 <FlashSaleCountdown 
                                     endTime={countdown.time} 
                                     onExpire={fetchFlashSales}
@@ -206,7 +215,7 @@ const FlashSaleSection = () => {
                         {/* View All Button */}
                         <button
                             onClick={() => navigate('/flash-sale')}
-                            className="bg-white text-red-600 px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold text-xs md:text-sm hover:bg-gray-100 transition-colors shadow-md whitespace-nowrap"
+                            className="bg-white/5 border border-white/10 hover:bg-white hover:text-red-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all duration-300 shadow-md whitespace-nowrap"
                         >
                             Xem tất cả →
                         </button>
@@ -216,21 +225,23 @@ const FlashSaleSection = () => {
 
             {/* Time Slot Selector */}
             {currentList.length > 1 && (
-                <div className="bg-red-600/50 px-6 py-3">
+                <div className="bg-slate-900/40 border-b border-white/5 px-6 py-3.5 relative z-10">
                     <div className="flex gap-2 overflow-x-auto pb-1">
                         {currentList.map((slot) => (
                             <button
                                 key={slot._id}
                                 onClick={() => handleSlotChange(slot)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs md:text-sm whitespace-nowrap transition-all duration-300 border ${
                                     selectedSlot?._id === slot._id
-                                        ? 'bg-white text-red-600 shadow-lg scale-105'
-                                        : 'bg-red-700/50 text-white hover:bg-red-700'
+                                        ? 'bg-white text-slate-950 border-white shadow-lg scale-102'
+                                        : 'bg-white/5 text-gray-400 border-white/5 hover:border-white/10 hover:text-white'
                                 }`}
                             >
                                 <span>{formatTimeSlot(slot)}</span>
                                 {slot.products?.length > 0 && (
-                                    <span className="bg-yellow-400 text-red-700 text-xs px-1.5 rounded-full">
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                                        selectedSlot?._id === slot._id ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-300'
+                                    }`}>
                                         {slot.products.length}
                                     </span>
                                 )}
@@ -241,21 +252,21 @@ const FlashSaleSection = () => {
             )}
 
             {/* Products Grid */}
-            <div className="p-6">
+            <div className="p-6 relative z-10">
                 {selectedSlot && selectedSlot.products?.length > 0 ? (
                     <>
                         {/* Flash Sale Name & Description */}
                         {selectedSlot.name && (
-                            <div className="mb-4 text-center">
-                                <h3 className="text-xl font-bold text-white">{selectedSlot.name}</h3>
+                            <div className="mb-6 text-center">
+                                <h3 className="text-lg md:text-xl font-extrabold text-white">{selectedSlot.name}</h3>
                                 {selectedSlot.description && (
-                                    <p className="text-white/80 text-sm mt-1">{selectedSlot.description}</p>
+                                    <p className="text-gray-400 text-xs md:text-sm mt-1">{selectedSlot.description}</p>
                                 )}
                             </div>
                         )}
 
                         {/* Products */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {selectedSlot.products.slice(0, 12).map((product) => (
                                 <FlashSaleCard
                                     key={product.productId?._id || product._id}
@@ -268,10 +279,10 @@ const FlashSaleSection = () => {
 
                         {/* View more if has more products */}
                         {selectedSlot.products.length > 12 && (
-                            <div className="text-center mt-6">
+                            <div className="text-center mt-8">
                                 <button
                                     onClick={() => navigate('/flash-sale')}
-                                    className="bg-white/20 backdrop-blur text-white px-8 py-3 rounded-full font-bold hover:bg-white/30 transition-colors"
+                                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-8 py-3 rounded-2xl font-bold text-sm transition-all duration-300"
                                 >
                                     Xem thêm {selectedSlot.products.length - 12} sản phẩm →
                                 </button>
@@ -279,9 +290,9 @@ const FlashSaleSection = () => {
                         )}
                     </>
                 ) : (
-                    <div className="text-center py-8">
-                        <span className="text-6xl mb-4 block">📦</span>
-                        <p className="text-white text-lg">Chưa có sản phẩm trong khung giờ này</p>
+                    <div className="text-center py-12 text-gray-500">
+                        <span className="text-5xl mb-4 block">📦</span>
+                        <p className="text-gray-400 text-base font-semibold">Chưa có sản phẩm trong khung giờ này</p>
                     </div>
                 )}
             </div>

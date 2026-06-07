@@ -107,16 +107,16 @@ export default function Home() {
 
     // --- COMPONENT KHỐI SẢN PHẨM ---
     const SectionBlock = ({ title, icon, products, linkTo, bannerImg }) => (
-        <section className="mb-8">
+        <section className="mb-10">
             <div className="container mx-auto px-4 max-w-[1400px]">
 
                 {/* Banner Quảng Cáo (Đã fix lỗi ảnh) */}
                 {bannerImg && (
-                    <div className="mb-8 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group">
+                    <div className="mb-8 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group">
                         <img
                             src={bannerImg}
                             alt="Quảng cáo khuyến mãi"
-                            className="w-full h-32 md:h-48 object-cover transform group-hover:scale-105 transition-transform duration-700"
+                            className="w-full h-32 md:h-48 object-cover transform group-hover:scale-102 transition-transform duration-700"
                             onError={(e) => {
                                 e.target.src = 'https://via.placeholder.com/1200x300?text=Banner+Quang+Cao'; // Fallback nếu ảnh lỗi
                             }}
@@ -124,19 +124,19 @@ export default function Home() {
                     </div>
                 )}
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 md:p-6 border-b border-gray-100 bg-white">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100/80 overflow-hidden">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-5 md:p-6 border-b border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
-                            <span className="text-blue-600 p-2 bg-blue-50 rounded-lg">{icon}</span>
-                            <h2 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-800 uppercase tracking-tight">{title}</h2>
+                            <span className="text-indigo-600 p-2.5 bg-indigo-50 rounded-xl">{icon}</span>
+                            <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold text-gray-800 uppercase tracking-tight">{title}</h2>
                         </div>
-                        <Link to={linkTo} className="flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full transition-all whitespace-nowrap">
+                        <Link to={linkTo} className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-5 py-2.5 rounded-full transition-all duration-300 whitespace-nowrap shadow-sm">
                             Xem tất cả <ChevronRight size={16} />
                         </Link>
                     </div>
 
-                    <div className="p-4 md:p-6 bg-white">
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4">
+                    <div className="p-5 md:p-6 bg-white">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 md:gap-6">
                             {loading
                                 ? Array(4).fill(0).map((_, i) => <ProductSkeleton key={i} />)
                                 : products.slice(0, 8).map((product) => (
@@ -153,7 +153,7 @@ export default function Home() {
     );
 
     return (
-        <div className="bg-[#f4f6f8] min-h-screen font-sans pb-0">
+        <div className="bg-[#f8fafc] min-h-screen font-sans pb-0">
 
             {/* 1. HERO SECTION */}
             <div className="bg-white pb-8 pt-4 mb-6 shadow-sm">
@@ -165,13 +165,13 @@ export default function Home() {
                             <img
                                 src="https://images.unsplash.com/photo-1603302576837-37561b2e2302?q=80&w=2068&auto=format&fit=crop"
                                 alt="Main Banner"
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-6 md:p-8">
-                                <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded w-fit mb-3">HOT DEAL THÁNG 12</span>
-                                <h2 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-2 leading-tight">MacBook Pro M3</h2>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
+                                <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded w-fit mb-3">HOT DEAL THÁNG 12</span>
+                                <h2 className="text-2xl md:text-4xl lg:text-5xl font-extrabold text-white mb-2 leading-tight">MacBook Pro M3</h2>
                                 <p className="text-gray-200 mb-4 md:mb-6 text-base md:text-lg">Sức mạnh quái vật - Hiệu năng đỉnh cao.</p>
-                                <Link to="/products" className="bg-white text-gray-900 px-6 md:px-8 py-2.5 md:py-3 rounded-full font-bold w-fit hover:bg-blue-600 hover:text-white transition-all shadow-lg text-sm md:text-base">Mua ngay</Link>
+                                <Link to="/products" className="bg-white text-gray-900 px-6 md:px-8 py-2.5 md:py-3 rounded-full font-bold w-fit hover:bg-indigo-600 hover:text-white transition-all shadow-lg text-sm md:text-base">Mua ngay</Link>
                             </div>
                         </div>
 
@@ -179,7 +179,7 @@ export default function Home() {
                         <div className="hidden lg:flex flex-col gap-4 h-[400px]">
                             {/* Banner Phụ 1: Link tới Gaming */}
                             <Link to="/products?categoryId=gaming" className="flex-1 rounded-2xl overflow-hidden shadow-md relative group cursor-pointer block">
-                                <img src="https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?q=80&w=1932&auto=format&fit=crop" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Sub 1" />
+                                <img src="https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?q=80&w=1932&auto=format&fit=crop" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sub 1" />
                                 <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent">
                                     <p className="text-white font-bold text-lg">Phụ kiện Gaming</p>
                                     <p className="text-gray-300 text-sm">Giảm đến 50%</p>
@@ -188,7 +188,7 @@ export default function Home() {
 
                             {/* Banner Phụ 2: Link tới Màn hình */}
                             <Link to="/products?categoryId=monitor" className="flex-1 rounded-2xl overflow-hidden shadow-md relative group cursor-pointer block">
-                                <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Sub 2" />
+                                <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Sub 2" />
                                 <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent">
                                     <p className="text-white font-bold text-lg">Màn hình 4K</p>
                                     <p className="text-gray-300 text-sm">Sắc nét từng chi tiết</p>
@@ -199,7 +199,7 @@ export default function Home() {
 
                     {/* QUICK CATEGORIES - Nằm riêng biệt, không trong grid banner */}
                     <div className="mt-8 md:mt-10 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6">
-                        <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 text-center">Danh mục sản phẩm</h3>
+                        <h3 className="text-lg md:text-xl font-extrabold text-gray-800 mb-4 md:mb-6 text-center">Danh mục sản phẩm</h3>
                         <div className="grid grid-cols-4 md:grid-cols-8 gap-2 md:gap-4">
                             {QUICK_CATEGORIES.map((cat, idx) => {
                                 // Nút "Xem thêm" đặc biệt
@@ -208,23 +208,23 @@ export default function Home() {
                                     <Link 
                                         to={isViewAll ? '/products' : `/products?categoryId=${cat.id}`}
                                         key={idx} 
-                                        className={`flex flex-col items-center gap-1 md:gap-2 group cursor-pointer p-2 md:p-4 rounded-xl transition-all ${
+                                        className={`flex flex-col items-center gap-1.5 md:gap-2 group cursor-pointer p-2 md:p-4 rounded-2xl transition-all ${
                                             isViewAll 
-                                                ? 'hover:bg-orange-50' 
-                                                : 'hover:bg-blue-50'
+                                                ? 'hover:bg-amber-50' 
+                                                : 'hover:bg-indigo-50/60'
                                         }`}
                                     >
-                                        <div className={`w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all shadow-md group-hover:shadow-xl group-hover:scale-110 border-2 ${
+                                        <div className={`w-10 h-10 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-md group-hover:shadow-lg group-hover:scale-105 border-2 ${
                                             isViewAll 
-                                                ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-orange-500 border-gray-200 group-hover:from-orange-500 group-hover:to-orange-600 group-hover:text-white group-hover:border-orange-400' 
-                                                : 'bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-100 group-hover:from-blue-600 group-hover:to-blue-700 group-hover:text-white group-hover:border-blue-600'
+                                                ? 'bg-gradient-to-br from-gray-50 to-gray-100 text-amber-500 border-gray-100 group-hover:from-amber-500 group-hover:to-amber-600 group-hover:text-white group-hover:border-amber-400' 
+                                                : 'bg-gradient-to-br from-indigo-50 to-indigo-100/80 text-indigo-600 border-indigo-100/40 group-hover:from-indigo-650 group-hover:to-indigo-700 group-hover:text-white group-hover:border-indigo-600'
                                         }`}>
                                             <span className="scale-75 md:scale-100">{cat.icon}</span>
                                         </div>
                                         <span className={`text-xs md:text-sm font-semibold transition-colors text-center line-clamp-1 ${
                                             isViewAll 
-                                                ? 'text-gray-700 group-hover:text-orange-600' 
-                                                : 'text-gray-700 group-hover:text-blue-600'
+                                                ? 'text-gray-700 group-hover:text-amber-600' 
+                                                : 'text-gray-700 group-hover:text-indigo-600'
                                         }`}>{cat.name}</span>
                                     </Link>
                                 );

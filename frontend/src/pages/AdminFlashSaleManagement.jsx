@@ -540,41 +540,41 @@ const AdminFlashSaleManagement = () => {
                                     </div>
                                     <div className="space-y-3 max-h-80 overflow-y-auto border-2 border-red-200 rounded-lg p-4 bg-red-50">
                                         {selectedProducts.map(product => (
-                                            <div key={product.productId} className="bg-white border-2 border-red-300 rounded-lg p-4 shadow-sm">
-                                                <div className="flex gap-4 items-start">
+                                            <div key={product.productId} className="bg-white border border-red-200 rounded-xl p-3 shadow-sm">
+                                                <div className="flex gap-3 items-start">
                                                     <img 
                                                         src={getImageUrl(product.productImage)} 
                                                         alt={product.productName}
-                                                        className="w-20 h-20 object-cover rounded border-2 border-gray-200"
+                                                        className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                                                     />
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold text-gray-800 mb-3">{product.productName}</h4>
+                                                        <h4 className="font-semibold text-gray-800 mb-2 text-sm">{product.productName}</h4>
                                                         
                                                         {/* Giá gốc - Read Only - Full width */}
-                                                        <div className="mb-3 bg-blue-50 border-2 border-blue-300 rounded-lg px-4 py-3">
-                                                            <label className="block text-xs font-bold text-blue-700 mb-1">💵 Giá gốc</label>
-                                                            <div className="text-2xl font-bold text-blue-900">
+                                                        <div className="mb-2 bg-blue-50/50 border border-blue-200 rounded-lg px-3 py-2 flex items-center justify-between">
+                                                            <span className="text-xs font-bold text-blue-700">💵 Giá gốc:</span>
+                                                            <div className="text-base font-extrabold text-blue-900">
                                                                 {product.originalPrice.toLocaleString('vi-VN')}₫
                                                             </div>
                                                         </div>
                                                         
-                                                        <div className="grid grid-cols-3 gap-4">
+                                                        <div className="grid grid-cols-3 gap-3">
                                                             <div>
-                                                                <label className="block text-sm font-bold text-green-700 mb-2">
+                                                                <label className="block text-xs font-bold text-green-700 mb-1">
                                                                     💚 Giảm % *
                                                                 </label>
                                                                 <input
                                                                     type="number"
                                                                     value={product.discountPercent || 0}
                                                                     onChange={(e) => updateSelectedProduct(product.productId, 'discountPercent', e.target.value)}
-                                                                    className="w-full border-2 border-green-300 rounded-lg px-3 py-3 text-center text-lg font-bold focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                                                                    className="w-full border border-green-300 rounded-lg px-2 py-1.5 text-center text-sm font-bold focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-100"
                                                                     min="0"
                                                                     max="100"
                                                                     placeholder="30"
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <label className="block text-sm font-bold text-red-700 mb-2">
+                                                                <label className="block text-xs font-bold text-red-700 mb-1">
                                                                     💸 Giá Flash Sale *
                                                                 </label>
                                                                 <input
@@ -584,44 +584,44 @@ const AdminFlashSaleManagement = () => {
                                                                         const value = e.target.value.replace(/\D/g, '');
                                                                         updateSelectedProduct(product.productId, 'flashPrice', value);
                                                                     }}
-                                                                    className="w-full border-2 border-red-300 rounded-lg px-3 py-3 text-center text-lg font-bold focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+                                                                    className="w-full border border-red-300 rounded-lg px-2 py-1.5 text-center text-sm font-bold focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-100"
                                                                     placeholder="20.000.000"
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                                                <label className="block text-xs font-bold text-gray-700 mb-1">
                                                                     📦 Số lượng *
                                                                 </label>
                                                                 <input
                                                                     type="number"
                                                                     value={product.totalStock}
                                                                     onChange={(e) => updateSelectedProduct(product.productId, 'totalStock', e.target.value)}
-                                                                    className="w-full border-2 border-gray-300 rounded-lg px-3 py-3 text-center text-lg font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-center text-sm font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                                                                     min="1"
                                                                     placeholder="50"
                                                                 />
                                                             </div>
                                                         </div>
-                                                        <div className="mt-4 flex items-center justify-between">
-                                                            <div className="bg-gradient-to-r from-red-50 to-green-50 px-4 py-3 rounded-lg border-2 border-red-300 flex-1 mr-3">
-                                                                <div className="flex items-center justify-between">
+                                                        <div className="mt-3 flex items-center justify-between">
+                                                            <div className="bg-gradient-to-r from-red-50/50 to-green-50/50 px-3 py-1.5 rounded-lg border border-red-200 flex-1 mr-3">
+                                                                <div className="flex items-center justify-between text-xs">
                                                                     <div>
-                                                                        <span className="font-bold text-red-600 text-xl">
+                                                                        <span className="font-bold text-red-600 text-sm">
                                                                             Giảm {product.discountPercent || 0}%
                                                                         </span>
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <div className="text-xs text-gray-600">Tiết kiệm</div>
-                                                                        <div className="font-bold text-green-600 text-lg">
+                                                                    <div className="text-right flex items-center gap-1.5">
+                                                                        <span className="text-[10px] text-gray-500">Tiết kiệm:</span>
+                                                                        <span className="font-bold text-green-600 text-sm">
                                                                             {((product.originalPrice || 0) - (product.flashPrice || 0)).toLocaleString('vi-VN')}₫
-                                                                        </div>
+                                                                        </span>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleProductSelect(product.productId)}
-                                                                className="text-red-600 hover:text-red-800 font-bold text-lg px-3 py-1 hover:bg-red-100 rounded"
+                                                                className="text-red-600 hover:text-red-800 font-bold text-xs px-2 py-1 hover:bg-red-50 rounded transition-colors"
                                                                 title="Xóa sản phẩm"
                                                             >
                                                                 ✕ Xóa

@@ -72,79 +72,72 @@ export default function ProductCard({ p, product, viewMode = "grid" }) {
   return (
     <Link 
       to={`/products/${detailId}`} 
-      className={`group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 ${isOutOfStock ? 'opacity-75' : ''}`}
+      className={`group bg-white rounded-2xl shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100/80 ${isOutOfStock ? 'opacity-75' : ''}`}
     >
-      <div className="relative overflow-hidden bg-gray-50">
+      <div className="relative overflow-hidden bg-gray-50/50">
         <img 
           src={img} 
           alt={name} 
-          className={`w-full aspect-square object-cover group-hover:scale-110 transition-transform duration-300 ${isOutOfStock ? 'grayscale' : ''}`} 
+          className={`w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale' : ''}`} 
           onError={(e) => {
             console.log('❌ Product image failed to load:', img);
             e.target.src = '/img/default.png';
           }}
         />
-        <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         
         {/* Discount Badge */}
         {discountPercent > 0 && (
-          <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded font-bold text-sm">
+          <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white px-2.5 py-1 rounded-lg font-bold text-xs shadow-sm">
             -{discountPercent}%
           </div>
         )}
         
         {/* Savings Badge */}
         {savings > 0 && (
-          <div className="absolute bottom-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
+          <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md text-white px-2 py-1 rounded-lg text-[10px] font-bold shadow-sm">
             Tiết kiệm: {currency(savings)}
           </div>
         )}
         
         {/* Stock Status Badge */}
         {stockStatus !== STOCK_STATUS.IN_STOCK && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-3 right-3 shadow-sm">
             <StockStatusBadge status={stockStatus} />
           </div>
         )}
       </div>
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-800 line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
+      <div className="p-4 flex flex-col gap-2">
+        <h3 className="font-bold text-gray-800 text-sm md:text-base line-clamp-2 min-h-[40px] group-hover:text-indigo-600 transition-colors duration-200">
           {name}
         </h3>
         
-        {/* Config Description - small text */}
-        {specs.length > 0 && (
-          <div className="mb-2 text-xs text-gray-600 line-clamp-1">
-            {specs.map(spec => `${spec.label}: ${spec.value}`).join(' • ')}
-          </div>
-        )}
-        
         {/* Specifications Labels */}
-        {specs.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1">
+        {specs.length > 0 ? (
+          <div className="flex flex-wrap gap-1 min-h-[24px]">
             {specs.map((spec, idx) => (
-              <span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                <strong>{spec.label}:</strong> {spec.value}
+              <span key={idx} className="text-[10px] bg-indigo-50/60 text-indigo-600 border border-indigo-100/40 px-2 py-0.5 rounded-md font-semibold">
+                {spec.value}
               </span>
             ))}
           </div>
+        ) : (
+          <div className="min-h-[24px]"></div>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className={`text-lg font-bold ${isOutOfStock ? 'text-gray-500' : 'text-blue-600'}`}>
-                {currency(price)}
+        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-50">
+          <div className="flex flex-col">
+            {oldPrice > price && (
+              <span className="text-[11px] text-gray-400 line-through">
+                {currency(oldPrice)}
               </span>
-              {oldPrice > price && (
-                <span className="text-sm text-gray-400 line-through">
-                  {currency(oldPrice)}
-                </span>
-              )}
-            </div>
+            )}
+            <span className={`text-base font-extrabold ${isOutOfStock ? 'text-gray-500' : 'text-indigo-600'}`}>
+              {currency(price)}
+            </span>
           </div>
-          <span className="text-sm text-gray-500 group-hover:text-blue-600 transition-colors">
-            Xem chi tiết →
+          <span className="text-xs font-bold text-indigo-600 bg-indigo-50 group-hover:bg-indigo-600 group-hover:text-white px-2.5 py-1.5 rounded-lg transition-all duration-300">
+            Xem chi tiết
           </span>
         </div>
       </div>

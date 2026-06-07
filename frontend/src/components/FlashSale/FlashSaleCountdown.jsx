@@ -61,9 +61,9 @@ const FlashSaleCountdown = ({ endTime, onExpire, showLabel = false }) => {
                     </>
                 )}
                 <TimeBox value={String(timeLeft.hours).padStart(2, '0')} />
-                <span className="text-xl font-bold text-white">:</span>
+                <span className="text-sm font-extrabold text-red-500/80">:</span>
                 <TimeBox value={String(timeLeft.minutes).padStart(2, '0')} />
-                <span className="text-xl font-bold text-white">:</span>
+                <span className="text-sm font-extrabold text-red-500/80">:</span>
                 <TimeBox value={String(timeLeft.seconds).padStart(2, '0')} />
             </div>
         </div>
@@ -71,9 +71,9 @@ const FlashSaleCountdown = ({ endTime, onExpire, showLabel = false }) => {
 };
 
 const TimeBox = ({ value, label }) => (
-    <div className="bg-black/80 backdrop-blur text-white font-bold text-lg px-2 py-1 rounded min-w-[40px] text-center shadow-lg">
+    <div className="bg-red-500/10 border border-red-500/20 text-red-500 font-black text-sm md:text-base px-2.5 py-1 rounded-xl min-w-[32px] md:min-w-[38px] text-center shadow-sm">
         {value}
-        {label && <span className="text-xs block font-normal">{label}</span>}
+        {label && <span className="text-[9px] block font-bold uppercase">{label}</span>}
     </div>
 );
 
