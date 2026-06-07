@@ -14,10 +14,6 @@ const connectDB = async () => {
         console.log('MongoDB connected successfully');
     } catch (error) {
         console.error('MongoDB connection error:', error.message);
-        // Đừng thoát app trong môi trường dev; chỉ log lỗi
-        if (process.env.NODE_ENV === 'production') {
-            process.exit(1);
-        }
     }
 };
 

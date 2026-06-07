@@ -47,7 +47,7 @@ const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, 'key.pem')
 let server;
 let serverProtocol = 'http';
 
-const certExists = fs.existsSync(SSL_CERT_PATH) && fs.existsSync(SSL_KEY_PATH);
+const certExists = !process.env.VERCEL && fs.existsSync(SSL_CERT_PATH) && fs.existsSync(SSL_KEY_PATH);
 
 if (certExists) {
     const httpsOptions = {
@@ -144,10 +144,17 @@ app.set('socketio', io);
 
 // --- HEALTH CHECK ENDPOINT ---
 app.get('/api/health', (req, res) => {
+    const mongoose = require('mongoose');
     res.status(200).json({ 
         status: 'ok', 
         message: 'PhoneWorld API is running',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        env: {
+            nodeEnv: process.env.NODE_ENV,
+            isVercel: !!process.env.VERCEL,
+            hasMongoUri: !!process.env.MONGODB_URI,
+            dbState: mongoose.connection.readyState // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+        }
     });
 });
 
