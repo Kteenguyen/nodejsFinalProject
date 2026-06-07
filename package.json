@@ -4,7 +4,7 @@
   "description": "Code formatter:prettier, lint-staged, husky",
   "main": "/frontend/src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node scripts/test-health.js",
     "start": "cd backend && npm start",
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm start",
