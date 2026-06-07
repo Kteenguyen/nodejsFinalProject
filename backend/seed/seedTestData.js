@@ -191,7 +191,8 @@ async function seedData() {
             price: 36990000
           }
         ],
-        ratings: 4.8,
+        ratings: [],
+        avgRating: 4.8,
         reviews: [],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -226,7 +227,8 @@ async function seedData() {
             price: 34490000
           }
         ],
-        ratings: 4.7,
+        ratings: [],
+        avgRating: 4.7,
         reviews: [],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -261,7 +263,8 @@ async function seedData() {
             price: 92990000
           }
         ],
-        ratings: 4.9,
+        ratings: [],
+        avgRating: 4.9,
         reviews: [],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -296,7 +299,8 @@ async function seedData() {
             price: 31990000
           }
         ],
-        ratings: 4.8,
+        ratings: [],
+        avgRating: 4.8,
         reviews: [],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -323,7 +327,8 @@ async function seedData() {
             price: 5690000
           }
         ],
-        ratings: 4.7,
+        ratings: [],
+        avgRating: 4.7,
         reviews: [],
         createdAt: new Date(),
         updatedAt: new Date()
