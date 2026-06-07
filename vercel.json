@@ -1,13 +1,13 @@
 {
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api"
+  "experimentalServices": {
+    "frontend": {
+      "entrypoint": "frontend/package.json",
+      "framework": "create-react-app",
+      "routePrefix": "/"
     },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
+    "backend": {
+      "entrypoint": "backend/server.js",
+      "routePrefix": "/api"
     }
-  ]
+  }
 }
