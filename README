@@ -1,6 +1,6 @@
 # 🎯 PHẦN MỀM THƯƠNG MẠI ĐIỆN TỬ - PHONEWORLD
 
-Hệ thống Thương mại Điện tử chuyên doanh Điện thoại & Thiết bị công nghệ hoàn chỉnh với kiến trúc **MERN Stack** (MongoDB, Express, React, Node.js), kết nối thời gian thực bằng Socket.IO và môi trường container hóa Docker.
+Hệ thống Thương mại Điện tử chuyên doanh Điện thoại & Thiết bị công nghệ hoàn chỉnh với kiến trúc **MERN Stack** (MongoDB, Express, React, Node.js), kết nối thời gian thực bằng Socket.IO và sẵn sàng triển khai trên môi trường Local hoặc đám mây Vercel.
 
 ---
 
