@@ -123,7 +123,7 @@ async function seedData() {
         slug: 'laptop',
         level: 1,
         parentId: null,
-        image: 'https://images.unsplash.com/photo-1496181130204-7552cc14ac1a?w=200&h=200&fit=crop',
+        image: 'https://images.unsplash.com/photo-1484788984921-03950022c9ef?w=200&h=200&fit=crop',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -145,7 +145,7 @@ async function seedData() {
         slug: 'phu-kien',
         level: 1,
         parentId: null,
-        image: 'https://images.unsplash.com/photo-1588449668338-d13417f16af6?w=200&h=200&fit=crop',
+        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop',
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date()
@@ -315,7 +315,7 @@ async function seedData() {
         salePrice: 5690000,
         quantity: 100,
         images: [
-          'https://images.unsplash.com/photo-1588449668338-d13417f16af6?w=600&h=600&fit=crop'
+          'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=600&fit=crop'
         ],
         variants: [
           {
